@@ -17,45 +17,44 @@
 #     - tag: Rails
 #   timeline-side: right
 
-- title: airbnb
-  title-url: https://example.com/
-  date: Sep 2019 - Present
-  subtitle: Fullstack Developer
+- title: Morgan Stanley (Wiley)
+#   title-url: https://example.com/
+  date: July 2020 - June 2021
+  subtitle: Java Developer
   tags:
-    - tag: React
-    - tag: Javascript
-    - tag: Ruby
-    - tag: Rails
+    - tag: Java
+    - tag: JavaScript
+    - tag: Python
+    - tag: Shell
   timeline-side: right
 
-- title: Google
-  title-url: https://example.com/
-  date: Mar 2019 - Sep 2019
-  subtitle: Software Engineer as Intern
+- title: OpeText
+#   title-url: https://example.com/
+  date: Jan 2020 - Jun 2020
+  subtitle: Software Engineering Intern
   tags:
-    - tag: Flutter
-    - tag: Dart
-    - tag: Keycloak
+    - tag: Java
+    - tag: OpenAPI
+    - tag: REST API
   timeline-side: right
 
-- title: Super University
-  title-url: https://example.com/
-  date: 2017 - 2019
-  subtitle: M.Sc. Computer Science
+- title: HighRadius
+#   title-url: https://example.com/
+  date: May 2019 - Jun 2019
+  subtitle: Full Stack Developer Intern
   timeline-side: left
 
-- title: Facebook
+- title: Kalinga Institute of Industrial Technology
   title-url: https://example.com/
-  date: Sep 2017 - Mar 2019
-  subtitle: Front-End Developer as Intern
+  date: Jul 2016 - Jun 2020
+  subtitle: B.Tech in Computer Science Engineering
   tags:
-    - tag: React
-    - tag: Node
-    - tag: Javascript
+    - tag: CGPA: 7.8
+    - tag: Stream: CSE
   timeline-side: right
 
-- title: Super University
-  title-url: https://example.com/
-  date: 2014 - 2017
-  subtitle: B.A. Computer Science
+- title: Don Bosco Senior Secondary School
+#   title-url: https://example.com/
+  date: 2014 - 2016
+  subtitle: High School
   timeline-side: left
