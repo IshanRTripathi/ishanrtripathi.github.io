@@ -23,8 +23,7 @@
     - tag: SQL
 
 - name: myPresense
-  descr: "• Android app based on Google Nearby API and Amazon Rekognition API."
-"• Handled image capturing for face detection using Amazon Rekognition and CameraKit API."
+  descr: "Android app based on Google Nearby API and Amazon Rekognition API. Handled image capturing for face detection using Amazon Rekognition and CameraKit API."
   demo: https://github.com/nSpider/NearbyConnectionMeshNetwork
   tags:
     - tag: Java
