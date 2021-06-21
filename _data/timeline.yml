@@ -63,4 +63,9 @@
 #   title-url: https://example.com/
   date: 2014 - 2016
   subtitle: High School
+  tags:
+    - tag: "Percentage: 79.8%"
+    - tag: "Physics"
+    - tag: "Chemistry"
+    - tag: "Maths"
   timeline-side: left
