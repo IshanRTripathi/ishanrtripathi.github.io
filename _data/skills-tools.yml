@@ -8,8 +8,8 @@
 - name: Git
   weight: 5
 
-- name: Bash
-  weight: 3
+- name: Unity
+  weight: 2
 
 - name: Scrum
   weight: 3
@@ -17,7 +17,7 @@
 - name: Jenkins
   weight: 1
 
-- name: Chrome DevTools
+- name: Intellij
   weight: 2
 
 - name: npm
