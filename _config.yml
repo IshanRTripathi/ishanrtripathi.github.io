@@ -35,11 +35,11 @@ show_aboutme_card: true
 # about_me_title: The will be displayed as the title in the About Me section
 about_me_title: About Me
 # about_me_description: This will be displayed under the title.
-about_me_description: Aspiring Software Engineer with a year of experience in a leading financial services
-company and internship experience in two of the leading B2B companies of India. A Computer Science graduate
-from KIIT University, experienced in strategic problem solving, Software Development, Android App Development
-and UI/UX Design. My career goal is to be a part of a market-leading company where I can contribute to the company's
-growth while being able to explore my capabilities and learn new skills.
+about_me_description: "Aspiring Software Engineer with a year of experience in a leading financial services"+
+"company and internship experience in two of the leading B2B companies of India. A Computer Science graduate"+
+"from KIIT University, experienced in strategic problem solving, Software Development, Android App Development"+
+"and UI/UX Design. My career goal is to be a part of a market-leading company where I can contribute to the company's"+
+"growth while being able to explore my capabilities and learn new skills."
 
 # SKILLS SECTION
 # show_skills_card:
