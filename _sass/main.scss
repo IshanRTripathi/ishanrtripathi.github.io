@@ -332,6 +332,16 @@ a {
       fill: #1da1f2;
     }
   }
+  
+  .leetcode:hover {
+    .circle {
+      animation: outWaveIn 1s cubic-bezier(0.42, 0, 0.58, 1) forwards,
+        colorLeetcode 1s linear forwards;
+    }
+    .social-svg {
+      fill: #1da1f2;
+    }
+  }
 
   @keyframes outWaveIn {
     to {
