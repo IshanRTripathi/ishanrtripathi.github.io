@@ -309,7 +309,7 @@ a {
         colorEmail 1s linear forwards;
     }
     .social-svg {
-      fill: #d44638;
+      fill: #0087bf;
     }
   }
 
@@ -371,7 +371,7 @@ a {
 
   @keyframes colorEmail {
     to {
-      stroke: #b23121;
+      stroke: #0087bf;
     }
   }
 
@@ -402,15 +402,15 @@ a {
   }
 
   div[skill-type="language"] {
-    color: #e84a5f;
+    color: #0087bf;
   }
 
   div[skill-type="framework"] {
-    color: #ff847c;
+    color: #0eaaea;
   }
 
   div[skill-type="tool"] {
-    color: #fecea8;
+    color: #096990;
   }
 
   div[skill-weight="1"] {
