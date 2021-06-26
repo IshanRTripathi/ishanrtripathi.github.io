@@ -26,7 +26,7 @@
     - tag: DevOps
     - tag: Python
     - tag: Shell
-  timeline-side: left
+  timeline-side: right
 
 - title: OpenText
   title-url: https://www.opentext.com/
@@ -36,7 +36,7 @@
     - tag: Java
     - tag: OpenAPI
     - tag: REST API
-  timeline-side: right
+  timeline-side: left
 
 - title: HighRadius
   title-url: https://www.highradius.com/
@@ -48,7 +48,7 @@
     - tag: Python
     - tag: Machine Learning
     - tag: ReactJS
-  timeline-side: right
+  timeline-side: left
 
 - title: Kalinga Institute of Industrial Technology
   title-url: https://kiit.ac.in/
