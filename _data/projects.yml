@@ -13,6 +13,15 @@
 #     - tag: AngularJS
 #     - tag: Node
 
+- name: Task Scheduler
+  descr: "A REST API based application similar to JIRA software"
+  demo: https://github.com/IshanRTripathi/TaskScheduler
+  tags:
+    - tag: Nodejs
+    - tag: MongoDB
+    - tag: Postman
+    - tag: REST API
+    
 - name: JCPSK Calculator
   descr: "An app which simplified the repetitive, hectic and error-prone calculations targeted for cement sheet businesses with almost 500 downloads."
   demo: https://play.google.com/store/apps/details?id=com.ishanrtripathi.jcpskcalculator
