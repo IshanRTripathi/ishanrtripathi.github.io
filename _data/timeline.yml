@@ -26,7 +26,7 @@
     - tag: DevOps
     - tag: Python
     - tag: Shell
-  timeline-side: right
+  timeline-side: left
 
 - title: OpenText
   title-url: https://www.opentext.com/
@@ -48,7 +48,7 @@
     - tag: Python
     - tag: Machine Learning
     - tag: ReactJS
-  timeline-side: left
+  timeline-side: right
 
 - title: Kalinga Institute of Industrial Technology
   title-url: https://kiit.ac.in/
@@ -68,4 +68,4 @@
     - tag: "Physics"
     - tag: "Chemistry"
     - tag: "Maths"
-  timeline-side: left
+  timeline-side: right
