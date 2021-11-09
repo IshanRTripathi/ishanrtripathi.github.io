@@ -17,16 +17,25 @@
 #     - tag: Rails
 #   timeline-side: right
 
+- title: Falabella
+  title-url: https://www.falabella.com/
+  date: August 2021 - Present
+  subtitle: Engineer
+  tags:
+    - tag: Java
+    - tag: Spring Boot
+  timeline-side: right
+  
 - title: Morgan Stanley (Wiley)
   title-url: https://www.morganstanley.com/
-  date: July 2020 - Present
+  date: July 2020 - July 2021
   subtitle: Java Developer
   tags:
     - tag: Java
     - tag: DevOps
     - tag: Python
     - tag: Shell
-  timeline-side: right
+  timeline-side: left
 
 - title: OpenText
   title-url: https://www.opentext.com/
@@ -48,7 +57,7 @@
     - tag: Python
     - tag: Machine Learning
     - tag: ReactJS
-  timeline-side: left
+  timeline-side: right
 
 - title: Kalinga Institute of Industrial Technology
   title-url: https://kiit.ac.in/
@@ -68,4 +77,4 @@
     - tag: "Physics"
     - tag: "Chemistry"
     - tag: "Maths"
-  timeline-side: right
+  timeline-side: left
