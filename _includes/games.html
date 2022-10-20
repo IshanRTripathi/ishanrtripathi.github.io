@@ -1,18 +1,18 @@
 <div class="projects-wrapper">
-    {% for project in site.data.games %}
+    {% for game in site.data.games %}
     <div class="project neumorphism-card" data-aos="zoom-in-down">
         <div class="name-link-wrapper">
-            <h3>{{project.name}}</h3>
+            <h3>{{game.name}}</h3>
         </div>
-        <p class="project-desc">{{project.descr}}</p>
+        <p class="project-desc">{{game.descr}}</p>
         {% if project.demo %}
-        <a class="highlight-link" href="{{project.demo}}" target="_blank" rel="noreferrer">
+        <a class="highlight-link" href="{{game.demo}}" target="_blank" rel="noreferrer">
             Play Game
         </a>
         {% endif %}
-        {% if project.tags %}
+        {% if game.tags %}
         <div class="tag-wrapper">
-            {% for tag in project.tags %}
+            {% for tag in game.tags %}
             <span class="tag neumorphism-card">{{tag.tag}}</span>
             {% endfor %}
         </div>
