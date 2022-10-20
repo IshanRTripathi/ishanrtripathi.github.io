@@ -1,0 +1,22 @@
+<div class="projects-wrapper">
+    {% for project in site.data.games %}
+    <div class="project neumorphism-card" data-aos="zoom-in-down">
+        <div class="name-link-wrapper">
+            <h3>{{project.name}}</h3>
+        </div>
+        <p class="project-desc">{{project.descr}}</p>
+        {% if project.demo %}
+        <a class="highlight-link" href="{{project.demo}}" target="_blank" rel="noreferrer">
+            Play Game
+        </a>
+        {% endif %}
+        {% if project.tags %}
+        <div class="tag-wrapper">
+            {% for tag in project.tags %}
+            <span class="tag neumorphism-card">{{tag.tag}}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

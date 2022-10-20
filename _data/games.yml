@@ -1,0 +1,7 @@
+- name: Tic-Tac-Toe Advanced
+  descr: "A REST API based application similar to JIRA software"
+  demo: https://ishanrtripathi.github.io/Tic-Tac-Toe-Advanced/
+  tags:
+    - tag: Tic-Tac-Toe
+    - tag: C#
+    - tag: Unity
