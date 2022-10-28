@@ -35,7 +35,7 @@ show_aboutme_card: true
 # about_me_title: The will be displayed as the title in the About Me section
 about_me_title: About Me
 # about_me_description: This will be displayed under the title.
-about_me_description: Software Engineer with 2.5+ years of domain experience in logistics and financial services. Specialization in backend development in Java(Spring boot), Postgres and building products from scratch including design discussions. My career goal is to be a part of a market-leading company where I can contribute to the company's growth while being able to explore my capabilities and learn new skills.
+about_me_description: Software Engineer with 3 years of domain experience in logistics and financial services. Specialization in backend development in Java(Spring boot), Postgres and building products from scratch including design discussions. My career goal is to be a part of a market-leading company where I can contribute to the company's growth while being able to explore my capabilities and learn new skills.
 
 # SKILLS SECTION
 # show_skills_card:
@@ -54,7 +54,7 @@ show_timeline_card: true
 timeline_title: Education & Experience
 # cv_download_link: The link where you host your cv.
 # > e.g. you share your cv on your dropbox, then add the dropbox link here
-cv_download_link: https://drive.google.com/file/d/14Nfwebe9B73sOFR5FI-M-RbxkJh5-7nH/view?usp=sharing
+cv_download_link: https://drive.google.com/file/d/1RQnEoyB02MVqOAeLHA1fs7sbOVezxYtU/view?usp=sharing
 
 # PROJECTS SECTION
 # show_projects_card:
