@@ -16,6 +16,15 @@
 #     - tag: Ruby
 #     - tag: Rails
 #   timeline-side: right
+- title: IG GROUP
+  title-url: https://www.iggroup.com/
+  date: February 2022 - Present
+  subtitle: Developer
+  tags:
+    - tag: Java
+    - tag: Spring Boot
+    - tag: Microservices
+  timeline-side: left
 
 - title: Falabella
   title-url: https://www.falabella.com/
