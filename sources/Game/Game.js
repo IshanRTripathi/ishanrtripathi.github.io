@@ -146,6 +146,7 @@ export class Game
                 [ 'cherryTreesReferencesModel',            'cherryTrees/cherryTreesReferences-compressed.glb',           'gltf' ],
                 [ 'sceneryModel',                          'scenery/scenery-compressed.glb',                             'gltf' ],
                 [ 'areasModel',                            'areas/areas-compressed.glb',                                 'gltf' ],
+                [ 'ishanLettersModel',                     'letters/ishan_letters.gltf',                                 'gltf' ],
                 [ 'poleLightsModel',                       'poleLights/poleLights-compressed.glb',                       'gltf' ],
                 [ 'whisperFlameTexture',                   'whispers/whisperFlame.ktx',                                  'textureKtx', (resource) => { resource.minFilter = THREE.LinearFilter; resource.magFilter = THREE.LinearFilter; resource.generateMipmaps = false } ],
                 [ 'satanStarTexture',                      'areas/satanStar.ktx',                                        'textureKtx', (resource) => { resource.minFilter = THREE.LinearFilter; resource.magFilter = THREE.LinearFilter; resource.generateMipmaps = false } ],

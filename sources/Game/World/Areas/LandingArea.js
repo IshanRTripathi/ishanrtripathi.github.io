@@ -24,6 +24,91 @@ export class LandingArea extends Area
     setLetters()
     {
         const references = this.references.items.get('letters')
+        const useImported = this.game.resources.ishanLettersModel && !location.hash.match(/keepletters/i)
+
+        if(useImported)
+        {
+            if(references)
+                for(const reference of references) reference.visible = false
+
+            const basePos = references && references[0] ? references[0].position.clone() : new THREE.Vector3(0, 0.5, 0)
+
+            const meshes = []
+            this.game.resources.ishanLettersModel.scene.traverse(child =>
+            {
+                if(child.isMesh)
+                {
+                    child.updateWorldMatrix(true, true)
+                    meshes.push(child)
+                }
+            })
+
+            if(meshes.length > 0)
+            {
+                const scaleFactor = 0.1
+                for(const m of meshes)
+                {
+                    if(m.geometry && m.geometry.getAttribute('position'))
+                        m.geometry.scale(scaleFactor, scaleFactor, scaleFactor)
+                }
+
+                const groupQuat = references && references[0] ? references[0].quaternion.clone() : new THREE.Quaternion()
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(groupQuat)
+
+                const widths = []
+                for(const m of meshes)
+                {
+                    const geom = m.geometry
+                    if(!geom.boundingBox) geom.computeBoundingBox()
+                    const box = geom.boundingBox
+                    widths.push(box.max.x - box.min.x)
+                }
+                const gap = Math.max(...widths) * 0.15
+                const totalWidth = widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, widths.length - 1)
+                const start = basePos.clone().add(right.clone().multiplyScalar(- totalWidth * 0.5))
+
+                let offset = 0
+                for(let i = 0; i < meshes.length; i++)
+                {
+                    const m = meshes[i]
+                    const width = widths[i]
+                    const centerOffset = offset + width * 0.5
+                    const pos = start.clone().add(right.clone().multiplyScalar(centerOffset))
+
+                    const geom = m.geometry
+                    const posAttr = geom.getAttribute('position')
+                    const idxAttr = geom.getIndex()
+                    const collider = {
+                        shape: 'hull',
+                        parameters: [ posAttr.array, idxAttr ? idxAttr.array : undefined ]
+                    }
+
+                    this.game.objects.add(
+                        { model: m, castShadow: true, receiveShadow: true },
+                        {
+                            type: 'dynamic',
+                            position: pos,
+                            rotation: groupQuat,
+                            mass: 4,
+                            friction: 0.5,
+                            restitution: 0.1,
+                            category: 'object',
+                            colliders: [ collider ],
+                            onCollision: (force, collisionPosition) =>
+                            {
+                                this.game.audio.groups.get('hitBrick').playRandomNext(force, collisionPosition)
+                            }
+                        }
+                    )
+
+                    offset += width + gap
+                }
+            }
+            return
+        }
+
+        if(!references || references.length === 0)
+            return
 
         for(const reference of references)
         {
