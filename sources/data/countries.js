@@ -1,4 +1,5 @@
 export default [
+    [ 'India', 'India', 'in' ],
     [ 'Andorra', 'Andorra', 'ad' ],
     [ 'United Arab Emirates', 'United Arab Emirates', 'ae' ],
     [ 'Afghanistan', 'Afganistan', 'af' ],

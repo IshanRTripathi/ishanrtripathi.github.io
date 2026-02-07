@@ -1,19 +1,18 @@
 import * as THREE from 'three/webgpu'
 
 const text = `
-██████╗ ██████╗ ██╗   ██╗███╗   ██╗ ██████╗ ██╗███████╗                   
-██╔══██╗██╔══██╗██║   ██║████╗  ██║██╔═══██╗╚═╝██╔════╝                   
-██████╔╝██████╔╝██║   ██║██╔██╗ ██║██║   ██║   ███████╗                   
-██╔══██╗██╔══██╗██║   ██║██║╚██╗██║██║   ██║   ╚════██║                   
-██████╔╝██║  ██║╚██████╔╝██║ ╚████║╚██████╔╝   ███████║                   
-╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝    ╚══════╝                   
-                                                                       
-██████╗  ██████╗ ██████╗ ████████╗███████╗ ██████╗ ██╗     ██╗ ██████╗ 
-██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝██╔═══██╗██║     ██║██╔═══██╗
-██████╔╝██║   ██║██████╔╝   ██║   █████╗  ██║   ██║██║     ██║██║   ██║
-██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══╝  ██║   ██║██║     ██║██║   ██║
-██║     ╚██████╔╝██║  ██║   ██║   ██║     ╚██████╔╝███████╗██║╚██████╔╝
-╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝      ╚═════╝ ╚══════╝╚═╝ ╚═════╝ 
+ooooo  oooooooo8 ooooo ooooo      o      oooo   oooo 888  oooooooo8            
+ 888  888         888   888      888      8888o  88  888 888                   
+ 888   888oooooo  888ooo888     8  88     88 888o88 o88   888oooooo            
+ 888          888 888   888    8oooo88    88   8888              888           
+o888o o88oooo888 o888o o888o o88o  o888o o88o    88      o88oooo888            
+                                                                               
+oooo     oooo ooooooooooo oooooooooo   oooooooo8 ooooo ooooooooooo ooooooooooo 
+ 88   88  88   888    88   888    888 888         888  88  888  88  888    88  
+  88 888 88    888ooo8     888oooo88   888oooooo  888      888      888ooo8    
+   888 888     888    oo   888    888         888 888      888      888    oo  
+    8   8     o888ooo8888 o888ooo888  o88oooo888 o888o    o888o    o888ooo8888 
+                                                                               
 
 ╔═ Intro ═══════════════╗
 ║ Thank you for visiting my portfolio, you sneaky developer!
@@ -21,15 +20,11 @@ const text = `
 ╚═══════════════════════╝
 
 ╔═ Socials ═══════════════╗
-║ Mail           ⇒ simon.bruno.77@gmail.com
-║ X              ⇒ https://x.com/bruno_simon
-║ BlueSKy        ⇒ https://bsky.app/profile/bruno-simon.bsky.social
-║ Discord public ⇒ https://discord.com/channels/769928116701233152/1445064878384480288
-║ Discord PM     ⇒ https://discord.com/users/202907325722263553
-║ Youtube        ⇒ https://www.youtube.com/@BrunoSimon
-║ Twitch         ⇒ https://www.twitch.tv/bruno_simon_dev
-║ GitHub         ⇒ https://github.com/brunosimon
-║ LinkedIn       ⇒ https://www.linkedin.com/in/simonbruno77/
+║ Mail           ⇒ ishanrtripathi786@gmail.com
+║ X              ⇒ https://x.com/irt_tripathi
+║ Youtube        ⇒ https://www.youtube.com/@ishanrtripathi
+║ GitHub         ⇒ https://github.com/ishanrtripathi
+║ LinkedIn       ⇒ https://www.linkedin.com/in/ishanr/
 ╚═══════════════════════╝
 
 ╔═ Debug ═══════════════╗
@@ -60,7 +55,7 @@ const text = `
 ╚═══════════════════════╝
 
 ╔═ Source code ═════════╗
-║ The code is available on GitHub under MIT license. Even the Blender files are there, so have fun!
+║ The code is available on GitHub under MIT license. Original Author below!
 ║ https://github.com/brunosimon/folio-2025
 ║ For security reasons, I’m not sharing the server code, but the portfolio works without it.
 ╚═══════════════════════╝
