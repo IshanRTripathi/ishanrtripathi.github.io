@@ -37,38 +37,30 @@ export class Rendering
 
     async setRenderer()
     {
-        this.renderer = new THREE.WebGPURenderer({
-            canvas: this.game.canvasElement,
-            powerPreference: 'high-performance',
-            forceWebGL: false,
-            antialias: this.game.viewport.pixelRatio < 2
-        })
-        this.renderer.setSize(this.game.viewport.width, this.game.viewport.height)
-        this.renderer.setPixelRatio(this.game.viewport.pixelRatio)
-        this.renderer.sortObjects = false
-
-        this.renderer.domElement.classList.add('experience')
-        this.renderer.shadowMap.enabled = true
-        // this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-        this.renderer.setOpaqueSort((a, b) =>
+        const tryCreate = async (forceWebGL) =>
         {
-            return a.renderOrder - b.renderOrder
-        })
-        this.renderer.setTransparentSort((a, b) =>
-        {
-            return a.renderOrder - b.renderOrder
-        })
-
-        if(location.hash.match(/inspector/i))
-        {
-            this.renderer.inspector = new Inspector()
+            const renderer = new THREE.WebGPURenderer({
+                canvas: this.game.canvasElement,
+                powerPreference: 'high-performance',
+                forceWebGL,
+                antialias: this.game.viewport.pixelRatio < 2
+            })
+            renderer.setSize(this.game.viewport.width, this.game.viewport.height)
+            renderer.setPixelRatio(this.game.viewport.pixelRatio)
+            renderer.sortObjects = false
+            renderer.domElement.classList.add('experience')
+            renderer.shadowMap.enabled = true
+            renderer.setOpaqueSort((a, b) => { return a.renderOrder - b.renderOrder })
+            renderer.setTransparentSort((a, b) => { return a.renderOrder - b.renderOrder })
+            if(location.hash.match(/inspector/i))
+                renderer.inspector = new Inspector()
+            renderer.setAnimationLoop((elapsedTime) => { this.game.ticker.update(elapsedTime) })
+            await renderer.init()
+            return renderer
         }
-
-        // Make the renderer control the ticker
-        this.renderer.setAnimationLoop((elapsedTime) => { this.game.ticker.update(elapsedTime) })
-
+        const initialForce = !location.hash.match(/webgpu/i)
+        try { this.renderer = await tryCreate(initialForce) } catch(_) { this.renderer = await tryCreate(!initialForce) }
         return this.renderer
-            .init()
     }
 
     setPostprocessing()
@@ -170,8 +162,39 @@ export class Rendering
 
     async render()
     {
-        // this.renderer.render(this.game.scene, this.game.view.camera)
-        this.postProcessing.render()
+        try
+        {
+            this.postProcessing.render()
+        }
+        catch(e)
+        {
+            if(!this._webglFallback)
+            {
+                this._webglFallback = true
+                const renderer = new THREE.WebGPURenderer({
+                    canvas: this.game.canvasElement,
+                    powerPreference: 'high-performance',
+                    forceWebGL: true,
+                    antialias: this.game.viewport.pixelRatio < 2
+                })
+                renderer.setSize(this.game.viewport.width, this.game.viewport.height)
+                renderer.setPixelRatio(this.game.viewport.pixelRatio)
+                renderer.sortObjects = false
+                renderer.domElement.classList.add('experience')
+                renderer.shadowMap.enabled = true
+                renderer.setOpaqueSort((a, b) => { return a.renderOrder - b.renderOrder })
+                renderer.setTransparentSort((a, b) => { return a.renderOrder - b.renderOrder })
+                renderer.setAnimationLoop((elapsedTime) => { this.game.ticker.update(elapsedTime) })
+                await renderer.init()
+                this.renderer = renderer
+                this.setPostprocessing()
+                this.postProcessing.render()
+            }
+            else
+            {
+                throw e
+            }
+        }
 
         if(this.stats)
             this.stats.update()
