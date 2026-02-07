@@ -53,7 +53,10 @@ export class LandingArea extends Area
                 }
 
                 const groupQuat = references && references[0] ? references[0].quaternion.clone() : new THREE.Quaternion()
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(groupQuat)
                 const right = new THREE.Vector3(1, 0, 0).applyQuaternion(groupQuat)
+                const offsetDistance = -1
+                basePos.add(forward.multiplyScalar(offsetDistance))
 
                 const widths = []
                 for(const m of meshes)
@@ -65,7 +68,8 @@ export class LandingArea extends Area
                 }
                 const gap = Math.max(...widths) * 0.15
                 const totalWidth = widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, widths.length - 1)
-                const start = basePos.clone().add(right.clone().multiplyScalar(- totalWidth * 0.5))
+                const leftOffset = 8
+                const start = basePos.clone().add(right.clone().multiplyScalar(- totalWidth * 0.5 - leftOffset))
 
                 let offset = 0
                 for(let i = 0; i < meshes.length; i++)
