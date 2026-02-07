@@ -1,7 +1,0 @@
-- name: Tic-Tac-Toe Advanced
-  descr: "Tic-Tac-Toe with some twisted rules"
-  demo: https://ishanrtripathi.github.io/Tic-Tac-Toe-Advanced/
-  tags:
-    - tag: Tic-Tac-Toe
-    - tag: C#
-    - tag: Unity
