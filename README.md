@@ -148,4 +148,4 @@ Will do the following
 
 - https://gltf-transform.dev/cli
 - https://github.com/KhronosGroup/KTX-Software?tab=readme-ov-file
-- https://github.khronos.org/KTX-Software/ktxtools/toktx.html
+- https://github.khronos.org/KTX-Software/ktxtools/toktx.html 
