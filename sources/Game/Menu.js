@@ -131,6 +131,44 @@ export class Menu
                 this.default = item
         }
 
+        const worldsItem = this.items.get('worlds')
+        if(worldsItem)
+        {
+            worldsItem.worldsRotation = 0
+            const ring = worldsItem.contentElement.querySelector('.js-worlds-carousel')
+            const prev = worldsItem.contentElement.querySelector('.js-worlds-prev')
+            const next = worldsItem.contentElement.querySelector('.js-worlds-next')
+            const cards = [...worldsItem.contentElement.querySelectorAll('.world-card')]
+
+            const update = () =>
+            {
+                if(ring)
+                    ring.style.transform = `translateZ(-340px) rotateY(${worldsItem.worldsRotation}deg)`
+            }
+
+            if(prev) prev.addEventListener('click', () =>
+            {
+                worldsItem.worldsRotation -= 60
+                update()
+            })
+            if(next) next.addEventListener('click', () =>
+            {
+                worldsItem.worldsRotation += 60
+                update()
+            })
+            for(const card of cards)
+            {
+                card.addEventListener('click', (e) =>
+                {
+                    e.preventDefault()
+                    const target = card.dataset.target
+                    if(target)
+                        this.open(target)
+                })
+            }
+        }
+
+
         const keys = [...this.items.keys()]
 
         for(let i = 0; i < keys.length; i++)

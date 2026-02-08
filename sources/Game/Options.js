@@ -11,6 +11,7 @@ export class Options
         this.setQuality()
         this.setRespawn()
         this.setReset()
+        this.setCameraReset()
         this.setRenderer()
         this.setServer()
     }
@@ -57,6 +58,17 @@ export class Options
         element.addEventListener('click', () =>
         {
             this.game.reset()
+            this.game.menu.close()
+        })
+    }
+
+    setCameraReset()
+    {
+        const element = this.element.querySelector('.js-camera-reset')
+        if(!element) return
+        element.addEventListener('click', () =>
+        {
+            this.game.view.resetToDefault()
             this.game.menu.close()
         })
     }

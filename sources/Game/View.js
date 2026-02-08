@@ -1,12 +1,36 @@
 import * as THREE from 'three/webgpu'
 import CameraControls from 'camera-controls'
 import { Game } from './Game.js'
+import { Menu } from './Menu.js'
 import { clamp, lerp, remap, smoothstep } from './utilities/maths.js'
 import { mix, uniform, vec4, Fn, positionGeometry, attribute } from 'three/tsl'
 import gsap from 'gsap'
 import { Pointer } from './Inputs/Pointer.js'
 import { Inputs } from './Inputs/Inputs.js'
 import { alea } from 'seedrandom'
+
+// Camera interaction configuration.
+// Tweak these values to adjust orbit feel, free mode speed, and focus magnet strength.
+const VIEW_ORBIT = {
+    // Mouse drag sensitivity for orbiting around the world
+    sensitivity: 0.003,
+    // Vertical orbit limits to avoid flipping the camera
+    phiMin: 0.05,
+    phiMax: Math.PI * 0.49,
+}
+
+const VIEW_FREE = {
+    // Smoothing for free camera movements
+    smoothTime: 0.075,
+    draggingSmoothTime: 0.075,
+    // Zoom/dolly speed in free camera
+    dollySpeed: 0.2,
+}
+
+const VIEW_MAGNET = {
+    // How strongly the default camera is pulled back to the tracked focus point
+    multiplier: 0.25,
+}
 
 CameraControls.install( { THREE: THREE } )
 
@@ -53,6 +77,7 @@ export class View
         this.setFocusPoint()
         this.setZoom()
         this.setSpherical()
+        this.setOrbit()
         this.setRoll()
         this.setCameras()
         this.setOptimalArea()
@@ -124,7 +149,7 @@ export class View
         this.focusPoint.easing = 1
         this.focusPoint.magnet = {}
         this.focusPoint.magnet.active = true
-        this.focusPoint.magnet.multiplier = 0.25
+        this.focusPoint.magnet.multiplier = VIEW_MAGNET.multiplier
 
         const focusActionsNames = [
             'forward',
@@ -364,6 +389,33 @@ export class View
         }
     }
 
+    setOrbit()
+    {
+        this.orbit = {}
+        this.orbit.sensitivity = VIEW_ORBIT.sensitivity
+        this.orbit.phiMin = VIEW_ORBIT.phiMin
+        this.orbit.phiMax = VIEW_ORBIT.phiMax
+    }
+
+    resetToDefault()
+    {
+        const defaultRespawn = this.game.respawns.getDefault()
+        this.focusPoint.isTracking = true
+        this.focusPoint.trackedPosition.set(defaultRespawn.position.x, 0, defaultRespawn.position.z)
+        this.focusPoint.position.copy(this.focusPoint.trackedPosition)
+        this.focusPoint.smoothedPosition.copy(this.focusPoint.trackedPosition)
+        
+        this.zoom.baseRatio = 0.6
+        this.zoom.smoothedRatio = this.zoom.baseRatio
+        
+        this.spherical.phi = Math.PI * (this.game.quality.level === 0 ? 0.31 : 0.27)
+        this.spherical.theta = Math.PI * 0.25
+        
+        this.setMode(View.MODE_DEFAULT)
+        
+        this.update()
+    }
+
     setRoll()
     {
         this.roll = {}
@@ -423,9 +475,9 @@ export class View
     {
         this.freeMode = new CameraControls(this.freeCamera, this.game.domElement)
         this.freeMode.enabled = this.mode === View.MODE_FREE
-        this.freeMode.smoothTime = 0.075
-        this.freeMode.draggingSmoothTime = 0.075
-        this.freeMode.dollySpeed = 0.2
+        this.freeMode.smoothTime = VIEW_FREE.smoothTime
+        this.freeMode.draggingSmoothTime = VIEW_FREE.draggingSmoothTime
+        this.freeMode.dollySpeed = VIEW_FREE.dollySpeed
     }
 
     setCinematic()
@@ -603,8 +655,18 @@ export class View
                 // Focus point
                 if(action.active)
                 {
-                    // Map
-                    if(this.game.inputs.pointer.mode === Pointer.MODE_MOUSE || this.game.inputs.pointer.touches.length >= 2)
+                    if(this.game.inputs.pointer.mode === Pointer.MODE_MOUSE && this.game.inputs.pointer.touches.length === 0)
+                    {
+                        if(this.game.menu.state === Menu.OPEN || this.game.menu.state === Menu.OPENING)
+                        {
+                            const dx = this.game.inputs.pointer.delta.x
+                            const dy = this.game.inputs.pointer.delta.y
+                            this.spherical.theta -= dx * this.orbit.sensitivity
+                            this.spherical.phi -= dy * this.orbit.sensitivity
+                            this.spherical.phi = clamp(this.spherical.phi, this.orbit.phiMin, this.orbit.phiMax)
+                        }
+                    }
+                    else if(this.game.inputs.pointer.touches.length >= 2)
                     {
                         this.focusPoint.isTracking = false
                         
