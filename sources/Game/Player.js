@@ -39,7 +39,7 @@ export class Player
         this.game.physicalVehicle.chassis.physical.initialState.position.x = respawn.position.x
         this.game.physicalVehicle.chassis.physical.initialState.position.y = respawn.position.y
         this.game.physicalVehicle.chassis.physical.initialState.position.z = respawn.position.z
-        this.game.physicalVehicle.moveTo(respawn.position, respawn.rotation)
+        this.game.movement.moveTo(respawn.position, respawn.rotation)
 
         this.game.ticker.events.on('tick', () =>
         {
@@ -477,7 +477,7 @@ export class Player
             let respawn = respawnName ? this.game.respawns.getByName(respawnName) : this.game.respawns.getClosest(this.position)
 
             // Update physical vehicle
-            this.game.physicalVehicle.moveTo(
+            this.game.movement.moveTo(
                 respawn.position,
                 respawn.rotation
             )
@@ -606,7 +606,7 @@ export class Player
         
         // Reset on fall
         if(this.position.y < -5)
-            this.game.physicalVehicle.moveTo(this.basePosition)
+            this.game.movement.moveTo(this.basePosition)
 
         // View > Focus point
         this.game.view.focusPoint.trackedPosition.copy(this.position)

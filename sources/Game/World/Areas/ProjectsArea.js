@@ -1341,8 +1341,8 @@ export class ProjectsArea extends Area
         this.pagination.nextIntersect.active = true
         this.url.intersect.active = true
 
-        // Deactivate physical vehicle
-        this.game.physicalVehicle.deactivate()
+        // Deactivate movement
+        this.game.movement.deactivate()
 
         // Buttons
         this.game.inputs.interactiveButtons.clearItems()
@@ -1401,8 +1401,8 @@ export class ProjectsArea extends Area
         this.pagination.nextIntersect.active = false
         this.url.intersect.active = false
 
-        // Activate physical vehicle
-        this.game.physicalVehicle.activate()
+        // Activate movement
+        this.game.movement.activate()
             
         // Buttons
         this.game.inputs.interactiveButtons.clearItems([])

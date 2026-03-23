@@ -1,0 +1,5 @@
+{$SITE_DOMAIN} {
+  encode zstd gzip
+
+  reverse_proxy spliit:3000
+}

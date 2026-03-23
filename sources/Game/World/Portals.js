@@ -34,30 +34,7 @@ export class Portals
         this.game.view.camera.getWorldDirection(forward)
         forward.y = 0
         forward.normalize()
-        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize()
-        const baseDistance = PORTALS_CONFIG.baseDistance
-        const spacing = PORTALS_CONFIG.spacing
-
-        const configs = [
-            {
-                model: '/externals/drysland/models/ship.glb',
-                url: '/externals/drysland/index.html',
-                position: center.clone().add(forward.clone().multiplyScalar(baseDistance)).add(right.clone().multiplyScalar(-spacing)),
-                scale: 0.28
-            },
-            {
-                model: '/externals/hook-a-fish/models/fish.glb',
-                url: '/externals/hook-a-fish/index.html',
-                position: center.clone().add(forward.clone().multiplyScalar(baseDistance)),
-                scale: 0.35
-            },
-            {
-                model: '/externals/elemental-serenity/models/tent.glb',
-                url: '/externals/elemental-serenity/index.html',
-                position: center.clone().add(forward.clone().multiplyScalar(baseDistance)).add(right.clone().multiplyScalar(spacing)),
-                scale: 0.30
-            }
-        ]
+        const configs = []
 
         for(const cfg of configs)
         {

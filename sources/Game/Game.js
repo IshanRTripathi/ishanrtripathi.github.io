@@ -48,6 +48,7 @@ import { PreRenderer } from './PreRenderer.js'
 import { Options } from './Options.js'
 import gsap from 'gsap'
 import { Map } from './Map.js'
+import { MovementAdapter } from './MovementAdapter.js'
 
 export class Game
 {
@@ -105,6 +106,7 @@ export class Game
         this.view = new View()
         this.rendering.setPostprocessing()
         this.rendering.start()
+        this.movement = new MovementAdapter()
         this.reveal = new Reveal()
         this.noises = new Noises()
         this.weather = new Weather()
@@ -267,4 +269,3 @@ export class Game
         })
     }
 }
-

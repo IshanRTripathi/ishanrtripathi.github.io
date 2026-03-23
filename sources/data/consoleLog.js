@@ -50,13 +50,13 @@ oooo     oooo ooooooooooo oooooooooo   oooooooo8 ooooo ooooooooooo ooooooooooo
 ╔═ Devlogs ═════════════╗
 ║ I’ve been making devlogs since the very start of this portfolio
 ║ and you can find them on my Youtube channel.
-║ https://www.youtube.com/@BrunoSimon
+║ https://www.youtube.com/@IshanRTripathi
 ║ Even though the portfolio is out, I’m still working on the last videos so that the series is complete.
 ╚═══════════════════════╝
 
 ╔═ Source code ═════════╗
 ║ The code is available on GitHub under MIT license. Original Author below!
-║ https://github.com/brunosimon/folio-2025
+║ https://github.com/ishanrtripathi/ishanrtripathi.github.io
 ║ For security reasons, I’m not sharing the server code, but the portfolio works without it.
 ╚═══════════════════════╝
 
@@ -65,7 +65,7 @@ oooo     oooo ooooooooooo oooooooooo   oooooooo8 ooooo ooooooooooo ooooooooooo
 ║ https://linktr.ee/Kounine
 ║ They are now under CC0 license, meaning you can do whatever you want with them!
 ║ Download them here.
-║ https://github.com/brunosimon/folio-2025/tree/main/static/sounds/musics
+║ https://github.com/ishanrtripathi/ishanrtripathi.github.io/tree/main/static/sounds/musics
 ╚═══════════════════════╝
 
 ╔═ Some more links ═════╗
