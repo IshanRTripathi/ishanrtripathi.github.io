@@ -1,8 +1,8 @@
 .DS_Store
 node_modules
 dist
-.vercel
-.VSCodeCounter
 .env*
-.autosave
-.wav
+!.env.example
+tripo/out/
+tripo/photos/
+tripo/originals/

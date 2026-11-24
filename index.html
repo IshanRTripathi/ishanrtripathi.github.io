@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Ishan R Tripathi</title>
+    <meta name="description" content="Ishan R Tripathi, software engineer. Walk around a small island to see my projects, my career and how to reach me.">
+    <meta name="theme-color" content="#CFE0EF">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ishanr.com/">
+    <meta property="og:title" content="Ishan R Tripathi">
+    <meta property="og:description" content="Software engineer. Walk around my island to see what I've built.">
+    <meta property="og:image" content="https://ishanr.com/social/share.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ishan R Tripathi">
+    <meta name="twitter:description" content="Software engineer. Walk around my island to see what I've built.">
+    <meta name="twitter:image" content="https://ishanr.com/social/share.png">
+
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=Kalam&family=Yatra+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body class="is-title">
+    <canvas class="world" aria-hidden="true"></canvas>
+
+    <!-- Title -->
+    <section class="title" aria-labelledby="title-name">
+        <div class="title-inner">
+            <h1 id="title-name" class="title-name">Ishan R Tripathi</h1>
+            <p class="title-role">Software engineer</p>
+            <p class="title-intro" data-content="intro"></p>
+            <div class="title-actions">
+                <button class="sign-button" type="button" data-action="explore" disabled>
+                    <span class="sign-button-label">Building the island</span>
+                </button>
+                <button class="text-button" type="button" data-action="page">Read it as a page instead</button>
+            </div>
+            <p class="title-keys" aria-hidden="true">Walk with WASD or the arrow keys. Hold Shift to run.</p>
+        </div>
+    </section>
+
+    <!-- In-world HUD -->
+    <header class="hud-top" hidden>
+        <button class="hud-name" type="button" data-action="page">Ishan R Tripathi</button>
+        <div class="hud-tools">
+            <button class="hud-button" type="button" data-action="sound" aria-pressed="false">Sound off</button>
+            <button class="hud-button" type="button" data-action="page">Page view</button>
+        </div>
+    </header>
+
+    <div class="hud-help" hidden>
+        <p class="hud-help-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk, <kbd>Shift</kbd> run</p>
+        <p class="hud-help-keys"><kbd>E</kbd> ride the scooter, <kbd>Enter</kbd> read a board</p>
+        <p class="hud-help-touch">Drag the left circle to walk. Drag anywhere else to look around.</p>
+        <p class="hud-help-hint">Follow the red path. Every board is a letter.</p>
+    </div>
+
+    <div class="place-toast" aria-live="polite"></div>
+
+    <button class="prompt" type="button" hidden>
+        <kbd class="prompt-key">Enter</kbd>
+        <span class="prompt-label"></span>
+    </button>
+
+    <!-- Touch controls -->
+    <div class="touch" hidden>
+        <div class="stick" aria-hidden="true"><div class="stick-knob"></div></div>
+    </div>
+
+    <!-- Letter -->
+    <div class="letter-layer" hidden>
+        <div class="letter-backdrop" data-action="close"></div>
+        <article class="letter" role="dialog" aria-modal="true" aria-labelledby="letter-title" tabindex="-1">
+            <div class="letter-flap" aria-hidden="true">
+                <span>Inland letter card</span>
+                <span lang="hi">अंतर्देशीय पत्र</span>
+            </div>
+            <div class="letter-body">
+                <div class="letter-stamp" aria-hidden="true">
+                    <div class="stamp"><svg class="stamp-icon" viewBox="0 0 48 48"></svg><span class="stamp-value">₹5</span></div>
+                    <svg class="postmark" viewBox="0 0 120 120">
+                        <defs><path id="postmark-arc" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0"/></defs>
+                        <circle cx="60" cy="60" r="54" />
+                        <circle cx="60" cy="60" r="34" />
+                        <text><textPath href="#postmark-arc" startOffset="2%">ISHAN JUNCTION · ISLAND POST ·</textPath></text>
+                        <text class="postmark-date" x="60" y="66" text-anchor="middle"></text>
+                    </svg>
+                </div>
+                <p class="letter-to">To,<br>whoever walked over to this board</p>
+                <h2 id="letter-title" class="letter-title"></h2>
+                <p class="letter-line"></p>
+                <div class="letter-content"></div>
+                <p class="letter-sign">Ishan</p>
+                <div class="letter-actions">
+                    <a class="sign-button letter-link" target="_blank" rel="noopener"><span class="sign-button-label"></span></a>
+                    <button class="text-button" type="button" data-action="close">Fold it back <kbd>Esc</kbd></button>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Page view: everything on the island, as a plain page -->
+    <div class="page-layer" hidden>
+        <div class="page" role="dialog" aria-modal="true" aria-labelledby="page-title" tabindex="-1">
+            <div class="page-bar">
+                <button class="text-button" type="button" data-action="close-page">Back to the island</button>
+            </div>
+            <div class="page-content"></div>
+        </div>
+    </div>
+
+    <noscript>
+        <p class="noscript">This site is a small 3D island and needs JavaScript. You can reach Ishan at <a href="mailto:ishanrtripathi786@gmail.com">ishanrtripathi786@gmail.com</a> or on <a href="https://www.linkedin.com/in/ishanr/">LinkedIn</a>.</p>
+    </noscript>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
