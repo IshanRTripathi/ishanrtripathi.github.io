@@ -1,174 +1,187 @@
 import * as THREE from 'three'
-import { Kit, shade } from '../models/kit.js'
+import { Kit, shade, clayMaterial } from '../models/kit.js'
+import { neonMaterial, neonSign } from './neon.js'
 
-// Procedural stand-ins for every building, in one low-poly clay style.
-// Each builder returns a mesh with its origin on the ground at the centre of
+// Procedural stand-ins for every building: pastel Art Deco with neon trim.
+// Each builder returns a Group with its origin on the ground at the centre of
 // its footprint, front door facing +Z. Swap any of them for a Tripo model
 // through src/models/registry.js.
 
 export const C = {
-    laterite: '#A9573B',
-    lateriteDark: '#8E4630',
-    whitewash: '#F3ECDF',
-    cream: '#F1E4C6',
-    ochre: '#E2A33C',
-    turmeric: '#F2C14E',
+    concrete: '#E7DFD5',
+    concreteDark: '#CFC5B8',
+    laterite: '#C98B6B',
+    white: '#FBF7F0',
+    cream: '#FFF3DE',
+    pink: '#F7AFC6',
+    flamingo: '#F28AAE',
+    mint: '#A8E6CF',
+    peach: '#FFC8A2',
+    sky: '#9AD0EC',
+    lavender: '#C9B6E4',
+    lemon: '#FFF1A8',
+    coral: '#FF8C7A',
+    teal: '#2FA4A0',
     seaGreen: '#3E9C8F',
-    skyBlue: '#86BCD8',
-    pink: '#E9A296',
-    mint: '#A7D8C2',
-    lilac: '#B9A6D6',
-    tile: '#C0634A',
-    tileDark: '#A8543E',
-    wood: '#7C4D2C',
-    woodLight: '#A8743F',
-    glass: '#2F4B61',
+    turmeric: '#F2C14E',
+    tile: '#D9785E',
+    wood: '#8A5A3A',
+    woodLight: '#B9895E',
+    glass: '#2C4F6B',
+    glassLight: '#5E8FB0',
     steel: '#C8CDD2',
     steelDark: '#9AA1A8',
     ink: '#24344F',
-    red: '#D2453A',
-    white: '#FBF7EE',
+    red: '#E0483D',
     black: '#2B2D31'
 }
 
-// ------------------------------------------------------------------ pieces
-function plinth(kit, w, d, color = C.laterite)
+// neon tube colours
+export const NEON = {
+    pink: '#FF3EA5',
+    cyan: '#2DE2E6',
+    purple: '#A855F7',
+    orange: '#FF8C42',
+    yellow: '#FFE45E',
+    green: '#6CFF8E'
+}
+
+// A building is two kits: matte clay and glowing neon
+class Builder
+{
+    constructor()
+    {
+        this.clay = new Kit()
+        this.neon = new Kit()
+        this.extras = []
+    }
+
+    // neon tube from a to b ([x, y, z]), thickness t
+    tube(a, b, color, t = 0.09)
+    {
+        const dx = b[0] - a[0]
+        const dy = b[1] - a[1]
+        const dz = b[2] - a[2]
+        const len = Math.hypot(dx, dy, dz)
+        const g = new THREE.BoxGeometry(t, t, len)
+        g.lookAt(new THREE.Vector3(dx, dy, dz))
+        this.neon.add(g, color, { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, z: (a[2] + b[2]) / 2 })
+        return this
+    }
+
+    build()
+    {
+        const group = new THREE.Group()
+        const clay = this.clay.mesh(clayMaterial)
+        group.add(clay)
+        if(this.neon.parts.length)
+        {
+            const neon = new THREE.Mesh(this.neon.geometry(), neonMaterial)
+            neon.castShadow = false
+            group.add(neon)
+        }
+        for(const e of this.extras) group.add(e)
+        group.userData.clay = clay
+        return group
+    }
+}
+
+// ------------------------------------------------------------------ deco pieces
+function plinth(kit, w, d, color = C.concrete)
 {
     // buried a little so it hides any slope under the building
     kit.box(w + 0.5, 1.9, d + 0.5, color, { y: -1.5 })
-    kit.box(w + 0.7, 0.12, d + 0.7, shade(color, 0.06), { y: 0.4 })
+    kit.box(w + 0.8, 0.14, d + 0.8, shade(color, -0.06), { y: 0.38 })
 }
 
-function windowAt(kit, x, y, z, { w = 0.9, h = 1.15, shutter = C.seaGreen, frame = C.white, ry = 0 } = {})
+function door(kit, x, z, { w = 1.4, h = 2.3, color = C.glass, frame = C.white } = {})
 {
-    kit.push({ x, y, z, ry })
-    kit.box(w + 0.22, h + 0.22, 0.12, frame)
-    kit.box(w, h, 0.16, C.glass, { y: 0.11 })
-    kit.box(0.08, h, 0.2, frame, { y: 0.11 })
-    kit.box(w * 0.5, h + 0.1, 0.08, shutter, { x: -w * 0.78, y: 0.06, z: 0.08, ry: 0.5 })
-    kit.box(w * 0.5, h + 0.1, 0.08, shutter, { x: w * 0.78, y: 0.06, z: 0.08, ry: -0.5 })
-    kit.box(w + 0.4, 0.1, 0.3, frame, { y: -0.04, z: 0.1 })
-    kit.pop()
-}
-
-function door(kit, x, z, { w = 1.3, h = 2.2, color = C.wood, frame = C.white } = {})
-{
-    kit.box(w + 0.3, h + 0.2, 0.12, frame, { x, y: 0.5, z })
+    kit.box(w + 0.35, h + 0.25, 0.14, frame, { x, y: 0.5, z })
     kit.box(w, h, 0.18, color, { x, y: 0.5, z: z + 0.02 })
-    kit.box(0.06, h, 0.2, shade(color, -0.08), { x, y: 0.5, z: z + 0.04 })
-    // steps
-    kit.box(w + 0.6, 0.25, 0.5, C.lateriteDark, { x, y: 0.25, z: z + 0.3 })
+    kit.box(0.08, h, 0.22, frame, { x, y: 0.5, z: z + 0.03 })
+    kit.box(w + 0.9, 0.18, 0.7, C.concreteDark, { x, y: 0.32, z: z + 0.38 })
 }
 
-function awning(kit, w, y, z, colors, { depth = 1.4, tilt = 0.32 } = {})
+function awning(kit, w, y, z, colors, { depth = 1.3, tilt = 0.28 } = {})
 {
     const stripes = Math.max(4, Math.round(w / 0.45))
     const sw = w / stripes
     for(let i = 0; i < stripes; i++)
-    {
-        kit.box(sw, 0.06, depth, colors[i % colors.length], {
-            x: -w / 2 + sw * (i + 0.5), y, z: z + depth / 2 * Math.cos(tilt), rx: tilt, center: true
-        })
-    }
-    // scalloped edge
+        kit.box(sw, 0.06, depth, colors[i % colors.length], { x: -w / 2 + sw * (i + 0.5), y, z: z + depth / 2 * Math.cos(tilt), rx: tilt, center: true })
     for(let i = 0; i < stripes; i++)
         kit.box(sw * 0.9, 0.2, 0.05, colors[i % colors.length], { x: -w / 2 + sw * (i + 0.5), y: y - depth * Math.sin(tilt) / 2 - 0.12, z: z + depth * Math.cos(tilt) - 0.02, center: true })
 }
 
-function parapet(kit, w, d, y, color, { step = true } = {})
+function porthole(kit, x, y, z, ry, frame = C.white)
 {
-    const t = 0.25
-    kit.box(w, 0.55, t, color, { y, z: d / 2 - t / 2 })
-    kit.box(w, 0.55, t, color, { y, z: -d / 2 + t / 2 })
-    kit.box(t, 0.55, d, color, { y, x: w / 2 - t / 2 })
-    kit.box(t, 0.55, d, color, { y, x: -w / 2 + t / 2 })
-    if(step)
+    kit.push({ x, y, z, ry })
+    kit.cyl(0.42, 0.42, 0.12, 14, frame, { rx: Math.PI / 2, center: true })
+    kit.cyl(0.32, 0.32, 0.16, 14, C.glass, { rx: Math.PI / 2, z: 0.02, center: true })
+    kit.pop()
+}
+
+function palmPot(kit, x, y, z)
+{
+    kit.cyl(0.28, 0.2, 0.45, 8, C.white, { x, y, z })
+    for(let i = 0; i < 5; i++)
     {
-        kit.box(w * 0.42, 0.45, t, color, { y: y + 0.55, z: d / 2 - t / 2 })
-        kit.box(w * 0.2, 0.35, t, color, { y: y + 1.0, z: d / 2 - t / 2 })
+        const a = i / 5 * Math.PI * 2
+        kit.box(0.12, 0.04, 0.6, '#4FA052', { x: x + Math.sin(a) * 0.22, y: y + 0.65, z: z + Math.cos(a) * 0.22, ry: a, rx: 0.5, center: true })
     }
-    kit.box(w - 0.1, 0.14, d - 0.1, shade(color, -0.1), { y: y - 0.02 })
+    kit.cyl(0.05, 0.06, 0.3, 5, C.wood, { x, y: y + 0.4, z })
 }
 
-function balcony(kit, w, y, z, rail = C.white)
+// Streamline Moderne block: rounded front corners, white eyebrows over ribbon
+// windows, a central fin above a stepped parapet, neon on the edges.
+function decoBlock(b, o)
 {
-    kit.box(w, 0.16, 1.0, C.laterite, { y, z: z + 0.5 })
-    const posts = Math.round(w / 0.35)
-    for(let i = 0; i <= posts; i++)
-        kit.box(0.07, 0.7, 0.07, rail, { x: -w / 2 + (w / posts) * i, y: y + 0.16, z: z + 0.95 })
-    kit.box(w, 0.08, 0.12, rail, { y: y + 0.86, z: z + 0.95 })
-}
-
-function pot(kit, x, y, z, leaf = '#5E9B45')
-{
-    kit.cyl(0.22, 0.16, 0.32, 7, C.tile, { x, y, z })
-    kit.sphere(0.3, leaf, { x, y: y + 0.48, z, sy: 0.9 })
-}
-
-function hipRoof(kit, w, d, y, h, color = C.tile)
-{
-    // Mangalore-tile style hip roof with an overhang; the ridge runs along the longer side
-    if(d > w)
-    {
-        kit.push({ ry: Math.PI / 2 })
-        hipRoof(kit, d, w, y, h, color)
-        kit.pop()
-        return
-    }
-    const ow = w + 1.0
-    const od = d + 1.0
-    const g = new THREE.BufferGeometry()
-    const ridge = Math.max(0.01, (ow - od) / 2)
-    const v = [
-        -ow / 2, 0, -od / 2, ow / 2, 0, -od / 2, ow / 2, 0, od / 2, -ow / 2, 0, od / 2,
-        -ridge, h, 0, ridge, h, 0
-    ]
-    const idx = [ 3, 2, 5, 3, 5, 4, 1, 0, 4, 1, 4, 5, 2, 1, 5, 0, 3, 4, 0, 1, 2, 0, 2, 3 ]
-    g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3))
-    g.setIndex(idx)
-    g.computeVertexNormals()
-    kit.add(g, color, { y })
-    // ridge cap and eave line
-    kit.box(ridge * 2 + 0.3, 0.14, 0.24, shade(color, -0.12), { y: y + h - 0.04 })
-    kit.box(ow + 0.05, 0.12, 0.12, shade(color, -0.15), { y: y - 0.05, z: od / 2 })
-}
-
-// A two-storey shop house used by most project buildings
-function shopHouse(kit, o)
-{
-    const { w, d, wall, trim, shutter, awningColors, floors = 2 } = o
-    const fh = 3.1
+    const { w, d, wall, trim = C.white, floors = 2, neon = NEON.pink, neon2 = NEON.cyan } = o
+    const kit = b.clay
+    const fh = 3.0
+    const r = 0.75
     plinth(kit, w, d)
+    const body = floors * fh
+    // main volume with the front corners rounded off
+    kit.box(w - r * 2, body, d, wall, { y: 0.5 })
+    kit.box(w, body, d - r, wall, { y: 0.5, z: -r / 2 })
+    for(const sx of [ -1, 1 ])
+        kit.cyl(r, r, body, 12, wall, { x: sx * (w / 2 - r), y: 0.5, z: d / 2 - r })
+
+    // eyebrows wrapping the front at each floor line, and ribbon windows
     for(let f = 0; f < floors; f++)
     {
         const y = 0.5 + f * fh
-        kit.box(w, fh, d, f === 0 ? wall : shade(wall, 0.03), { y })
-        kit.box(w + 0.16, 0.18, d + 0.16, trim, { y: y + fh - 0.09 })
+        if(f > 0)
+        {
+            kit.box(w * 0.86, 1.1, 0.12, C.glass, { y: y + 0.85, z: d / 2 + 0.01 })
+            for(let i = 1; i < 5; i++) kit.box(0.08, 1.1, 0.16, trim, { x: -w * 0.43 + w * 0.86 * i / 5, y: y + 0.85, z: d / 2 + 0.02 })
+        }
+        kit.box(w + 0.35, 0.14, 0.75, trim, { y: y + fh - 0.35, z: d / 2 + 0.2 })
+        for(const sx of [ -1, 1 ]) kit.cyl(r + 0.2, r + 0.2, 0.14, 12, trim, { x: sx * (w / 2 - r), y: y + fh - 0.35, z: d / 2 - r })
     }
-    const top = 0.5 + floors * fh
-    // ground floor: wide shop window + door
-    kit.box(w * 0.42, 1.7, 0.14, trim, { x: -w * 0.2, y: 1.1, z: d / 2 })
-    kit.box(w * 0.38, 1.5, 0.18, C.glass, { x: -w * 0.2, y: 1.2, z: d / 2 + 0.01 })
-    door(kit, w * 0.26, d / 2 + 0.02, { color: o.doorColor || C.wood, frame: trim })
-    if(awningColors) awning(kit, w * 0.9, 3.05, d / 2 + 0.05, awningColors)
-    // upper floor windows + balcony
-    for(let f = 1; f < floors; f++)
-    {
-        const y = 0.5 + f * fh + 0.9
-        const n = Math.max(2, Math.floor(w / 2.4))
-        for(let i = 0; i < n; i++)
-            windowAt(kit, -w / 2 + (w / n) * (i + 0.5), y, d / 2 + 0.02, { shutter, frame: trim })
-        if(o.balcony) balcony(kit, w * 0.62, 0.5 + f * fh, d / 2)
-        if(o.balcony) pot(kit, -w * 0.2, 0.5 + f * fh + 0.16, d / 2 + 0.55)
-    }
-    // side windows
-    windowAt(kit, w / 2 + 0.02, 0.5 + fh + 0.9, 0, { shutter, frame: trim, ry: Math.PI / 2 })
-    windowAt(kit, -w / 2 - 0.02, 0.5 + fh + 0.9, 0, { shutter, frame: trim, ry: -Math.PI / 2 })
-    windowAt(kit, -w / 2 - 0.02, 1.0 + 0.4, -d * 0.2, { shutter, frame: trim, ry: -Math.PI / 2 })
-    parapet(kit, w, d, top, trim)
+    const top = 0.5 + body
+    // coping, stepped parapet and the fin
+    kit.box(w + 0.1, 0.25, d + 0.1, trim, { y: top })
+    kit.box(w * 0.5, 0.7, 0.4, wall, { y: top + 0.25, z: d / 2 - 0.2 })
+    kit.box(w * 0.3, 0.6, 0.4, trim, { y: top + 0.95, z: d / 2 - 0.2 })
+    kit.box(0.9, 2.6, 0.5, trim, { y: top - 0.6, z: d / 2 + 0.05 })
+    // side portholes
+    porthole(kit, w / 2 + 0.02, 0.5 + fh + 1.3, -d * 0.15, Math.PI / 2)
+    porthole(kit, -w / 2 - 0.02, 0.5 + fh + 1.3, -d * 0.15, -Math.PI / 2)
+
+    // neon: along the coping, up the fin, under the first eyebrow
+    b.tube([ -w / 2, top + 0.27, d / 2 + 0.06 ], [ w / 2, top + 0.27, d / 2 + 0.06 ], neon)
+    b.tube([ 0, top - 0.5, d / 2 + 0.32 ], [ 0, top + 1.95, d / 2 + 0.32 ], neon2, 0.11)
+    b.tube([ -w / 2 - 0.1, 0.5 + fh - 0.45, d / 2 + 0.58 ], [ w / 2 + 0.1, 0.5 + fh - 0.45, d / 2 + 0.58 ], neon2, 0.07)
+
+    // ground floor shop front
+    kit.box(w * 0.42, 1.7, 0.14, trim, { x: -w * 0.18, y: 1.0, z: d / 2 })
+    kit.box(w * 0.38, 1.5, 0.18, C.glassLight, { x: -w * 0.18, y: 1.1, z: d / 2 + 0.01 })
+    door(kit, w * 0.27, d / 2 + 0.02, { frame: trim })
     return top
 }
 
+// ------------------------------------------------------------------ roof sculptures
 // ------------------------------------------------------------------ roof sculptures
 function tiffin(kit, y)
 {
@@ -299,254 +312,275 @@ function kulhad(kit, y)
     kit.pop()
 }
 
+
 // ------------------------------------------------------------------ buildings
+function project(kind, { wall, neon, neon2, awningColors, sculpture, sculptureY = 0, sign, extra })
+{
+    const b = new Builder()
+    const top = decoBlock(b, { w: 8, d: 6.4, wall, neon, neon2 })
+    if(awningColors) awning(b.clay, 3.2, 3.05, 3.25, awningColors, { depth: 1.2 })
+    if(extra) extra(b.clay, b)
+    sculpture(b.clay, top + 0.25 + sculptureY)
+    // the name in neon above the shop front
+    if(sign)
+    {
+        const s = neonSign(sign, { color: neon, width: 4.6, height: 0.9 })
+        s.position.set(-0.4, 3.75, 3.36)
+        b.extras.push(s)
+    }
+    return b.build()
+}
+
 const builders = {
-    tiffin()
+    tiffin: (o) => project('tiffin', {
+        wall: C.mint, neon: NEON.pink, neon2: NEON.yellow, awningColors: [ C.flamingo, C.white ],
+        sculpture: tiffin, sign: o.sign,
+        extra: (k) =>
+        {
+            // diner stools at the window
+            for(let i = 0; i < 3; i++) k.cyl(0.25, 0.25, 0.1, 10, C.red, { x: -3.2 + i * 0.9, y: 1.0, z: 4.0 })
+            for(let i = 0; i < 3; i++) k.cyl(0.05, 0.05, 0.6, 5, C.steel, { x: -3.2 + i * 0.9, y: 0.4, z: 4.0 })
+        }
+    }),
+    calculator: (o) => project('calculator', {
+        wall: C.peach, neon: NEON.cyan, neon2: NEON.pink, awningColors: [ C.teal, C.cream ],
+        sculpture: calculator, sign: o.sign,
+        extra: (k) =>
+        {
+            for(let i = 0; i < 6; i++) k.box(2.4, 0.1, 1.2, i % 2 ? '#B9B6AE' : '#A8A59D', { x: 2.6, y: 0.5 + i * 0.11, z: 4.5, ry: 0.2 })
+        }
+    }),
+    clock: (o) => project('clock', {
+        wall: C.sky, neon: NEON.orange, neon2: NEON.pink,
+        sculpture: alarmClock, sign: o.sign,
+        extra: (k) => palmPot(k, -3.3, 0.5, 3.9)
+    }),
+    phone: (o) => project('phone', {
+        wall: C.lavender, neon: NEON.cyan, neon2: NEON.yellow, awningColors: [ C.ink, C.white ],
+        sculpture: phone, sign: o.sign,
+        extra: (k) => { for(let i = 0; i < 3; i++) k.torus(0.35, 0.05, C.ink, { x: 2.3 + i * 0.5, y: 0.85, z: 4.4, ry: Math.PI / 2 }, 4, 10) }
+    }),
+    arcade: (o) => project('arcade', {
+        wall: C.pink, neon: NEON.purple, neon2: NEON.cyan, awningColors: [ C.lemon, C.flamingo ],
+        sculpture: ticTacToe, sculptureY: 0.4, sign: o.sign,
+        extra: (k, b) =>
+        {
+            k.box(0.9, 1.8, 0.8, '#3B6FB6', { x: -3.1, y: 0.5, z: 4.0 })
+            b.neon.box(0.7, 0.5, 0.05, NEON.cyan, { x: -3.1, y: 1.6, z: 4.42 })
+        }
+    }),
+
+    // Ishan's place: a white deco villa with a curved corner and a sun deck
+    studio: () =>
     {
-        const kit = new Kit()
-        const top = shopHouse(kit, {
-            w: 8, d: 6.4, wall: C.mint, trim: C.white, shutter: C.ochre, balcony: true,
-            awningColors: [ C.red, C.white ], doorColor: C.seaGreen
-        })
-        // benches and a menu board by the door
-        kit.box(1.6, 0.12, 0.45, C.woodLight, { x: -2.2, y: 0.9, z: 4.1 })
-        kit.box(0.12, 0.45, 0.4, C.woodLight, { x: -2.9, y: 0.45, z: 4.1 })
-        kit.box(0.12, 0.45, 0.4, C.woodLight, { x: -1.5, y: 0.45, z: 4.1 })
-        tiffin(kit, top)
-        return kit.mesh()
-    },
-    calculator()
-    {
-        const kit = new Kit()
-        const top = shopHouse(kit, {
-            w: 8, d: 6.4, wall: C.turmeric, trim: C.white, shutter: C.seaGreen, balcony: false,
-            awningColors: [ C.seaGreen, C.cream ]
-        })
-        // stacked corrugated cement sheets outside
-        for(let i = 0; i < 6; i++)
-            kit.box(2.4, 0.1, 1.2, i % 2 ? '#B9B6AE' : '#A8A59D', { x: 2.6, y: 0.5 + i * 0.11, z: 4.4, ry: 0.2 })
-        kit.box(0.6, 0.8, 0.6, C.wood, { x: -3.3, y: 0.5, z: 4.0 })
-        calculator(kit, top)
-        return kit.mesh()
-    },
-    clock()
-    {
-        const kit = new Kit()
-        const top = shopHouse(kit, {
-            w: 7.6, d: 6.4, wall: C.skyBlue, trim: C.white, shutter: C.ochre, balcony: true,
-            doorColor: C.red
-        })
-        // a little letter box
-        kit.box(0.5, 0.7, 0.4, C.red, { x: -3.2, y: 0.9, z: 3.5 })
-        kit.cyl(0.08, 0.08, 0.9, 6, C.black, { x: -3.2, y: 0, z: 3.5 })
-        alarmClock(kit, top)
-        return kit.mesh()
-    },
-    phone()
-    {
-        const kit = new Kit()
-        const top = shopHouse(kit, {
-            w: 8, d: 6.4, wall: C.lilac, trim: C.white, shutter: C.seaGreen, balcony: true,
-            awningColors: [ C.ink, C.white ]
-        })
-        // a bicycle-ish rack
-        for(let i = 0; i < 3; i++) kit.torus(0.35, 0.05, C.ink, { x: 2.3 + i * 0.5, y: 0.85, z: 4.3, ry: Math.PI / 2 }, 4, 10)
-        phone(kit, top)
-        return kit.mesh()
-    },
-    arcade()
-    {
-        const kit = new Kit()
-        const top = shopHouse(kit, {
-            w: 8, d: 6.4, wall: C.pink, trim: C.cream, shutter: C.seaGreen, balcony: false,
-            awningColors: [ C.turmeric, C.red ], doorColor: C.ink
-        })
-        // arcade cabinet by the door
-        kit.box(0.9, 1.8, 0.8, '#3B6FB6', { x: -3.1, y: 0.5, z: 4.0 })
-        kit.box(0.7, 0.5, 0.05, '#9ED0E6', { x: -3.1, y: 1.6, z: 4.42 })
-        ticTacToe(kit, top + 0.4)
-        return kit.mesh()
-    },
-    studio()
-    {
-        const kit = new Kit()
+        const b = new Builder()
+        const k = b.clay
         const w = 7
         const d = 6
-        plinth(kit, w, d)
-        kit.box(w, 3.4, d, C.whitewash, { y: 0.5 })
-        kit.box(w + 0.1, 0.5, d + 0.1, C.laterite, { y: 0.5 })
-        // veranda with pillars
-        kit.box(w + 0.4, 0.2, 2.0, C.lateriteDark, { y: 0.4, z: d / 2 + 1.0 })
-        for(const x of [ -3.2, -1.1, 1.1, 3.2 ])
-        {
-            kit.cyl(0.16, 0.18, 2.9, 8, C.white, { x, y: 0.6, z: d / 2 + 1.7 })
-            kit.box(0.45, 0.2, 0.45, C.white, { x, y: 0.5, z: d / 2 + 1.7 })
-        }
-        kit.box(w + 0.6, 0.18, 2.4, C.wood, { y: 3.5, z: d / 2 + 1.0 })
-        kit.push({ z: 1.0 })
-        hipRoof(kit, w + 0.3, d + 2.4, 3.68, 2.6)
-        kit.pop()
-        door(kit, 0, d / 2 + 0.02, { color: C.seaGreen, frame: C.white })
-        windowAt(kit, -2.3, 2.2, d / 2 + 0.02, { shutter: C.seaGreen })
-        windowAt(kit, 2.3, 2.2, d / 2 + 0.02, { shutter: C.seaGreen })
-        windowAt(kit, w / 2 + 0.02, 2.2, 0, { shutter: C.seaGreen, ry: Math.PI / 2 })
-        windowAt(kit, -w / 2 - 0.02, 2.2, 0, { shutter: C.seaGreen, ry: -Math.PI / 2 })
-        pot(kit, -3.2, 0.5, d / 2 + 0.8)
-        pot(kit, 3.2, 0.5, d / 2 + 0.8, '#6FA84B')
-        // a desk lamp glow in the window and a satellite dish on the roof
-        kit.cyl(0.6, 0.1, 0.3, 10, C.white, { x: 2.0, y: 5.4, z: -1.0, rx: -0.6 })
-        return kit.mesh()
+        plinth(k, w, d)
+        k.box(w - 1.4, 3.4, d, C.white, { y: 0.5 })
+        k.box(w, 3.4, d - 1.4, C.white, { y: 0.5, z: -0.7 })
+        k.cyl(1.4, 1.4, 3.4, 16, C.white, { x: w / 2 - 1.4, y: 0.5, z: d / 2 - 1.4 })
+        k.box(1.4, 3.4, 1.4, C.white, { x: -w / 2 + 0.7, y: 0.5, z: d / 2 - 0.7 })
+        // teal band, flat roof with a deck and rail
+        k.box(w + 0.1, 0.35, d + 0.1, C.teal, { y: 3.7 })
+        k.cyl(1.47, 1.47, 0.35, 16, C.teal, { x: w / 2 - 1.4, y: 3.7, z: d / 2 - 1.4 })
+        k.box(w * 0.55, 2.2, d * 0.55, C.white, { x: -w * 0.18, y: 4.05, z: -d * 0.18 })
+        k.box(w * 0.6, 0.18, d * 0.6, C.teal, { x: -w * 0.18, y: 6.25, z: -d * 0.18 })
+        for(let i = 0; i <= 8; i++) k.box(0.05, 0.6, 0.05, C.white, { x: 0.3 + i * 0.35, y: 4.05, z: d / 2 - 0.05 })
+        k.box(3.0, 0.06, 0.06, C.white, { x: 1.7, y: 4.65, z: d / 2 - 0.05 })
+        // glass block window on the curve, door, portholes
+        k.box(0.12, 2.4, 1.2, C.glassLight, { x: w / 2 + 0.01, y: 1.0, z: -0.8 })
+        door(k, -0.6, d / 2 + 0.02, { color: C.teal, frame: C.white })
+        porthole(k, -2.3, 2.2, d / 2 + 0.02, 0)
+        porthole(k, -w / 2 - 0.02, 2.2, -0.5, -Math.PI / 2)
+        palmPot(k, -2.4, 0.5, d / 2 + 0.7)
+        palmPot(k, 1.3, 0.5, d / 2 + 0.9)
+        b.tube([ -w / 2, 3.9, d / 2 + 0.07 ], [ w / 2 - 1.4, 3.9, d / 2 + 0.07 ], NEON.cyan, 0.07)
+        const s = neonSign('Ishan', { color: NEON.pink, width: 2.2, height: 0.8, script: true })
+        s.position.set(-1.6, 3.0, d / 2 + 0.09)
+        b.extras.push(s)
+        return b.build()
     },
-    trophies()
+
+    trophies: () =>
     {
-        const kit = new Kit()
-        // plinth
-        kit.box(3.2, 1.5, 2.4, C.whitewash, { y: -0.8 })
-        kit.box(3.5, 0.2, 2.7, C.laterite, { y: 0.7 })
-        kit.box(2.6, 0.6, 1.8, C.laterite, { y: -0.4, z: 0.01 })
-        // trophy cup
-        kit.push({ x: -0.55, y: 0.9 })
-        kit.box(1.2, 0.35, 1.2, C.ink, {})
-        kit.cyl(0.55, 0.7, 0.3, 10, '#D9A52B', { y: 0.35 })
-        kit.cyl(0.14, 0.2, 0.9, 8, '#E3B23C', { y: 0.65 })
-        kit.cyl(0.95, 0.35, 1.5, 12, '#EFBF45', { y: 1.5 })
-        kit.cyl(1.0, 0.95, 0.12, 12, '#D9A52B', { y: 2.95 })
-        kit.torus(0.42, 0.09, '#E3B23C', { x: 0.98, y: 2.3, ry: 0, rz: 0 }, 5, 10, Math.PI)
-        kit.torus(0.42, 0.09, '#E3B23C', { x: -0.98, y: 2.3, rz: Math.PI }, 5, 10, Math.PI)
-        kit.pop()
-        // silver medal on a ribbon stand
-        kit.push({ x: 1.05, y: 0.9 })
-        kit.box(0.14, 1.7, 0.14, C.wood, { x: -0.4 })
-        kit.box(0.14, 1.7, 0.14, C.wood, { x: 0.4 })
-        kit.box(0.95, 0.12, 0.14, C.wood, { y: 1.7 })
-        kit.box(0.16, 0.8, 0.04, '#3B6FB6', { x: -0.12, y: 1.0, rz: -0.25 })
-        kit.box(0.16, 0.8, 0.04, C.red, { x: 0.12, y: 1.0, rz: 0.25 })
-        kit.cyl(0.38, 0.38, 0.1, 14, '#CFD5DC', { y: 0.72, rx: Math.PI / 2, center: true })
-        kit.cyl(0.26, 0.26, 0.12, 14, '#B5BDC6', { y: 0.72, rx: Math.PI / 2, center: true })
-        kit.pop()
-        return kit.mesh()
+        const b = new Builder()
+        const k = b.clay
+        k.box(3.2, 1.5, 2.4, C.white, { y: -0.8 })
+        k.box(3.5, 0.2, 2.7, C.flamingo, { y: 0.7 })
+        k.box(2.6, 0.6, 1.8, C.mint, { y: -0.4, z: 0.01 })
+        k.push({ x: -0.55, y: 0.9 })
+        k.box(1.2, 0.35, 1.2, C.ink, {})
+        k.cyl(0.55, 0.7, 0.3, 10, '#D9A52B', { y: 0.35 })
+        k.cyl(0.14, 0.2, 0.9, 8, '#E3B23C', { y: 0.65 })
+        k.cyl(0.95, 0.35, 1.5, 12, '#EFBF45', { y: 1.5 })
+        k.cyl(1.0, 0.95, 0.12, 12, '#D9A52B', { y: 2.95 })
+        k.torus(0.42, 0.09, '#E3B23C', { x: 0.98, y: 2.3 }, 5, 10, Math.PI)
+        k.torus(0.42, 0.09, '#E3B23C', { x: -0.98, y: 2.3, rz: Math.PI }, 5, 10, Math.PI)
+        k.pop()
+        k.push({ x: 1.05, y: 0.9 })
+        k.box(0.14, 1.7, 0.14, C.wood, { x: -0.4 })
+        k.box(0.14, 1.7, 0.14, C.wood, { x: 0.4 })
+        k.box(0.95, 0.12, 0.14, C.wood, { y: 1.7 })
+        k.box(0.16, 0.8, 0.04, '#3B6FB6', { x: -0.12, y: 1.0, rz: -0.25 })
+        k.box(0.16, 0.8, 0.04, C.red, { x: 0.12, y: 1.0, rz: 0.25 })
+        k.cyl(0.38, 0.38, 0.1, 14, '#CFD5DC', { y: 0.72, rx: Math.PI / 2, center: true })
+        k.cyl(0.26, 0.26, 0.12, 14, '#B5BDC6', { y: 0.72, rx: Math.PI / 2, center: true })
+        k.pop()
+        b.tube([ -1.75, 0.82, 1.38 ], [ 1.75, 0.82, 1.38 ], NEON.yellow, 0.07)
+        return b.build()
     },
-    chai()
+
+    // beach shack at the end of the road, still serving chai
+    chai: () =>
     {
-        const kit = new Kit()
-        // wooden stall with a striped tarp roof
-        kit.box(4.2, 0.2, 2.6, C.wood, { y: 0 })
+        const b = new Builder()
+        const k = b.clay
+        k.box(4.2, 0.2, 2.6, C.woodLight, { y: 0 })
         for(const [ x, z ] of [ [ -2, -1.2 ], [ 2, -1.2 ], [ -2, 1.2 ], [ 2, 1.2 ] ])
-            kit.box(0.16, 2.7, 0.16, C.wood, { x, y: 0, z })
-        kit.box(4.2, 1.1, 0.16, C.turmeric, { y: 0.2, z: 1.2 })
-        kit.box(4.4, 0.14, 0.7, C.woodLight, { y: 1.3, z: 1.1 })
-        kit.box(4.2, 1.5, 0.12, C.woodLight, { y: 0.2, z: -1.2 })
-        const tarp = [ '#2F79B8', C.white ]
-        for(let i = 0; i < 8; i++)
-            kit.box(0.6, 0.06, 3.6, tarp[i % 2], { x: -2.1 + i * 0.6, y: 2.95, z: 0.2, rx: -0.18, center: true })
+            k.box(0.16, 2.7, 0.16, C.woodLight, { x, y: 0, z })
+        k.box(4.2, 1.1, 0.16, C.mint, { y: 0.2, z: 1.2 })
+        for(let i = 0; i < 6; i++) k.box(0.06, 1.1, 0.18, C.white, { x: -1.75 + i * 0.7, y: 0.2, z: 1.21 })
+        k.box(4.4, 0.14, 0.7, C.woodLight, { y: 1.3, z: 1.1 })
+        k.box(4.2, 1.5, 0.12, C.woodLight, { y: 0.2, z: -1.2 })
+        // thatch roof
+        k.cone(3.4, 1.4, 6, '#D9B26B', { y: 2.7, ry: Math.PI / 6, sz: 0.75 })
+        k.cone(3.2, 1.3, 6, '#C99E58', { y: 2.75, ry: Math.PI / 6 + 0.3, sz: 0.72 })
         // kettle, glasses, jars, snack packets
-        kit.cyl(0.3, 0.38, 0.5, 10, C.steel, { x: -1.2, y: 1.44, z: 1.0 })
-        kit.cyl(0.08, 0.08, 0.4, 6, C.steel, { x: -0.8, y: 1.7, z: 1.0, rz: -1.0 })
-        for(let i = 0; i < 5; i++) kit.cyl(0.09, 0.07, 0.22, 7, '#E8D8B8', { x: -0.2 + i * 0.25, y: 1.44, z: 1.25 })
-        for(let i = 0; i < 3; i++) kit.cyl(0.22, 0.22, 0.45, 8, '#D8EEF2', { x: 1.0 + i * 0.45, y: 1.44, z: 0.95 })
-        const packets = [ C.red, C.turmeric, '#3B6FB6', C.seaGreen, C.pink ]
-        for(let i = 0; i < 7; i++) kit.box(0.28, 0.4, 0.06, packets[i % packets.length], { x: -1.8 + i * 0.6, y: 2.2, z: 1.25 })
-        kit.box(4.2, 0.04, 0.04, C.black, { y: 2.62, z: 1.25 })
-        kulhad(kit, 3.15)
-        // bench
-        kit.box(2.2, 0.12, 0.5, C.woodLight, { x: 0.3, y: 0.55, z: 2.6 })
-        kit.box(0.12, 0.55, 0.45, C.woodLight, { x: -0.6, y: 0, z: 2.6 })
-        kit.box(0.12, 0.55, 0.45, C.woodLight, { x: 1.2, y: 0, z: 2.6 })
-        return kit.mesh()
+        k.cyl(0.3, 0.38, 0.5, 10, C.steel, { x: -1.2, y: 1.44, z: 1.0 })
+        k.cyl(0.08, 0.08, 0.4, 6, C.steel, { x: -0.8, y: 1.7, z: 1.0, rz: -1.0 })
+        for(let i = 0; i < 5; i++) k.cyl(0.09, 0.07, 0.22, 7, '#F4E1C1', { x: -0.2 + i * 0.25, y: 1.44, z: 1.25 })
+        for(let i = 0; i < 3; i++) k.cyl(0.22, 0.22, 0.45, 8, '#D8EEF2', { x: 1.0 + i * 0.45, y: 1.44, z: 0.95 })
+        const packets = [ C.red, C.turmeric, '#3B6FB6', C.teal, C.flamingo ]
+        for(let i = 0; i < 7; i++) k.box(0.28, 0.4, 0.06, packets[i % packets.length], { x: -1.8 + i * 0.6, y: 2.2, z: 1.25 })
+        kulhad(k, 3.55)
+        k.box(2.2, 0.12, 0.5, C.woodLight, { x: 0.3, y: 0.55, z: 2.6 })
+        k.box(0.12, 0.55, 0.45, C.woodLight, { x: -0.6, y: 0, z: 2.6 })
+        k.box(0.12, 0.55, 0.45, C.woodLight, { x: 1.2, y: 0, z: 2.6 })
+        // string lights along the front
+        for(let i = 0; i < 9; i++) b.neon.sphere(0.07, i % 2 ? NEON.yellow : NEON.orange, { x: -2 + i * 0.5, y: 2.62 - Math.sin(i / 8 * Math.PI) * 0.18, z: 1.3 })
+        const s = neonSign('Chai', { color: NEON.cyan, width: 1.8, height: 0.75, script: true })
+        s.position.set(0, 2.05, 1.32)
+        b.extras.push(s)
+        return b.build()
     },
-    stool()
+
+    stool: () =>
     {
-        const kit = new Kit()
-        kit.cyl(0.32, 0.32, 0.1, 10, C.woodLight, { y: 0.52 })
+        const b = new Builder()
+        b.clay.cyl(0.32, 0.32, 0.1, 10, C.flamingo, { y: 0.52 })
         for(let i = 0; i < 3; i++)
         {
             const a = i / 3 * Math.PI * 2
-            kit.box(0.07, 0.56, 0.07, C.wood, { x: Math.cos(a) * 0.2, z: Math.sin(a) * 0.2, rx: Math.sin(a) * 0.15, rz: -Math.cos(a) * 0.15 })
+            b.clay.box(0.07, 0.56, 0.07, C.steel, { x: Math.cos(a) * 0.2, z: Math.sin(a) * 0.2, rx: Math.sin(a) * 0.15, rz: -Math.cos(a) * 0.15 })
         }
-        return kit.mesh()
+        return b.build()
     },
-    lighthouse()
+
+    lighthouse: () =>
     {
-        const kit = new Kit()
-        kit.cyl(2.3, 2.6, 1.4, 10, '#8C8378', { y: -0.9 })
-        const bands = 6
-        for(let i = 0; i < bands; i++)
-        {
-            const r0 = 1.7 - i * 0.12
-            kit.cyl(r0 - 0.12, r0, 1.7, 12, i % 2 ? C.red : C.white, { y: 0.5 + i * 1.7 })
-        }
-        const top = 0.5 + bands * 1.7
-        kit.cyl(1.45, 1.3, 0.25, 12, C.black, { y: top })
+        const b = new Builder()
+        const k = b.clay
+        k.cyl(2.3, 2.6, 1.4, 10, '#B8AFA4', { y: -0.9 })
+        k.cyl(1.25, 1.7, 10.2, 12, C.white, { y: 0.5 })
+        const top = 10.7
+        k.cyl(1.5, 1.35, 0.25, 12, C.black, { y: top })
         for(let i = 0; i < 12; i++)
         {
             const a = i / 12 * Math.PI * 2
-            kit.box(0.06, 0.6, 0.06, C.black, { x: Math.cos(a) * 1.35, y: top + 0.25, z: Math.sin(a) * 1.35 })
+            k.box(0.06, 0.6, 0.06, C.black, { x: Math.cos(a) * 1.4, y: top + 0.25, z: Math.sin(a) * 1.4 })
         }
-        kit.cyl(0.8, 0.8, 1.3, 10, '#FFE7A3', { y: top + 0.25 })
-        kit.cone(1.05, 1.1, 10, C.red, { y: top + 1.55 })
-        kit.sphere(0.2, C.black, { y: top + 2.75 })
-        door(kit, 0, 1.6, { w: 0.9, h: 1.8, color: C.seaGreen })
-        return kit.mesh()
+        k.cone(1.05, 1.1, 10, C.black, { y: top + 1.55 })
+        door(k, 0, 1.65, { w: 0.9, h: 1.8, color: C.teal })
+        for(let i = 0; i < 3; i++) k.box(0.4, 0.7, 0.12, C.glass, { y: 3 + i * 2.4, z: 1.55 - i * 0.07 })
+        b.neon.cyl(0.8, 0.8, 1.3, 10, NEON.yellow, { y: top + 0.25 })
+        return b.build()
+    },
+
+    // the cinema: a vertical blade sign, a marquee over the doors, and a
+    // big poster frame on the facade for the career timeline
+    cinema: (o) =>
+    {
+        const b = new Builder()
+        const k = b.clay
+        const w = 11
+        const d = 7.2
+        plinth(k, w, d)
+        k.box(w, 7.5, d, C.cream, { y: 0.5 })
+        k.box(w + 0.2, 0.3, d + 0.2, C.flamingo, { y: 8.0 })
+        // stepped crown
+        k.box(w * 0.6, 1.0, d * 0.6, C.cream, { y: 8.3 })
+        k.box(w * 0.3, 0.9, d * 0.4, C.flamingo, { y: 9.3 })
+        // vertical stripes on the facade
+        for(const x of [ -4.6, 4.6 ]) k.box(0.6, 7.6, 0.3, C.flamingo, { x, y: 0.5, z: d / 2 + 0.1 })
+        // entrance and marquee canopy
+        for(const x of [ -1.6, 0, 1.6 ]) door(k, x, d / 2 + 0.02, { w: 1.2, h: 2.3 })
+        k.box(7.2, 0.5, 2.2, C.flamingo, { y: 3.2, z: d / 2 + 1.1 })
+        k.box(7.4, 0.12, 2.4, C.white, { y: 3.15, z: d / 2 + 1.1 })
+        // blade sign frame
+        k.box(1.5, 7.8, 0.5, C.flamingo, { x: 3.6, y: 4.0, z: d / 2 + 0.65 })
+        for(let i = 0; i < 14; i++) b.neon.sphere(0.06, NEON.yellow, { x: -3.55 + i * 0.546, y: 3.08, z: d / 2 + 2.25 })
+        b.tube([ -w / 2, 8.33, d / 2 + 0.12 ], [ w / 2, 8.33, d / 2 + 0.12 ], NEON.cyan, 0.08)
+
+        const blade = neonSign('ISHAN', { color: NEON.pink, width: 1.1, height: 6.6, vertical: true })
+        blade.position.set(3.6, 7.3, d / 2 + 0.92)
+        const marquee = neonSign(o.marquee || 'Now showing', { color: NEON.yellow, width: 6.6, height: 0.42, panel: true })
+        marquee.position.set(0, 3.45, d / 2 + 2.22)
+        b.extras.push(blade, marquee)
+        b.posterAnchor = { x: -1.2, y: 5.7, z: d / 2 + 0.03 }
+        const group = b.build()
+        group.userData.posterAnchor = b.posterAnchor
+        return group
     }
 }
 
-export function createBuilding(kind)
+export function createBuilding(kind, options = {})
 {
     const fn = builders[kind]
     if(!fn) throw new Error('Unknown building kind ' + kind)
-    return fn()
+    return fn(options)
 }
 
-// The station: platform, canopy, station house, rails and a parked train.
-// Returns { mesh, boardAnchor } so the departures board can be attached.
-export function createStation()
+// ------------------------------------------------------------------ city filler
+// Hotels and apartment blocks that make the island read as a city.
+// All of them merge into one clay mesh and one neon mesh.
+const FILLER_WALLS = [ C.pink, C.mint, C.peach, C.sky, C.lavender, C.lemon, C.white, C.cream ]
+const FILLER_NEON = [ NEON.pink, NEON.cyan, NEON.purple, NEON.orange ]
+
+export function createFillers(list, placeMatrix)
 {
-    const kit = new Kit()
-    const L = 15
-    // platform along x, front edge at +z
-    kit.box(L, 1.3, 3.4, '#D8CCB4', { y: -0.75, z: 1.9 })
-    kit.box(L, 0.08, 0.35, C.turmeric, { y: 0.55, z: 3.45 })
-    kit.box(L, 0.08, 0.3, C.white, { y: 0.55, z: 0.4 })
-    // station house at the back of the platform... rails behind it
-    kit.box(6.2, 3.0, 2.6, C.cream, { x: -3.2, y: 0.55, z: -1.0 })
-    kit.box(6.4, 0.5, 2.8, '#8A2F2A', { x: -3.2, y: 0.55, z: -1.0 })
-    kit.box(6.5, 0.18, 2.9, '#8A2F2A', { x: -3.2, y: 3.55, z: -1.0 })
-    door(kit, -1.6, 0.31, { w: 1.1, h: 2.1, color: '#8A2F2A', frame: C.white })
-    windowAt(kit, -4.6, 2.0, 0.31, { shutter: '#8A2F2A', w: 0.8, h: 1.0 })
-    hipRoof(kit, 6.2, 2.6, 3.7, 1.3, C.tile)
-    // canopy on posts over the platform
-    for(const x of [ 0.6, 3.4, 6.2 ])
+    const clay = new Kit()
+    const neon = new Kit()
+    const b = { clay, neon, extras: [], tube: Builder.prototype.tube }
+    list.forEach((f) =>
     {
-        kit.box(0.14, 3.3, 0.14, '#5E6B73', { x, y: 0.55, z: 2.2 })
-    }
-    kit.box(7.2, 0.12, 3.0, '#7E8C94', { x: 3.4, y: 3.85, z: 2.0, rx: 0.08 })
-    // bench under the canopy
-    kit.box(1.8, 0.1, 0.45, C.woodLight, { x: 2.0, y: 1.0, z: 1.2 })
-    kit.box(1.8, 0.4, 0.08, C.woodLight, { x: 2.0, y: 1.1, z: 0.98 })
-    for(const x of [ 1.2, 2.8 ]) kit.box(0.1, 0.45, 0.4, C.black, { x, y: 0.55, z: 1.2 })
-    // rails behind
-    const railZ = -3.7
-    kit.box(L + 6, 0.35, 3.0, '#9C9182', { y: -0.2, z: railZ })
-    for(let i = 0; i < 20; i++) kit.box(0.35, 0.12, 2.4, C.wood, { x: -L / 2 - 3 + 0.5 + i * 1.08, y: 0.15, z: railZ })
-    kit.box(L + 6, 0.12, 0.1, C.steelDark, { y: 0.27, z: railZ - 0.75 })
-    kit.box(L + 6, 0.12, 0.1, C.steelDark, { y: 0.27, z: railZ + 0.75 })
-    // buffer stops
-    for(const sx of [ -1, 1 ]) kit.box(0.4, 0.9, 2.0, C.red, { x: sx * (L / 2 + 3), y: 0.15, z: railZ })
-    // a short blue train: engine + coach
-    kit.push({ x: 2.6, y: 0.4, z: railZ })
-    for(const [ x, len, color ] of [ [ -3.4, 5.4, '#2E5C8C' ], [ 2.6, 5.8, '#2E5C8C' ] ])
-    {
-        kit.box(len, 2.5, 2.2, color, { x, y: 0.5 })
-        kit.box(len + 0.05, 0.35, 2.25, C.cream, { x, y: 1.75 })
-        kit.box(len, 0.3, 2.35, '#3B3F45', { x, y: 3.0 })
-        for(let i = 0; i < Math.floor(len / 1.1); i++)
+        const m = placeMatrix(f)
+        clay.stack.push(m)
+        neon.stack.push(m)
+        const wall = FILLER_WALLS[f.variant % FILLER_WALLS.length]
+        const glow = FILLER_NEON[f.variant % FILLER_NEON.length]
+        if(f.floors >= 3)
         {
-            kit.box(0.6, 0.55, 0.05, C.glass, { x: x - len / 2 + 0.7 + i * 1.1, y: 2.15, z: 1.12 })
+            // hotel: taller, with balconies stacked up the front
+            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: glow, neon2: FILLER_NEON[(f.variant + 1) % 4] })
+            for(let i = 1; i < f.floors; i++)
+                clay.box(f.w * 0.35, 0.12, 0.8, C.white, { x: f.w * 0.25, y: 0.5 + i * 3.0, z: f.d / 2 + 0.4 })
         }
-        for(const wx of [ -len / 2 + 1, len / 2 - 1 ])
-            for(const wz of [ -0.8, 0.8 ])
-                kit.cyl(0.38, 0.38, 0.2, 8, C.black, { x: x + wx, y: 0.3, z: wz, rx: Math.PI / 2, center: true })
+        else
+        {
+            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: glow, neon2: glow })
+            awning(clay, f.w * 0.5, 3.05, f.d / 2 + 0.05, [ wall === C.white ? C.teal : C.white, shade(wall, -0.12) ], { depth: 1.0 })
+        }
+        clay.stack.pop()
+        neon.stack.pop()
+    })
+    const group = new THREE.Group()
+    if(clay.parts.length) group.add(clay.mesh(clayMaterial))
+    if(neon.parts.length)
+    {
+        const n = new THREE.Mesh(neon.geometry(), neonMaterial)
+        group.add(n)
     }
-    kit.pop()
-    return kit.mesh()
+    return group
 }

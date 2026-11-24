@@ -1,11 +1,11 @@
 // Everything a visitor reads lives in this file. Edit freely: the world places
-// one building per project, in this order, along the path from the studio to the beach.
+// one building per project, in this order, along the road from Ishan's place to the beach.
 
 export const person = {
     name: 'Ishan R Tripathi',
     shortName: 'Ishan',
     role: 'Software engineer',
-    intro: 'I build backend systems, Android apps and the odd game. This is my island. Walk around, read the boards, and come say hi at the chai stall on the beach.',
+    intro: 'I build backend systems, Android apps and the odd game. This is my city at sunset. Walk or drive around, step into the glowing markers to see what I built, and find me at the chai shack on the beach.',
     about: 'Software engineer specialising in backend development with Java, Spring Boot and Postgres, with experience in financial services, e-commerce and logistics. I like building products from scratch, design discussions included. Google Agentic AI Hackathon winner and Math Olympiad silver medallist.'
 }
 
@@ -18,12 +18,12 @@ export const links = [
 ]
 
 // `building` picks the procedural stand-in model (see src/world/buildings.js).
-// `stamp` is the colour of the postage stamp on the project's letter.
+// `stamp` is the project's accent colour.
 export const projects = [
     {
         id: 'lunchbox',
         title: 'LunchBox',
-        place: 'LunchBox Canteen',
+        place: 'LunchBox Diner',
         line: 'Daily food delivery for students and college faculty',
         body: 'An app for students and college faculty to get their daily food delivered.',
         role: 'Developer',
@@ -47,7 +47,7 @@ export const projects = [
     {
         id: 'task-scheduler',
         title: 'Task Scheduler',
-        place: 'Task Scheduler Office',
+        place: 'Task Scheduler HQ',
         line: 'A REST API for planning and tracking work, like JIRA',
         body: 'A REST API based application for planning and tracking tasks, similar to JIRA.',
         role: 'Backend developer',
@@ -85,7 +85,7 @@ export const projects = [
 export const achievements = {
     id: 'achievements',
     title: 'Trophies',
-    place: 'Town Square',
+    place: 'Trophy Plaza',
     line: 'Google Agentic AI Hackathon winner, Math Olympiad silver',
     body: 'Two things I am proud of: winning the Google Agentic AI Hackathon, and a silver medal at the Math Olympiad.',
     items: [
@@ -95,12 +95,12 @@ export const achievements = {
     stamp: '#B8860B'
 }
 
-// Newest first. Shown on the departures board at Ishan Junction.
+// Newest first. Shown on the poster outside the cinema.
 export const career = {
     id: 'career',
     title: 'Career',
-    place: 'Ishan Junction',
-    line: 'Every stop so far, from internships to today',
+    place: 'The Ishan Cinema',
+    line: 'Now showing: every stop so far, from internships to today',
     stops: [
         { place: 'IG Group', role: 'Developer', when: '2023 to now', note: 'Java, Spring Boot, microservices', url: 'https://www.iggroup.com/' },
         { place: 'Falabella', role: 'Engineer', when: '2021 to 2023', note: 'Java, Spring Boot, microservices', url: 'https://www.falabella.com/' },
@@ -115,8 +115,8 @@ export const career = {
 export const contact = {
     id: 'contact',
     title: 'Chai?',
-    place: 'Chai Stall',
-    line: 'Pull up a stool. Here is how to reach me.',
+    place: 'Chai Shack',
+    line: 'Pull up a stool and watch the sunset. Here is how to reach me.',
     body: 'Thanks for walking all the way here. If you want to build something together, hire me, or just talk shop, write to me.',
     stamp: '#8B5A2B'
 }

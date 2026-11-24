@@ -3,9 +3,9 @@
 // before that job will run.
 
 // One style line ends every image prompt, so all models look like one world.
-export const STYLE = 'stylized low-poly 3D game asset in a sunny Konkan-coast Indian seaside town, clean chunky faceted shapes with crisp edges and simplified details, soft matte clay-like materials, warm palette of laterite red, whitewash, turmeric yellow and sea green lit by late-afternoon golden light, three-quarter view from the front-left, camera slightly above, the whole subject visible with generous margin, isolated on a plain pure white background, no ground plane, no cast shadow, no people, absolutely no text, no letters, no numbers, no logos, no signage writing'
+export const STYLE = 'stylized low-poly 3D game asset in a sun-drenched 1980s Miami-inspired beach city, clean chunky faceted shapes with crisp edges and simplified details, soft matte clay-like materials, pastel Art Deco palette of flamingo pink, mint, peach and sky blue with a few neon accents, lit by a warm pink and orange sunset, three-quarter view from the front-left, camera slightly above, the whole subject visible with generous margin, isolated on a plain pure white background, no ground plane, no cast shadow, no people, absolutely no text, no letters, no numbers, no logos, no signage writing'
 
-const ARCHITECTURE = 'Konkan coastal architecture, smooth lime-plastered walls, a laterite stone plinth, wooden window shutters, a flat roof with a stepped parapet.'
+const ARCHITECTURE = '1930s Miami Beach Art Deco architecture, smooth stucco walls, rounded corners, white eyebrow ledges over ribbon windows, porthole windows, a flat roof with a stepped parapet and a vertical fin, thin neon tubes along the edges.'
 
 // Tripo model versions (see developers.tripo3d.ai/en/docs/models-and-versions)
 export const MODELS = {
@@ -67,23 +67,25 @@ export const JOBS = [
         ]
     },
 
-    building('studio', 'A small single-storey whitewashed cottage used as a software developer\'s studio: a sloping terracotta Mangalore-tile hip roof, a front veranda with four white pillars on a laterite plinth, a sea-green front door and window shutters, potted plants on the veranda, a small satellite dish on the roof.', [ 8, 7, 9 ]),
+    building('studio', 'A small white two-level Art Deco villa used as a software developer\'s home: one big rounded corner, a teal band at the roof line, a rooftop sun deck with a thin white rail, a teal front door, a porthole window, potted palms by the entrance.', [ 8, 7, 7 ]),
 
-    building('tiffin', 'A two-storey canteen for a college food-delivery app: mint-green walls with white trim, a giant oversized stainless-steel three-tier tiffin carrier with a carry handle sitting on the flat roof, a red-and-white striped awning over a wide serving window, a wooden bench by the door, potted plants on the upper balcony.', [ 8.5, 11, 7 ]),
+    building('tiffin', 'A two-storey diner for a college food-delivery app: mint-green walls with white trim, a giant oversized stainless-steel three-tier tiffin carrier with a carry handle sitting on the flat roof, a pink-and-white striped awning over a wide window, red diner stools by the counter window.', [ 8.5, 11, 7 ]),
 
-    building('calculator', 'A two-storey hardware shop for a calculator app used by cement sheet businesses: turmeric-yellow walls with white trim, a giant oversized pocket calculator with chunky cream and orange buttons leaning back on the flat roof, a sea-green and cream striped awning, a neat stack of grey corrugated cement roofing sheets by the shop front.', [ 8.5, 11, 7 ]),
+    building('calculator', 'A two-storey hardware shop for a calculator app used by cement sheet businesses: peach walls with white trim, a giant oversized pocket calculator with chunky cream and orange buttons leaning back on the flat roof, a teal and cream striped awning, a neat stack of grey corrugated cement roofing sheets by the shop front.', [ 8.5, 11, 7 ]),
 
-    building('clock', 'A two-storey office for a task-scheduling app: sky-blue walls with white trim, a giant oversized red twin-bell alarm clock standing on the flat roof, a red front door, a small red post box by the entrance, ochre window shutters, a balcony with white railings.', [ 8.5, 11, 7 ]),
+    building('clock', 'A two-storey office for a task-scheduling app: sky-blue walls with white trim, a giant oversized red twin-bell alarm clock standing on the flat roof, glass front doors, a potted palm by the entrance.', [ 8.5, 11, 7 ]),
 
-    building('phone', 'A two-storey village school for a face-recognition attendance app: soft lilac walls with white trim, a giant oversized smartphone standing upright on the flat roof showing a simple smiling face framed by yellow scan corners, a navy-and-white striped awning, a bicycle rack by the door.', [ 8.5, 11, 7 ]),
+    building('phone', 'A two-storey school for a face-recognition attendance app: soft lavender walls with white trim, a giant oversized smartphone standing upright on the flat roof showing a simple smiling face framed by yellow scan corners, a navy-and-white striped awning, a bicycle rack by the door.', [ 8.5, 11, 7 ]),
 
     building('arcade', 'A two-storey games arcade for a tic-tac-toe game: soft pink walls with cream trim, a giant oversized wooden tic-tac-toe board standing upright on the flat roof with chunky red X pieces and blue O pieces, a yellow-and-red striped awning, a blue arcade cabinet by the door.', [ 8.5, 11, 7 ]),
 
-    prop('trophies', 'A town-square monument: a whitewashed stone plinth on a laterite base carrying a giant golden trophy cup with two handles and, beside it, a silver medal hanging from a red-and-blue ribbon on a small wooden stand.', [ 4.6, 5.5, 3.4 ]),
+    prop('trophies', 'A plaza monument: a white stone plinth with a pink band and a mint base carrying a giant golden trophy cup with two handles and, beside it, a silver medal hanging from a red-and-blue ribbon on a small wooden stand.', [ 4.6, 5.5, 3.4 ]),
 
-    prop('chai', 'A small wooden roadside chai stall on a beach: a turmeric-yellow counter, a blue-and-white striped tarp roof, an aluminium tea kettle and small tea glasses on the counter, colourful snack packets hanging in a row, a wooden bench in front, a giant oversized terracotta clay chai cup with a wisp of steam sitting on the roof.', [ 4.8, 5, 4 ]),
+    prop('chai', 'A small wooden beach shack serving chai: a mint-and-white striped counter, a straw thatch roof, string lights along the front, an aluminium tea kettle and small tea glasses on the counter, colourful snack packets hanging in a row, a wooden bench in front, a giant oversized terracotta clay chai cup with a wisp of steam on the roof.', [ 4.8, 5, 4 ]),
 
-    prop('lighthouse', 'A short coastal lighthouse with red and white bands on a rocky stone base, a black iron gallery railing, a glowing yellow lamp room and a red conical roof.', [ 5, 15, 5 ]),
+    prop('lighthouse', 'A short white coastal lighthouse on a rocky stone base, a black iron gallery railing, a glowing yellow lamp room and a black conical roof.', [ 5, 15, 5 ]),
 
-    prop('scooter', 'A classic 1960s motor scooter with a long flat seat, round headlight and chrome side mirror, painted soft mint green with a cream seat, parked upright.', [ 0.8, 1.15, 1.9 ])
+    prop('scooter', 'A classic 1960s motor scooter with a long flat seat, round headlight and chrome side mirror, painted soft mint green with a cream seat, parked upright.', [ 0.8, 1.15, 1.9 ]),
+
+    prop('car', 'An original 1980s wedge-shaped two-seat convertible sports car, long low pointed nose with closed pop-up headlights, side strakes, white paint with a pink and cyan stripe, red bucket seats, a black roll bar, chrome-free and unbranded, parked with wheels straight.', [ 1.9, 1.3, 4.3 ])
 ]

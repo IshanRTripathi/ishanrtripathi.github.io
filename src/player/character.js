@@ -8,12 +8,13 @@ import { Kit, clayMaterial } from '../models/kit.js'
 const COLORS = {
     skin: '#B07B56',
     hair: '#231A17',
-    shirt: '#EFE8DA',
-    shirtShade: '#DED5C4',
-    trousers: '#34435A',
+    shirt: '#FFFFFF',
+    shirtShade: '#EDEAE4',
+    overshirt: '#5EC4B6',
+    trousers: '#D8C6A5',
     shoes: '#F6F3EC',
-    sole: '#C8372D',
-    strap: '#2B2D31',
+    sole: '#FF4FA3',
+    shades: '#1B1A22',
     eye: '#1E1A18'
 }
 
@@ -50,13 +51,12 @@ export class Character
 
         const spine = this.spine = joint(hips, 0, 0.06, 0, part((k) =>
         {
+            // white tee under an open short-sleeved shirt
             k.box(0.36, 0.5, 0.21, COLORS.shirt, { y: 0 })
-            k.box(0.38, 0.12, 0.23, COLORS.shirtShade, { y: 0.0 })
-            // collar and backpack straps
+            k.box(0.38, 0.5, 0.2, COLORS.overshirt, { y: 0, z: -0.012 })
+            k.box(0.12, 0.48, 0.02, COLORS.overshirt, { x: -0.13, y: 0.01, z: 0.1 })
+            k.box(0.12, 0.48, 0.02, COLORS.overshirt, { x: 0.13, y: 0.01, z: 0.1 })
             k.box(0.16, 0.05, 0.05, COLORS.shirtShade, { y: 0.5, z: 0.09 })
-            k.box(0.05, 0.48, 0.04, COLORS.strap, { x: -0.11, y: 0.02, z: 0.11 })
-            k.box(0.05, 0.48, 0.04, COLORS.strap, { x: 0.11, y: 0.02, z: 0.11 })
-            k.box(0.3, 0.36, 0.14, '#3A5F55', { y: 0.08, z: -0.17 })
         }))
 
         const neck = this.neck = joint(spine, 0, 0.5, 0, part((k) =>
@@ -73,10 +73,12 @@ export class Character
             // ears, eyes, nose
             k.sphere(0.03, COLORS.skin, { x: -0.13, y: 0.12 })
             k.sphere(0.03, COLORS.skin, { x: 0.13, y: 0.12 })
-            k.box(0.035, 0.035, 0.02, COLORS.eye, { x: -0.045, y: 0.13, z: 0.115 })
-            k.box(0.035, 0.035, 0.02, COLORS.eye, { x: 0.045, y: 0.13, z: 0.115 })
-            k.box(0.06, 0.015, 0.02, COLORS.hair, { x: -0.048, y: 0.168, z: 0.112 })
-            k.box(0.06, 0.015, 0.02, COLORS.hair, { x: 0.048, y: 0.168, z: 0.112 })
+            // sunglasses
+            k.box(0.075, 0.045, 0.02, COLORS.shades, { x: -0.048, y: 0.13, z: 0.12 })
+            k.box(0.075, 0.045, 0.02, COLORS.shades, { x: 0.048, y: 0.13, z: 0.12 })
+            k.box(0.24, 0.014, 0.014, COLORS.shades, { y: 0.15, z: 0.12 })
+            k.box(0.06, 0.015, 0.02, COLORS.hair, { x: -0.048, y: 0.172, z: 0.112 })
+            k.box(0.06, 0.015, 0.02, COLORS.hair, { x: 0.048, y: 0.172, z: 0.112 })
             k.box(0.03, 0.05, 0.04, COLORS.skin, { y: 0.09, z: 0.125 })
         }))
 
@@ -104,7 +106,8 @@ export class Character
         {
             const upper = joint(spine, side * 0.22, 0.44, 0, part((k) =>
             {
-                k.box(0.11, 0.3, 0.12, COLORS.shirt, { y: -0.3 })
+                k.box(0.12, 0.16, 0.13, COLORS.overshirt, { y: -0.16 })
+                k.box(0.1, 0.16, 0.11, COLORS.skin, { y: -0.31 })
             }))
             const fore = joint(upper, 0, -0.3, 0, part((k) =>
             {

@@ -1,11 +1,13 @@
 import * as THREE from 'three'
-import { Kit, shade } from '../models/kit.js'
-import { C } from './buildings.js'
+import { Kit } from '../models/kit.js'
+import { C, NEON } from './buildings.js'
+import { neonMaterial } from './neon.js'
 
-// Painted wooden boards. The face is a canvas texture so the text stays crisp.
+// Lit sidewalk signs for every stop, and the cinema poster for the career.
+// Faces are canvas textures so the text stays crisp.
 
-const DISPLAY = '"Yatra One", "Hind", sans-serif'
-const BODY = '"Hind", system-ui, sans-serif'
+const DISPLAY = '"Anton", "Barlow Semi Condensed", sans-serif'
+const BODY = '"Barlow Semi Condensed", system-ui, sans-serif'
 
 function wrap(ctx, text, maxWidth)
 {
@@ -34,146 +36,122 @@ function canvasTexture(canvas, anisotropy = 4)
     return texture
 }
 
-export function paintBoard({ title, line, accent = C.seaGreen })
+function sunset(ctx, x, y, w, h)
+{
+    const g = ctx.createLinearGradient(x, y, x + w, y)
+    g.addColorStop(0, '#FF7A59')
+    g.addColorStop(0.5, '#FF3EA5')
+    g.addColorStop(1, '#8B5CF6')
+    ctx.fillStyle = g
+    ctx.fillRect(x, y, w, h)
+}
+
+export function paintBoard({ title, line })
 {
     const canvas = document.createElement('canvas')
     canvas.width = 768
     canvas.height = 448
     const ctx = canvas.getContext('2d')
-    // cream paint over wood, a coloured stripe like a hand-painted shop sign
-    ctx.fillStyle = '#F5E9CF'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = accent
-    ctx.fillRect(0, 0, canvas.width, 26)
-    ctx.fillRect(0, canvas.height - 26, canvas.width, 26)
-    ctx.strokeStyle = 'rgba(36, 52, 79, 0.85)'
-    ctx.lineWidth = 5
-    ctx.strokeRect(22, 46, canvas.width - 44, canvas.height - 92)
+    const W = canvas.width
+    const H = canvas.height
+    ctx.fillStyle = '#FFF7EC'
+    ctx.fillRect(0, 0, W, H)
+    sunset(ctx, 0, 0, W, 34)
 
-    ctx.fillStyle = '#24344F'
-    ctx.textAlign = 'center'
+    ctx.fillStyle = '#1E1B3A'
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
-    let size = 82
+    let size = 104
     ctx.font = `${size}px ${DISPLAY}`
-    while(ctx.measureText(title).width > canvas.width - 100 && size > 40)
+    while(ctx.measureText(title.toUpperCase()).width > W - 90 && size > 40)
     {
         size -= 4
         ctx.font = `${size}px ${DISPLAY}`
     }
-    ctx.fillText(title, canvas.width / 2, 172)
+    ctx.fillText(title.toUpperCase(), 44, 178)
 
-    ctx.font = `500 34px ${BODY}`
-    ctx.fillStyle = '#3A4660'
-    const lines = wrap(ctx, line, canvas.width - 120).slice(0, 3)
-    lines.forEach((l, i) => ctx.fillText(l, canvas.width / 2, 250 + i * 44))
+    ctx.font = `500 38px ${BODY}`
+    ctx.fillStyle = '#4A4766'
+    const lines = wrap(ctx, line, W - 100).slice(0, 3)
+    lines.forEach((l, i) => ctx.fillText(l, 46, 250 + i * 46))
     return canvasTexture(canvas)
 }
 
-export function createSignBoard({ title, line, accent })
+export function createSignBoard({ title, line })
 {
     const group = new THREE.Group()
     const kit = new Kit()
     const w = 2.5
     const h = 1.46
-    const y0 = 0.9
-    kit.box(0.14, y0 + h + 0.15, 0.14, C.wood, { x: -w / 2 + 0.12, y: -0.4, z: -0.1 })
-    kit.box(0.14, y0 + h + 0.15, 0.14, C.wood, { x: w / 2 - 0.12, y: -0.4, z: -0.1 })
-    kit.box(w + 0.2, h + 0.2, 0.12, C.woodLight, { y: y0 - 0.1, z: 0 })
-    kit.box(w + 0.45, 0.16, 0.3, shade(C.wood, 0.05), { y: y0 + h + 0.1, z: 0 })
+    const y0 = 1.0
+    // a slim lightbox on two steel posts
+    kit.box(0.1, y0 + h + 0.1, 0.1, C.steelDark, { x: -w / 2 + 0.15, y: -0.3, z: -0.12 })
+    kit.box(0.1, y0 + h + 0.1, 0.1, C.steelDark, { x: w / 2 - 0.15, y: -0.3, z: -0.12 })
+    kit.box(w + 0.16, h + 0.16, 0.2, C.white, { y: y0 - 0.08, z: -0.04 })
     group.add(kit.mesh())
+
+    const neon = new Kit()
+    neon.box(w + 0.2, 0.06, 0.06, NEON.pink, { y: y0 + h + 0.1, z: 0.07, center: true })
+    const glow = new THREE.Mesh(neon.geometry(), neonMaterial)
+    group.add(glow)
 
     const face = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshStandardMaterial({ map: paintBoard({ title, line, accent }), roughness: 0.85 })
+        new THREE.MeshStandardMaterial({ map: paintBoard({ title, line }), emissive: '#ffffff', emissiveIntensity: 0.25, roughness: 0.6 })
     )
-    face.position.set(0, y0 + h / 2 - 0.1, 0.065)
-    face.receiveShadow = true
+    face.material.emissiveMap = face.material.map
+    face.position.set(0, y0 + h / 2 - 0.08, 0.065)
     group.add(face)
     group.userData.face = face
     return group
 }
 
-// Yellow station name board, the way Indian railway stations do it
-export function createStationNameBoard()
+// The career, as a lit poster on the cinema facade
+export function createCareerPoster(stops)
 {
     const canvas = document.createElement('canvas')
     canvas.width = 1024
-    canvas.height = 320
+    canvas.height = 768
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#F4C430'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = '#1D1D1D'
-    ctx.lineWidth = 10
-    ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28)
-    ctx.fillStyle = '#1D1D1D'
+    const W = canvas.width
+    const H = canvas.height
+    const bg = ctx.createLinearGradient(0, 0, 0, H)
+    bg.addColorStop(0, '#2A1E5C')
+    bg.addColorStop(1, '#14112B')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+    sunset(ctx, 0, 0, W, 16)
+    sunset(ctx, 0, H - 16, W, 16)
+
     ctx.textAlign = 'center'
-    ctx.font = `92px ${DISPLAY}`
-    ctx.fillText('इशान जंक्शन', canvas.width / 2, 130)
-    ctx.font = `600 96px ${BODY}`
-    ctx.fillText('ISHAN JN.', canvas.width / 2, 258)
-
-    const group = new THREE.Group()
-    const kit = new Kit()
-    kit.box(0.14, 3.2, 0.14, C.black, { x: -1.8 })
-    kit.box(0.14, 3.2, 0.14, C.black, { x: 1.8 })
-    group.add(kit.mesh())
-    const face = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.0, 1.25),
-        new THREE.MeshStandardMaterial({ map: canvasTexture(canvas), roughness: 0.7 })
-    )
-    face.position.set(0, 2.45, 0.08)
-    const back = face.clone()
-    back.rotation.y = Math.PI
-    back.position.z = -0.08
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(4.1, 1.35, 0.12), new THREE.MeshStandardMaterial({ color: '#1D1D1D' }))
-    plate.position.set(0, 2.45, 0)
-    plate.castShadow = true
-    group.add(plate, face, back)
-    return group
-}
-
-// Departures board listing every career stop
-export function createDeparturesBoard(stops)
-{
-    const canvas = document.createElement('canvas')
-    canvas.width = 1024
-    canvas.height = 640
-    const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#16202B'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = '#F4C430'
-    ctx.fillRect(0, 0, canvas.width, 92)
-    ctx.fillStyle = '#16202B'
-    ctx.font = `600 52px ${BODY}`
-    ctx.textAlign = 'left'
-    ctx.fillText('Departures', 36, 66)
-    ctx.textAlign = 'right'
+    ctx.fillStyle = '#FFD6EC'
     ctx.font = `500 34px ${BODY}`
-    ctx.fillText('Years', canvas.width - 36, 62)
+    ctx.fillText('Now showing', W / 2, 74)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `92px ${DISPLAY}`
+    ctx.fillText('THE CAREER', W / 2, 168)
 
     const rows = stops.slice(0, 6)
     rows.forEach((stop, i) =>
     {
-        const y = 160 + i * 84
-        ctx.fillStyle = i % 2 ? '#1B2733' : '#1F2D3A'
-        ctx.fillRect(0, y - 54, canvas.width, 84)
+        const y = 250 + i * 82
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.08)'
+        ctx.fillRect(48, y - 52, W - 96, 76)
         ctx.textAlign = 'left'
-        ctx.fillStyle = '#FFC857'
-        ctx.font = `600 44px ${BODY}`
-        ctx.fillText(stop.place, 36, y)
-        ctx.fillStyle = '#9FB3C8'
+        ctx.fillStyle = '#FFE45E'
+        ctx.font = `600 42px ${BODY}`
+        ctx.fillText(stop.place, 72, y)
+        ctx.fillStyle = '#C9BFF0'
         ctx.font = `400 26px ${BODY}`
-        ctx.fillText(stop.role, 38, y + 22)
+        ctx.fillText(stop.role, 74, y + 22)
         ctx.textAlign = 'right'
-        ctx.fillStyle = '#FFC857'
+        ctx.fillStyle = '#2DE2E6'
         ctx.font = `500 36px ${BODY}`
-        ctx.fillText(stop.when, canvas.width - 36, y)
+        ctx.fillText(stop.when, W - 72, y)
     })
 
     const texture = canvasTexture(canvas)
-    const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.4, 2.125),
-        new THREE.MeshStandardMaterial({ map: texture, emissiveMap: texture, emissive: '#ffffff', emissiveIntensity: 0.45, roughness: 0.6 })
-    )
-    return mesh
+    const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
+    material.color.setScalar(1.15)
+    return new THREE.Mesh(new THREE.PlaneGeometry(4.8, 3.6), material)
 }

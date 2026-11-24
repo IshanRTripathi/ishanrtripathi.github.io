@@ -10,11 +10,11 @@ export const BAY_ANGLE = -0.62
 export const SUN_ELEVATION = 0.74 // radians above the horizon at the island centre
 
 export const COAST = {
-    base: 47,
+    base: 60,
     // amplitude, frequency, phase
-    waves: [ [ 4.2, 2, 0.6 ], [ 3.1, 3, 2.1 ], [ 1.9, 5, 4.0 ], [ 1.1, 7, 1.3 ], [ 0.6, 11, 5.2 ] ],
+    waves: [ [ 5.2, 2, 0.6 ], [ 3.9, 3, 2.1 ], [ 2.4, 5, 4.0 ], [ 1.4, 7, 1.3 ], [ 0.7, 11, 5.2 ] ],
     // headland for the lighthouse: [angle, width, height]
-    bumps: [ [ 1.95, 0.22, 6.5 ], [ -2.55, 0.3, 3.0 ] ]
+    bumps: [ [ 1.95, 0.22, 8 ], [ -2.55, 0.3, 3.8 ] ]
 }
 
 function angleDelta(a, b)
@@ -60,7 +60,10 @@ export function coastGLSL()
 }
 
 // ------------------------------------------------------------------ paths
-export const PATH_HALF_WIDTH = 1.35
+// Roads: two lanes of asphalt with a sidewalk on each side.
+export const ROAD_HALF = 2.4
+export const SIDEWALK = 1.2
+export const PATH_HALF_WIDTH = ROAD_HALF
 
 function catmullRom(points, samplesPerSegment = 24)
 {
@@ -111,12 +114,16 @@ function resample(points, step = 0.5)
 
 class Path
 {
-    constructor(controlPoints, halfWidth = PATH_HALF_WIDTH)
+    // kind: 'road' (asphalt + sidewalks) or 'boardwalk' (wooden footpath)
+    constructor(controlPoints, halfWidth = PATH_HALF_WIDTH, kind = 'road')
     {
         const r = resample(catmullRom(controlPoints))
         this.points = r.points
         this.length = r.length
         this.halfWidth = halfWidth
+        this.kind = kind
+        // clearance from the centre line to the outer edge of the sidewalk
+        this.edge = kind === 'road' ? halfWidth + SIDEWALK : halfWidth
     }
 
     // position + unit tangent at a fraction (0..1) of the length
@@ -155,15 +162,15 @@ function polar(r, a) { return { x: Math.cos(a) * r, z: Math.sin(a) * r } }
 
 function buildMainPath()
 {
-    // Hand-drawn loop: out of the studio, east past the square, then round the
-    // island clockwise (south, west, north) and down to the sunset bay.
+    // Hand-drawn loop: out of Ishan's place, east past the plaza, then round the
+    // island clockwise (south, west, north) and down to the sunset beach.
     // [radius, angle in degrees]; angles grow clockwise on the map.
     const deg = Math.PI / 180
     const bay = BAY_ANGLE / deg + 360
     const control = [
-        [ 3.5, -70 ], [ 9, -22 ], [ 15.5, 14 ], [ 21, 44 ], [ 25.5, 76 ], [ 28.5, 108 ],
-        [ 26.5, 140 ], [ 29.5, 172 ], [ 27, 204 ], [ 29, 236 ], [ 26.5, 262 ], [ 30.5, 288 ],
-        [ 35.5, bay - 16 ], [ coastRadius(BAY_ANGLE) - 4.5, bay ]
+        [ 4.5, -70 ], [ 11.5, -22 ], [ 20, 14 ], [ 27, 44 ], [ 32.5, 76 ], [ 36.5, 108 ],
+        [ 34, 140 ], [ 37.5, 172 ], [ 34.5, 204 ], [ 37, 236 ], [ 34, 262 ], [ 39, 288 ],
+        [ 45, bay - 16 ], [ coastRadius(BAY_ANGLE) - 9, bay ]
     ]
     return new Path(control.map(([ r, a ]) => polar(r, a * deg)))
 }
@@ -187,33 +194,38 @@ export function buildLayout()
     const sites = []
     const props = []
 
-    // --- studio at the start of the path, door facing along it
+    // --- Ishan's place at the start of the road, door facing along it
     {
         const p = main.at(0)
-        const back = { x: p.x - p.tx * 5.2, z: p.z - p.tz * 5.2 }
+        const back = { x: p.x - p.tx * 8.0, z: p.z - p.tz * 8.0 }
         sites.push({
             id: 'studio', kind: 'studio', x: back.x, z: back.z,
             yaw: yawTowards(back, p), w: 7, d: 6, h: 6,
-            door: { x: p.x - p.tx * 1.8, z: p.z - p.tz * 1.8 }
+            // just outside the front door, and just inside it
+            door: { x: p.x - p.tx * 4.5, z: p.z - p.tz * 4.5 },
+            inside: { x: p.x - p.tx * 5.4, z: p.z - p.tz * 5.4 }
         })
     }
 
-    // --- scooter parked by the path, just past the studio
+    // --- the convertible parked at the kerb, the scooter on the sidewalk
     {
-        const p = main.at(0.03)
-        const pos = offsetFrom(p, 1, PATH_HALF_WIDTH + 1.4)
-        props.push({ id: 'scooter', kind: 'scooter', x: pos.x, z: pos.z, yaw: Math.atan2(p.tx, p.tz) + 0.35 })
+        const p = main.at(0.034)
+        const car = offsetFrom(p, 1, ROAD_HALF - 1.05)
+        props.push({ id: 'car', kind: 'car', x: car.x, z: car.z, yaw: Math.atan2(p.tx, p.tz) })
+        const q = main.at(0.022)
+        const scooter = offsetFrom(q, -1, ROAD_HALF + SIDEWALK * 0.55)
+        props.push({ id: 'scooter', kind: 'scooter', x: scooter.x, z: scooter.z, yaw: Math.atan2(q.tx, q.tz) + 0.5 })
     }
 
-    // --- town square with the trophies
+    // --- plaza with the trophies
     {
-        const f = 0.095
+        const f = 0.1
         const p = main.at(f)
-        plazas.push({ x: p.x, z: p.z, r: 4.6 })
-        const pos = offsetFrom(p, -1, 4.6 + 2.6)
-        // the board stands at the edge of the square, beside the trophies
-        const q = main.at(f + 0.028)
-        const signPos = offsetFrom(q, -1, 3.2)
+        plazas.push({ x: p.x, z: p.z, r: 6.2 })
+        const pos = offsetFrom(p, -1, 6.2 + 3.4)
+        // the board stands at the edge of the plaza, beside the trophies
+        const q = main.at(f + 0.03)
+        const signPos = offsetFrom(q, -1, 5.0)
         sites.push({
             id: 'achievements', kind: 'trophies', contentId: 'achievements',
             x: pos.x, z: pos.z, yaw: yawTowards(pos, p), w: 4.4, d: 3.2, h: 5,
@@ -230,9 +242,9 @@ export function buildLayout()
         const p = main.at(f)
         const w = 8
         const d = 6.4
-        const dist = PATH_HALF_WIDTH + 3.0 + d / 2
+        const dist = ROAD_HALF + SIDEWALK + 2.4 + d / 2
         const pos = offsetFrom(p, side, dist)
-        const signPos = offsetFrom(p, side, PATH_HALF_WIDTH + 1.15)
+        const signPos = offsetFrom(p, side, ROAD_HALF + SIDEWALK + 0.6)
         // board turned a little towards people walking up the path
         const signYaw = yawTowards(signPos, p) - side * 0.55
         sites.push({
@@ -242,18 +254,18 @@ export function buildLayout()
         })
     })
 
-    // --- railway station for the career timeline, parallel to the path
+    // --- the cinema whose marquee lists the career, facing the road
     {
         const f = 0.795
         const p = main.at(f)
         const side = -1
-        const pos = offsetFrom(p, side, PATH_HALF_WIDTH + 1.0 + 4.6)
-        const signPos = offsetFrom(main.at(f - 0.045), side, PATH_HALF_WIDTH + 1.15)
+        const pos = offsetFrom(p, side, ROAD_HALF + SIDEWALK + 1.6 + 3.6)
+        const q = main.at(f - 0.04)
+        const signPos = offsetFrom(q, side, ROAD_HALF + SIDEWALK + 0.6)
         sites.push({
-            id: 'career', kind: 'station', contentId: 'career',
-            // platform front faces the path
-            x: pos.x, z: pos.z, yaw: yawTowards(pos, p), w: 15, d: 8.4, h: 6,
-            sign: { x: signPos.x, z: signPos.z, yaw: yawTowards(signPos, main.at(f - 0.045)) + 0.5 }
+            id: 'career', kind: 'cinema', contentId: 'career',
+            x: pos.x, z: pos.z, yaw: yawTowards(pos, p), w: 11, d: 7.2, h: 12,
+            sign: { x: signPos.x, z: signPos.z, yaw: yawTowards(signPos, q) + 0.5 }
         })
     }
 
@@ -261,7 +273,7 @@ export function buildLayout()
     {
         const p = main.at(1)
         const outward = { x: p.tx, z: p.tz }
-        const pos = { x: p.x + outward.x * 3.6, z: p.z + outward.z * 3.6 }
+        const pos = { x: p.x + outward.x * 5.6, z: p.z + outward.z * 5.6 }
         const yaw = Math.atan2(-outward.x, -outward.z)
         // the stool sits in front of the stall, a little to the side
         const right = { x: -outward.z, z: outward.x }
@@ -270,7 +282,7 @@ export function buildLayout()
             id: 'contact', kind: 'chai', contentId: 'contact',
             x: pos.x, z: pos.z, yaw, w: 4.6, d: 3.0, h: 4,
             stool: { ...stool, yaw },
-            sign: { ...{ x: pos.x - outward.x * 2.4 - right.x * 2.2, z: pos.z - outward.z * 2.4 - right.z * 2.2 }, yaw: yaw - 0.4 }
+            sign: { ...{ x: pos.x - outward.x * 2.2 - right.x * 2.8, z: pos.z - outward.z * 2.2 - right.z * 2.8 }, yaw: yaw - 0.4 }
         })
     }
 
@@ -283,7 +295,7 @@ export function buildLayout()
         const mid1 = { x: start.x + (tip.x - start.x) * 0.35 + 2.5, z: start.z + (tip.z - start.z) * 0.35 - 1.5 }
         const mid2 = { x: start.x + (tip.x - start.x) * 0.7 - 1.5, z: start.z + (tip.z - start.z) * 0.7 + 2.0 }
         const end = polar(coastRadius(a) - 9.5, a)
-        paths.push(new Path([ start, mid1, mid2, end ], 1.05))
+        paths.push(new Path([ start, mid1, mid2, end ], 1.1, 'boardwalk'))
         sites.push({ id: 'lighthouse', kind: 'lighthouse', x: tip.x, z: tip.z, yaw: yawTowards(tip, end), w: 4.2, d: 4.2, h: 14 })
     }
 
@@ -295,10 +307,10 @@ export function buildLayout()
         const deg = Math.PI / 180
         paths.push(new Path([
             { x: from.x, z: from.z },
-            polar(9, -40 * deg),
-            polar(14, -78 * deg),
+            polar(11.5, -40 * deg),
+            polar(18, -78 * deg),
             { x: to.x, z: to.z }
-        ], 1.0))
+        ], ROAD_HALF))
     }
 
     // spawn: just outside the studio door
@@ -312,7 +324,8 @@ export function buildLayout()
         props,
         main,
         spawn: { x: start.x, z: start.z, yaw: Math.atan2(start.tx, start.tz) },
-        studioDoor: studio.door
+        studioDoor: studio.door,
+        studioInside: studio.inside
     }
 }
 

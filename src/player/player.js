@@ -7,7 +7,6 @@ import { place } from '../world/world.js'
 
 const WALK = 2.7
 const RUN = 6.2
-const SCOOTER_MAX = 11
 const TURN_RATE = 9
 
 function angleDiff(a, b)
@@ -25,6 +24,7 @@ export function resolveCollisions(pos, radius, colliders)
     {
         for(const c of colliders)
         {
+            if(c.disabled) continue
             const dx = pos.x - c.x
             const dz = pos.z - c.z
             if(dx * dx + dz * dz > 400) continue
@@ -95,7 +95,8 @@ export class Player
         this.position = new THREE.Vector3()
         this.up = new THREE.Vector3()
         this.nearby = null
-        this.nearScooter = false
+        this.nearVehicle = null
+        this.vehicle = null
         this.atChai = false
         this.chaiDone = false
         this.events = new EventTarget()
@@ -213,7 +214,7 @@ export class Player
             if(input.consume('KeyE'))
             {
                 if(this.mode === 'ride') this.dismount()
-                else if(this.nearScooter) this.mount()
+                else if(this.nearVehicle) this.mount(this.nearVehicle)
             }
             if(input.consume('Enter') && this.nearby) this.emit('read', this.nearby.content)
         }
@@ -264,53 +265,63 @@ export class Player
         this.z = pos.z
     }
 
-    // ---------------------------------------------------------------- scooter
-    mount()
+    // ---------------------------------------------------------------- vehicles
+    mount(vehicle)
     {
-        const s = this.world.scooterState
+        this.vehicle = vehicle
+        vehicle.collider.disabled = true
         this.mode = 'ride'
-        this.x = s.x
-        this.z = s.z
-        this.yaw = s.yaw
+        this.x = vehicle.x
+        this.z = vehicle.z
+        this.yaw = vehicle.yaw
         this.speed = 0
-        this.emit('mount')
+        this.steer = 0
+        this.emit('mount', vehicle)
     }
 
     dismount()
     {
-        const s = this.world.scooterState
-        s.x = this.x
-        s.z = this.z
-        s.yaw = this.yaw
-        place(this.world.scooter.root, s.x, s.z, s.yaw)
-        this.world.scooter.lean.rotation.z = 0
-        // step off to the right side
-        const rx = -Math.cos(this.yaw)
-        const rz = Math.sin(this.yaw)
-        const pos = resolveCollisions({ x: this.x + rx * 0.9, z: this.z + rz * 0.9 }, 0.32, this.world.colliders)
+        const v = this.vehicle
+        v.x = this.x
+        v.z = this.z
+        v.yaw = this.yaw
+        this.world.parkVehicle(v)
+        // step out on the driver's side (the vehicle's left)
+        const lx = Math.cos(this.yaw)
+        const lz = -Math.sin(this.yaw)
+        const out = v.box.hw + 0.6
+        const pos = resolveCollisions({ x: this.x + lx * out, z: this.z + lz * out }, 0.32, this.world.colliders)
         this.x = pos.x
         this.z = pos.z
         this.mode = 'walk'
         this.speed = 0
-        this.emit('dismount')
+        this.vehicle = null
+        this.emit('dismount', v)
     }
 
     updateRide(dt)
     {
+        const v = this.vehicle
         const input = this.input
         const throttle = input.move.y
         const steer = input.move.x
-        const target = throttle > 0 ? throttle * SCOOTER_MAX * (input.run ? 1.15 : 1) : throttle < 0 ? throttle * 3 : 0
-        const accel = Math.abs(target) > Math.abs(this.speed) ? 2.2 : 3.5
+        const target = throttle > 0 ? throttle * v.maxSpeed * (input.run ? 1.15 : 1) : throttle < 0 ? throttle * v.reverse : 0
+        const accel = Math.abs(target) > Math.abs(this.speed) ? v.accel : 3.5
         this.speed += (target - this.speed) * Math.min(1, dt * accel)
         this.steer += (steer - this.steer) * Math.min(1, dt * 6)
         const grip = Math.min(1, Math.abs(this.speed) / 3)
-        const yawRate = -this.steer * 1.7 * grip * Math.sign(this.speed || 1)
+        const yawRate = -this.steer * v.steer * grip * Math.sign(this.speed || 1)
         this.yaw += yawRate * dt
         this.turn = yawRate
-        this.move(dt, 0.7)
-        const lean = this.steer * Math.min(1, Math.abs(this.speed) / 8) * 0.38
-        this.world.scooter.update(dt, this.speed, -this.steer, lean)
+        const before = { x: this.x, z: this.z }
+        this.move(dt, v.radius)
+        // bumping into something at speed stops you
+        const moved = Math.hypot(this.x - before.x, this.z - before.z)
+        if(Math.abs(this.speed) > 3 && moved < Math.abs(this.speed) * dt * 0.3) this.speed *= 0.4
+        // scooters lean into turns, cars roll a little the other way
+        const amount = Math.min(1, Math.abs(this.speed) / 8)
+        const lean = v.kind === 'scooter' ? this.steer * amount * 0.38 : -this.steer * amount * 0.05
+        v.model.update(dt, this.speed, -this.steer, lean)
     }
 
     standUp()
@@ -373,12 +384,14 @@ export class Player
             this.nearby = best
             this.emit('nearby', best)
         }
-        const s = this.world.scooterState
-        const nearScooter = this.mode === 'walk' && Math.hypot(s.x - this.x, s.z - this.z) < 2.3
-        if(nearScooter !== this.nearScooter)
+        let vehicle = null
+        if(this.mode === 'walk')
+            for(const v of this.world.vehicles)
+                if(Math.hypot(v.x - this.x, v.z - this.z) < v.box.hd + 1.4) vehicle = v
+        if(vehicle !== this.nearVehicle)
         {
-            this.nearScooter = nearScooter
-            this.emit('scooter', nearScooter)
+            this.nearVehicle = vehicle
+            this.emit('vehicle', vehicle)
         }
     }
 
@@ -393,18 +406,19 @@ export class Player
         surfacePoint(this.x, this.z, h, this.position)
         mapToDir(this.x, this.z, this.up)
 
-        if(this.mode === 'ride')
+        if(this.mode === 'ride' && this.vehicle)
         {
-            const scooter = this.world.scooter
-            place(scooter.root, this.x, this.z, this.yaw, h)
-            this.world.scooterState.x = this.x
-            this.world.scooterState.z = this.z
-            this.world.scooterState.yaw = this.yaw
-            // rider follows the scooter's lean
-            root.position.copy(this.position)
-            root.quaternion.copy(scooter.root.quaternion).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), scooter.lean.rotation.z))
-            root.translateY(0.2)
-            root.translateZ(-0.32)
+            const v = this.vehicle
+            place(v.model.root, this.x, this.z, this.yaw, h + 0.05)
+            v.x = this.x
+            v.z = this.z
+            v.yaw = this.yaw
+            // the rider sits in the seat and follows the body's lean
+            root.position.copy(v.model.root.position)
+            root.quaternion.copy(v.model.root.quaternion).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), v.model.lean.rotation.z))
+            root.translateX(v.seat.x)
+            root.translateY(v.seat.y)
+            root.translateZ(v.seat.z)
         }
         else
         {

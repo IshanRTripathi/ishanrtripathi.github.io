@@ -1,10 +1,10 @@
 # ishanr.com
 
-My portfolio as a small island you can walk around. You come out of my studio, wave hi, follow the red path past one building per project, ride the scooter if you like, check the departures board at Ishan Junction for my career, and end at a chai stall on the beach where I sit down and wave you over.
+My portfolio as a small open-world city at sunset, in the spirit of the neon Miami crime-game genre (original art, names and story, nothing borrowed from any one game). You walk out of my place, wave hi, and follow the GPS on the minimap past one pastel Art Deco building per project. Step into a glowing marker to open a project briefing, jump in the convertible or on the scooter, catch my career on the cinema poster, and end at the chai shack on the beach where I sit down and wave you over.
 
-Every board opens a letter about the project. "Page view" shows everything as a plain page, for anyone who'd rather read than walk (and for browsers without WebGL).
+The phone (P) has my contacts, career and trophies. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
 
-![The island](public/social/share.png)
+![The city](public/social/share.png)
 
 ## Run it
 
@@ -16,13 +16,13 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/main.yml`).
 
-Controls: WASD or arrow keys to walk, Shift to run, E to ride the scooter, Enter to read a board, drag to look around. On phones, a joystick appears bottom left.
+Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around. On phones, a joystick appears bottom left.
 
 ## Change the content
 
-Everything people read is in [`src/content.js`](src/content.js): intro, projects, career stops, achievements and links. Add a project there and it gets a building and a board on the path. The building style comes from its `building` field (`tiffin`, `calculator`, `clock`, `phone`, `arcade`).
+Everything people read is in [`src/content.js`](src/content.js): intro, projects, career stops, achievements and links. Add a project there and it gets a building, a sign, a marker and a spot on the GPS. The giant object on its roof comes from its `building` field (`tiffin`, `calculator`, `clock`, `phone`, `arcade`).
 
-If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree or board ends up on a path or in the sea, and it runs before every build.
+If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
 
 ## Make real 3D models with Tripo
 
@@ -64,8 +64,8 @@ Notes:
 Three.js and Vite, no framework.
 
 - `src/core/geo.js`: the island is laid out on a flat map and wrapped onto a small planet. Everything is placed with map coordinates.
-- `src/world/`: terrain, sea, sky, trees (instanced, swaying in the wind), buildings, signs, birds, scooter.
-- `src/player/`: the character, walking and riding, and the follow camera.
-- `src/ui/`: title, letters, page view, touch controls.
+- `src/world/`: terrain, roads, sea, sky, Art Deco buildings and city blocks, neon, palms (instanced, swaying in the wind), traffic, markers, boats, birds, the car and scooter.
+- `src/player/`: the character, walking and driving, and the follow camera.
+- `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.
 
-To keep it at 60 fps, repeated things are instanced, buildings behind the planet's curve are not drawn, and the resolution drops automatically if the frame rate does.
+To keep it at 60 fps, repeated things are instanced, all city blocks are one mesh, buildings behind the planet's curve are not drawn, and if the frame rate drops the resolution goes down first and the neon glow switches off last.

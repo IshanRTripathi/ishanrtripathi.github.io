@@ -1,29 +1,11 @@
 import { person, links, projects, achievements, career, contact } from '../content.js'
 
-// Everything outside the canvas: title, HUD, letters, the page view and touch controls.
-
-const ICONS = {
-    tiffin: '<rect x="13" y="16" width="22" height="7" rx="2"/><rect x="13" y="24" width="22" height="7" rx="2"/><rect x="13" y="32" width="22" height="7" rx="2"/><path d="M15 16c0-9 18-9 18 0"/>',
-    calculator: '<rect x="14" y="7" width="20" height="34" rx="2"/><rect x="18" y="11" width="12" height="7"/><path stroke-width="4" d="M19 25h0M24 25h0M29 25h0M19 31h0M24 31h0M29 31h0M19 37h0M24 37h0M29 37h0"/>',
-    clock: '<circle cx="24" cy="27" r="12"/><path d="M24 20v7l5 3M13 15l5-4M35 15l-5-4"/>',
-    phone: '<rect x="15" y="7" width="18" height="34" rx="3"/><circle cx="24" cy="20" r="5"/><path d="M19 32h10"/>',
-    arcade: '<path d="M19 10v28M29 10v28M10 19h28M10 29h28M12 12l5 5M17 12l-5 5"/><circle cx="34" cy="34" r="3"/>',
-    trophies: '<path d="M16 10h16v8a8 8 0 0 1-16 0zM16 13h-4a4 4 0 0 0 4 6M32 13h4a4 4 0 0 1-4 6M24 26v6M20 32h8v6h-8z"/>',
-    station: '<rect x="13" y="8" width="22" height="25" rx="4"/><path d="M13 20h22M17 33l-4 6M31 33l4 6M15 39h18"/><circle cx="18" cy="27" r="1.5"/><circle cx="30" cy="27" r="1.5"/>',
-    chai: '<path d="M14 20h20l-3 18H17zM34 24h3a3 3 0 0 1 0 6h-4M20 15c0-3 3-3 3-6M27 15c0-3 3-3 3-6"/>'
-}
-
-const iconFor = (content) =>
-    content.building ? ICONS[content.building] : ICONS[{ achievements: 'trophies', career: 'station', contact: 'chai' }[content.id]] || ICONS.chai
+// Everything outside the canvas: title, HUD, briefing cards, the phone, the
+// page view and touch controls.
 
 const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 
-function postmarkDate()
-{
-    const d = new Date()
-    const months = [ 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC' ]
-    return `${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
-}
+const APP_COLORS = { Email: '#FF8C42', LinkedIn: '#2F6FD6', GitHub: '#2B2D31', X: '#111111', YouTube: '#E0483D' }
 
 export class UI
 {
@@ -41,12 +23,23 @@ export class UI
 
         this.hudTop = this.$('.hud-top')
         this.help = this.$('.hud-help')
+        this.progress = this.$('.hud-progress')
+        this.minimapEl = this.$('.minimap')
+        this.minimapCanvas = this.$('.minimap-canvas')
+        this.nextEl = this.$('.minimap-next')
         this.prompt = this.$('.prompt')
         this.promptKey = this.$('.prompt-key')
         this.promptLabel = this.$('.prompt-label')
         this.prompt.addEventListener('click', () => onPrompt())
-        this.toast = this.$('.place-toast')
+        this.area = this.$('.area')
         this.touch = this.$('.touch')
+        this.onClose = onClose
+
+        if(isTouch)
+        {
+            this.minimapCanvas.width = 128
+            this.minimapCanvas.height = 128
+        }
 
         this.soundButton = this.$('[data-action="sound"]')
         this.soundButton.addEventListener('click', () =>
@@ -57,14 +50,21 @@ export class UI
             onSound(on)
         })
 
-        // letter
-        this.letterLayer = this.$('.letter-layer')
-        this.letter = this.$('.letter')
-        this.letterLayer.addEventListener('click', (e) =>
+        // briefing card
+        this.cardLayer = this.$('.card-layer')
+        this.card = this.$('.card')
+        this.cardLayer.addEventListener('click', (e) => { if(e.target.closest('[data-action="close"]')) this.closeCard() })
+
+        // phone
+        this.phoneLayer = this.$('.phone-layer')
+        this.phoneView = this.$('.phone-view')
+        this.$('[data-action="phone"]').addEventListener('click', () => this.togglePhone())
+        this.phoneLayer.addEventListener('click', (e) =>
         {
-            if(e.target.closest('[data-action="close"]')) this.closeLetter()
+            if(e.target.closest('[data-action="close-phone"]')) this.closePhone()
+            const open = e.target.closest('[data-phone]')
+            if(open) this.phoneScreen(open.dataset.phone)
         })
-        this.onClose = onClose
 
         // page view
         this.pageLayer = this.$('.page-layer')
@@ -76,7 +76,8 @@ export class UI
         {
             if(e.key === 'Escape')
             {
-                if(!this.letterLayer.hidden) this.closeLetter()
+                if(!this.cardLayer.hidden) this.closeCard()
+                else if(!this.phoneLayer.hidden) this.closePhone()
                 else if(!this.pageLayer.hidden) this.closePage()
             }
             if(e.key === 'Tab') this.trapFocus(e)
@@ -86,13 +87,13 @@ export class UI
 
     get modalOpen()
     {
-        return !this.letterLayer.hidden || !this.pageLayer.hidden
+        return !this.cardLayer.hidden || !this.pageLayer.hidden || !this.phoneLayer.hidden
     }
 
     ready()
     {
         this.explore.disabled = false
-        this.explore.querySelector('.sign-button-label').textContent = 'Explore the island'
+        this.explore.querySelector('.button-label').textContent = 'Explore the city'
     }
 
     enterWorld()
@@ -105,12 +106,24 @@ export class UI
     {
         this.hudTop.hidden = false
         this.help.hidden = false
+        this.minimapEl.hidden = false
         if(this.isTouch) this.touch.hidden = false
     }
 
     fadeHelp()
     {
         if(!this.help.classList.contains('is-faded')) this.help.classList.add('is-faded')
+    }
+
+    setProgress(seen, total)
+    {
+        const text = seen >= total ? `Seen everything. <strong>${seen}/${total}</strong>` : `Stops seen <strong>${seen}/${total}</strong>`
+        if(this.progress.innerHTML !== text) this.progress.innerHTML = text
+    }
+
+    setNext(text)
+    {
+        if(this.nextEl.textContent !== text) this.nextEl.textContent = text
     }
 
     setPrompt(key, label)
@@ -125,86 +138,145 @@ export class UI
         this.promptLabel.textContent = label
     }
 
-    showPlace(name)
+    showArea(name, sub = '')
     {
-        clearTimeout(this.toastTimer)
-        this.toast.textContent = name
-        this.toast.classList.add('is-visible')
-        this.toastTimer = setTimeout(() => this.toast.classList.remove('is-visible'), 2400)
+        clearTimeout(this.areaTimer)
+        this.area.querySelector('.area-name').textContent = name
+        this.area.querySelector('.area-sub').textContent = sub
+        this.area.classList.add('is-visible')
+        this.areaTimer = setTimeout(() => this.area.classList.remove('is-visible'), 2600)
     }
 
-    // ---------------------------------------------------------------- letters
-    openLetter(content)
+    // ---------------------------------------------------------------- briefing cards
+    openCard(content, { index = null, total = null } = {})
     {
         this.lastFocus = document.activeElement
-        const L = this.letter
-        L.style.setProperty('--stamp', content.stamp || 'var(--sea)')
-        L.querySelector('.stamp-icon').innerHTML = iconFor(content)
-        L.querySelector('.postmark-date').textContent = postmarkDate()
-        L.querySelector('.letter-title').textContent = content.title
-        L.querySelector('.letter-line').textContent = content.line
-        L.querySelector('.letter-to').innerHTML = content.id === 'contact'
-            ? 'To,<br>whoever made it all the way to the beach'
-            : 'To,<br>whoever walked over to this board'
+        this.closePhone(false)
+        const C = this.card
+        const kicker = index !== null ? `Project ${index + 1} of ${total}` : content.place
+        C.querySelector('.card-kicker').textContent = kicker
+        C.querySelector('.card-title').textContent = content.title
+        C.querySelector('.card-line').textContent = content.line
 
-        const body = L.querySelector('.letter-content')
-        const link = L.querySelector('.letter-link')
+        const body = C.querySelector('.card-content')
+        const link = C.querySelector('.card-link')
         let html = ''
         let primary = null
-
         if(content.id === 'career')
         {
-            html += '<ul class="letter-list">' + content.stops.map((s) => `
-                <li><strong><a href="${escape(s.url)}" target="_blank" rel="noopener">${escape(s.place)}</a></strong><span class="when">${escape(s.when)}</span>
-                <span class="note">${escape(s.role)}. ${escape(s.note)}</span></li>`).join('') + '</ul>'
+            html += this.careerList()
             const linkedin = links.find((l) => l.label === 'LinkedIn')
             primary = { href: linkedin.href, label: 'See it on LinkedIn' }
         }
         else if(content.id === 'achievements')
         {
             html += `<p>${escape(content.body)}</p>`
-            html += '<ul class="letter-list">' + content.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="when">${escape(i.detail)}</span></li>`).join('') + '</ul>'
+            html += '<ul class="card-list">' + content.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="when">${escape(i.detail)}</span></li>`).join('') + '</ul>'
         }
         else if(content.id === 'contact')
         {
             html += `<p>${escape(content.body)}</p>`
-            html += '<ul class="letter-list">' + links.map((l) => `<li><span>${escape(l.label)}</span><a class="when" href="${escape(l.href)}" target="_blank" rel="noopener">${escape(l.text)}</a></li>`).join('') + '</ul>'
+            html += this.linkList()
             primary = { href: links[0].href, label: 'Write to me' }
         }
         else
         {
             html += `<p>${escape(content.body)}</p>`
-            html += `<dl class="letter-facts"><dt>My role</dt><dd>${escape(content.role)}</dd><dt>Built with</dt><dd>${content.stack.map(escape).join(', ')}</dd></dl>`
+            html += `<dl class="card-facts"><dt>My role</dt><dd>${escape(content.role)}</dd><dt>Built with</dt><dd>${content.stack.map(escape).join(', ')}</dd></dl>`
             if(content.url) primary = { href: content.url, label: `Open ${content.title}` }
         }
         body.innerHTML = html
-
         if(primary)
         {
             link.hidden = false
             link.href = primary.href
-            link.querySelector('.sign-button-label').textContent = primary.label
+            link.querySelector('.button-label').textContent = primary.label
             if(primary.href.startsWith('mailto:')) link.removeAttribute('target')
             else link.setAttribute('target', '_blank')
         }
         else link.hidden = true
 
         this.prompt.hidden = true
-        this.letterLayer.hidden = false
-        this.letterLayer.classList.remove('is-opening')
-        void this.letterLayer.offsetWidth
-        this.letterLayer.classList.add('is-opening')
-        L.scrollTop = 0
-        L.focus({ preventScroll: true })
+        this.cardLayer.hidden = false
+        this.cardLayer.classList.remove('is-opening')
+        void this.cardLayer.offsetWidth
+        this.cardLayer.classList.add('is-opening')
+        C.scrollTop = 0
+        C.focus({ preventScroll: true })
     }
 
-    closeLetter()
+    closeCard()
     {
-        if(this.letterLayer.hidden) return
-        this.letterLayer.hidden = true
-        if(this.lastFocus && this.lastFocus !== document.body) this.lastFocus.focus?.()
-        else document.activeElement?.blur?.()
+        if(this.cardLayer.hidden) return
+        this.cardLayer.hidden = true
+        this.restoreFocus()
         this.onClose?.()
+    }
+
+    careerList()
+    {
+        return '<ul class="card-list">' + career.stops.map((s) => `
+            <li><strong><a href="${escape(s.url)}" target="_blank" rel="noopener">${escape(s.place)}</a></strong><span class="when">${escape(s.when)}</span>
+            <span class="note">${escape(s.role)}. ${escape(s.note)}</span></li>`).join('') + '</ul>'
+    }
+
+    linkList()
+    {
+        return '<ul class="card-list">' + links.map((l) => `<li><span>${escape(l.label)}</span><a class="when" href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}>${escape(l.text)}</a></li>`).join('') + '</ul>'
+    }
+
+    // ---------------------------------------------------------------- phone
+    togglePhone()
+    {
+        if(this.phoneLayer.hidden) this.openPhone()
+        else this.closePhone()
+    }
+
+    openPhone(screen = 'home')
+    {
+        this.lastFocus = document.activeElement
+        this.closeCard()
+        this.phoneLayer.hidden = false
+        this.phoneScreen(screen)
+        const now = new Date()
+        this.$('.phone-clock').textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+        this.prompt.hidden = true
+        this.$('.phone').focus({ preventScroll: true })
+    }
+
+    closePhone(notify = true)
+    {
+        if(this.phoneLayer.hidden) return
+        this.phoneLayer.hidden = true
+        if(notify)
+        {
+            this.restoreFocus()
+            this.onClose?.()
+        }
+    }
+
+    phoneScreen(name)
+    {
+        const back = '<button class="phone-back" type="button" data-phone="home">Back</button>'
+        let html = ''
+        if(name === 'home')
+        {
+            const app = (label, color, attrs, letter) => `<li><${attrs.startsWith('href') ? 'a' : 'button type="button"'} class="phone-app" ${attrs}><span class="phone-app-icon" style="--app:${color}">${letter}</span>${escape(label)}</${attrs.startsWith('href') ? 'a' : 'button'}></li>`
+            html += `<h2 id="phone-title" class="phone-heading">Ishan's phone</h2><ul class="phone-apps">`
+            html += app('Contact', '#FF3EA5', 'data-phone="contact"', 'I')
+            html += app('Career', '#A855F7', 'data-phone="career"', 'C')
+            html += app('Trophies', '#F2B705', 'data-phone="trophies"', 'T')
+            for(const l of links)
+                html += app(l.label, APP_COLORS[l.label] || '#2FA4A0', `href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}`, l.label[0])
+            html += '</ul>'
+        }
+        else if(name === 'contact')
+            html += `${back}<h2 id="phone-title" class="phone-heading">${escape(person.name)}</h2><div class="phone-contact"><p>${escape(contact.body)}</p>${this.linkList()}</div>`
+        else if(name === 'career')
+            html += `${back}<h2 id="phone-title" class="phone-heading">Career</h2><div class="phone-contact">${this.careerList()}</div>`
+        else if(name === 'trophies')
+            html += `${back}<h2 id="phone-title" class="phone-heading">Trophies</h2><div class="phone-contact"><ul class="card-list">${achievements.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="note">${escape(i.detail)}</span></li>`).join('')}</ul></div>`
+        this.phoneView.innerHTML = html
     }
 
     // ---------------------------------------------------------------- page view
@@ -232,7 +304,8 @@ export class UI
     openPage()
     {
         this.lastFocus = document.activeElement
-        this.closeLetter()
+        this.closeCard()
+        this.closePhone(false)
         this.pageLayer.hidden = false
         this.$('.page').focus({ preventScroll: true })
         this.prompt.hidden = true
@@ -241,13 +314,19 @@ export class UI
     closePage()
     {
         this.pageLayer.hidden = true
-        if(this.lastFocus && this.lastFocus !== document.body) this.lastFocus.focus?.()
+        this.restoreFocus()
         this.onClose?.()
+    }
+
+    restoreFocus()
+    {
+        if(this.lastFocus && this.lastFocus !== document.body) this.lastFocus.focus?.()
+        else document.activeElement?.blur?.()
     }
 
     trapFocus(e)
     {
-        const layer = !this.letterLayer.hidden ? this.letterLayer : !this.pageLayer.hidden ? this.pageLayer : null
+        const layer = !this.cardLayer.hidden ? this.cardLayer : !this.phoneLayer.hidden ? this.phoneLayer : !this.pageLayer.hidden ? this.pageLayer : null
         if(!layer) return
         const focusable = [ ...layer.querySelectorAll('a[href]:not([hidden]), button:not([hidden]), [tabindex="-1"]') ].filter((el) => el.offsetParent !== null || el === document.activeElement)
         if(!focusable.length) return

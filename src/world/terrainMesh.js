@@ -7,21 +7,22 @@ import { heightAt, surfaceAt, coastDistance, SURFACE } from './terrain.js'
 // the planet. Every triangle gets one colour from the surface under its centre.
 
 export const PALETTE = {
-    seabedShallow: '#6FBDB0',
-    seabedDeep: '#2C7586',
-    wetSand: '#CDB283',
-    sand: [ '#EDD3A0', '#E7CB95', '#F0D9AA' ],
-    grass: [ '#A2BF62', '#97B85B', '#ACC56C', '#9BBB5E' ],
-    grassHigh: [ '#88A951', '#8FAF56' ],
-    path: [ '#BF7A55', '#B6704C', '#C6835E' ],
-    rock: '#9B8E7E',
-    planet: '#24677A'
+    seabedShallow: '#7FDCCB',
+    seabedDeep: '#1F7E9E',
+    wetSand: '#E2CDA8',
+    sand: [ '#F6E6CB', '#F3E0C2', '#F8EBD5' ],
+    grass: [ '#86C25E', '#7DBA57', '#90C966', '#82BE5B' ],
+    grassHigh: [ '#6FAE4F', '#76B353' ],
+    path: [ '#E6D8C6', '#E1D2BF', '#EADDCC' ],
+    road: '#454854',
+    rock: '#B4A89A',
+    planet: '#1B6F92'
 }
 
 const jitterNoise = createNoise2D(31)
 const colorNoise = createNoise2D(41)
 
-export function createTerrainMesh({ radius = 66, spacing = 0.95 } = {})
+export function createTerrainMesh({ radius = 82, spacing = 1.0 } = {})
 {
     const rowH = spacing * Math.sqrt(3) / 2
     const rows = Math.ceil(radius * 2 / rowH) + 1
@@ -127,6 +128,9 @@ function faceColor(x, z, h, slope, random, out)
             break
         case SURFACE.PATH:
             out.set(pick(PALETTE.path, random))
+            break
+        case SURFACE.ROAD:
+            out.set(PALETTE.road)
             break
         default:
             if(slope > 1.1) out.set(PALETTE.rock)

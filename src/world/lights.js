@@ -11,10 +11,10 @@ export const SUN_DIRECTION = new THREE.Vector3(
 
 export function createLights(scene)
 {
-    const hemi = new THREE.HemisphereLight('#D6E6F5', '#C2A27F', 1.55)
+    const hemi = new THREE.HemisphereLight('#CDB8F2', '#F2B08A', 1.6)
     scene.add(hemi)
 
-    const sun = new THREE.DirectionalLight('#FFE2BC', 2.3)
+    const sun = new THREE.DirectionalLight('#FFC9A0', 2.5)
     sun.castShadow = true
     sun.shadow.mapSize.set(2048, 2048)
     sun.shadow.camera.left = -34

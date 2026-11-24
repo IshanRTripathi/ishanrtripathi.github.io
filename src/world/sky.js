@@ -8,11 +8,11 @@ export function createSky()
     const uniforms = {
         uUp: { value: new THREE.Vector3(0, 1, 0) },
         uSun: { value: new THREE.Vector3(0, 1, 0) },
-        uZenith: { value: new THREE.Color('#3D78B8') },
-        uMid: { value: new THREE.Color('#8DBEE0') },
-        uHorizon: { value: new THREE.Color('#F7D3A6') },
-        uGlow: { value: new THREE.Color('#FFB46B') },
-        uGround: { value: new THREE.Color('#E9B48C') },
+        uZenith: { value: new THREE.Color('#4A4FB0') },
+        uMid: { value: new THREE.Color('#E58AB8') },
+        uHorizon: { value: new THREE.Color('#FFC287') },
+        uGlow: { value: new THREE.Color('#FF7A4D') },
+        uGround: { value: new THREE.Color('#F4A783') },
         uSpace: { value: 0 }
     }
     const material = new THREE.ShaderMaterial({
@@ -61,8 +61,9 @@ export function createSky()
                 col += vec3(1.0, 0.93, 0.8) * smoothstep(0.9993, 0.9997, sunDot);
 
                 // seen from far away, fade towards a calm dusk gradient
-                vec3 space = mix(vec3(0.93, 0.68, 0.50), vec3(0.88, 0.74, 0.62), smoothstep(-0.45, 0.05, vScreenY));
-                space = mix(space, vec3(0.46, 0.62, 0.80), smoothstep(0.05, 0.6, vScreenY));
+                vec3 space = mix(vec3(1.0, 0.42, 0.24), vec3(0.98, 0.45, 0.45), smoothstep(-0.5, 0.0, vScreenY));
+                space = mix(space, vec3(0.62, 0.22, 0.52), smoothstep(0.0, 0.35, vScreenY));
+                space = mix(space, vec3(0.14, 0.12, 0.38), smoothstep(0.35, 0.8, vScreenY));
                 col = mix(col, space, uSpace);
 
                 gl_FragColor = vec4(col, 1.0);

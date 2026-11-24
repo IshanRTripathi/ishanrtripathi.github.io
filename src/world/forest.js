@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Kit, clayMaterial } from '../models/kit.js'
 import { frameMatrix } from '../core/geo.js'
 import { heightAt } from './terrain.js'
-import { C } from './buildings.js'
+import { neonMaterial } from './neon.js'
 
 // Instanced trees and small props. Each type is one draw call.
 
@@ -78,10 +78,10 @@ export function updateWind(time)
 
 // ------------------------------------------------------------------ tree models
 const leaf = {
-    palm: [ '#5E9E3F', '#6DAE45' ],
-    rain: [ '#7DB44B', '#8CC055', '#72A845' ],
-    mango: [ '#3F7E3B', '#4A8C3F', '#367236' ],
-    slender: [ '#B4C75A', '#A6BE52' ]
+    palm: [ '#4FAE4A', '#63C255' ],
+    royal: [ '#58B84E', '#3F9E45' ],
+    rain: [ '#6DBE52', '#7FCB5E', '#5FB04B' ],
+    slender: [ '#A9D26A', '#98C65E' ]
 }
 
 function palmGeometry()
@@ -130,12 +130,22 @@ function rainGeometry()
     return kit.geometry()
 }
 
-function mangoGeometry()
+// Royal palm: a tall straight pale trunk, a green crownshaft, a fan of fronds
+function royalGeometry()
 {
     const kit = new Kit()
-    kit.cyl(0.26, 0.36, 1.8, 6, '#6A4C34', {})
-    const clusters = [ [ 0, 3.1, 0, 1.9 ], [ 0.9, 2.6, 0.5, 1.3 ], [ -0.9, 2.7, -0.3, 1.3 ], [ 0.2, 2.5, -1.0, 1.2 ], [ -0.3, 3.9, 0.3, 1.2 ] ]
-    clusters.forEach(([ x, y, z, r ], i) => kit.sphere(r, leaf.mango[i % 3], { x, y, z, sy: 0.92 }, 1))
+    kit.cyl(0.2, 0.3, 5.4, 7, '#C9C2B6', {})
+    kit.cyl(0.22, 0.2, 0.6, 7, '#D6CFC3', { y: 2.4 })
+    kit.cyl(0.18, 0.21, 1.3, 7, '#6FAF5A', { y: 5.4 })
+    const fronds = 9
+    for(let i = 0; i < fronds; i++)
+    {
+        const a = i / fronds * Math.PI * 2
+        kit.push({ y: 6.7, ry: a })
+        kit.box(0.42, 0.05, 2.4, leaf.royal[i % 2], { z: 1.1, rx: 0.15 - (i % 3) * 0.12, center: true })
+        kit.box(0.3, 0.04, 1.1, leaf.royal[(i + 1) % 2], { y: -0.35, z: 2.5, rx: 0.75, center: true })
+        kit.pop()
+    }
     return kit.geometry()
 }
 
@@ -181,27 +191,20 @@ function rockGeometry()
     return kit.geometry()
 }
 
+// Street light: white pole with an arm reaching over the road (+x)
 function lampGeometry()
 {
     const kit = new Kit()
-    kit.cyl(0.08, 0.12, 3.6, 6, '#3E4A52', {})
-    kit.box(0.9, 0.08, 0.08, '#3E4A52', { y: 3.5, x: 0.4 })
-    kit.cone(0.28, 0.3, 6, '#3E4A52', { y: 3.2, x: 0.8 })
-    kit.sphere(0.16, '#FFE6A8', { y: 3.2, x: 0.8 })
+    kit.cyl(0.07, 0.11, 4.4, 6, '#F3EEE6', {})
+    kit.box(1.5, 0.08, 0.08, '#F3EEE6', { y: 4.3, x: 0.7 })
+    kit.box(0.5, 0.12, 0.3, '#F3EEE6', { y: 4.22, x: 1.35 })
     return kit.geometry()
 }
 
-function boatGeometry()
+function bulbGeometry()
 {
     const kit = new Kit()
-    // a Konkan fishing boat: long hull, small cabin, a mast with a flag
-    kit.box(1.6, 0.6, 5.2, '#2F79B8', { y: -0.2 })
-    kit.box(1.7, 0.16, 5.3, C.white, { y: 0.38 })
-    kit.box(1.0, 0.5, 1.0, C.red, { y: 0.4, z: 2.7, rx: 0.5 })
-    kit.box(1.1, 0.8, 1.4, C.white, { y: 0.4, z: -0.8 })
-    kit.box(1.2, 0.1, 1.6, C.red, { y: 1.2, z: -0.8 })
-    kit.cyl(0.05, 0.05, 2.6, 5, C.wood, { y: 0.4, z: 0.9 })
-    kit.box(0.04, 0.4, 0.6, C.turmeric, { y: 2.6, z: 1.2 })
+    kit.box(0.42, 0.05, 0.22, '#FFD9A8', { y: 4.16, x: 1.35 })
     return kit.geometry()
 }
 
@@ -229,13 +232,14 @@ export function createForest(scatter)
     group.name = 'forest'
     const treeMaterial = windMaterial(1)
     const palmMaterial = windMaterial(0.8)
-    const geometries = { palm: palmGeometry(), rain: rainGeometry(), mango: mangoGeometry(), slender: slenderGeometry() }
+    const geometries = { palm: palmGeometry(), royal: royalGeometry(), rain: rainGeometry(), slender: slenderGeometry() }
+    const all = [ ...scatter.trees, ...scatter.streetPalms ]
 
     for(const type of Object.keys(geometries))
     {
-        const items = scatter.trees.filter((t) => t.type === type)
+        const items = all.filter((t) => t.type === type)
         if(!items.length) continue
-        group.add(instanced(geometries[type], type === 'palm' ? palmMaterial : treeMaterial, items, (t, m) =>
+        group.add(instanced(geometries[type], type === 'palm' || type === 'royal' ? palmMaterial : treeMaterial, items, (t, m) =>
         {
             frameMatrix(t.x, t.z, t.yaw, heightAt(t.x, t.z) - 0.1, t.scale, m)
         }))
@@ -255,23 +259,12 @@ export function createForest(scatter)
     const rocks = instanced(rockGeometry(), clayMaterial, scatter.rocks, (r, m) => frameMatrix(r.x, r.z, r.yaw, heightAt(r.x, r.z) - 0.1, r.scale, m))
     group.add(rocks)
 
-    const lamps = instanced(lampGeometry(), clayMaterial, scatter.lamps, (l, m) => frameMatrix(l.x, l.z, l.yaw + Math.PI / 2, heightAt(l.x, l.z) - 0.05, 1, m))
-    group.add(lamps)
+    const placeLamp = (l, m) => frameMatrix(l.x, l.z, l.yaw, heightAt(l.x, l.z) + 0.15, 1, m)
+    group.add(instanced(lampGeometry(), clayMaterial, scatter.lamps, placeLamp))
+    const bulbs = instanced(bulbGeometry(), neonMaterial, scatter.lamps, placeLamp)
+    bulbs.castShadow = false
+    group.add(bulbs)
 
     return group
-}
-
-export function createBoats(scatter)
-{
-    const meshes = []
-    const geometry = boatGeometry()
-    for(const b of scatter.boats)
-    {
-        const mesh = new THREE.Mesh(geometry, clayMaterial)
-        mesh.castShadow = true
-        mesh.userData.boat = b
-        meshes.push(mesh)
-    }
-    return meshes
 }
 

@@ -5,7 +5,7 @@ import * as THREE from 'three'
 // Distances measured from the island centre are exact; sideways distances shrink
 // a little towards the coast, which nobody notices on foot.
 
-export const R = 70 // sea level radius
+export const R = 90 // sea level radius
 
 const _a = new THREE.Vector3()
 const _b = new THREE.Vector3()

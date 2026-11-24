@@ -1,4 +1,8 @@
 import * as THREE from 'three'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { R } from './core/geo.js'
 import { smoothstep } from './core/noise.js'
 import { Input } from './core/input.js'
@@ -8,6 +12,7 @@ import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights, SUN_DIRECTION } from './world/lights.js'
 import { UI } from './ui/ui.js'
+import { projects } from './content.js'
 
 const params = new URLSearchParams(location.search)
 const isTouch = window.matchMedia('(pointer: coarse)').matches || params.has('touch')
@@ -33,6 +38,9 @@ function webglAvailable()
     }
 }
 
+const FOG = new THREE.Color('#F5AE93')
+const FOG_SUNSET = new THREE.Color('#F28A7A')
+
 class App
 {
     constructor()
@@ -42,42 +50,71 @@ class App
         this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' })
         this.renderer.setSize(window.innerWidth, window.innerHeight, false)
         this.renderer.toneMapping = THREE.NeutralToneMapping
-        this.renderer.toneMappingExposure = 1.02
+        this.renderer.toneMappingExposure = 1.04
         this.renderer.shadowMap.enabled = true
         this.renderer.shadowMap.type = THREE.PCFShadowMap
-        this.quality = new Quality(this.renderer)
-
         this.scene = new THREE.Scene()
-        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1200)
-        this.fog = new THREE.Fog('#F2D3AE', 60, 190)
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1400)
+        this.fog = new THREE.Fog(FOG.clone(), 60, 210)
         this.scene.fog = this.fog
         this.lights = createLights(this.scene)
 
+        // neon glow
+        this.composer = new EffectComposer(this.renderer)
+        this.composer.addPass(new RenderPass(this.scene, this.camera))
+        this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.7, 0.4, 0.95)
+        this.composer.addPass(this.bloom)
+        this.composer.addPass(new OutputPass())
+        this.bloomOn = !params.has('nobloom')
+        this.quality = new Quality(this.renderer, {
+            onRatio: (ratio) => { this.composer.setPixelRatio(ratio); this.composer.setSize(window.innerWidth, window.innerHeight) },
+            onLowest: () => this.setBloom(false)
+        })
+
+
         this.input = new Input(this.canvas)
+        ui.bindStick(this.input)
         this.ambience = new Ambience()
         this.timer = new THREE.Timer()
         this.timer.connect(document)
         this.time = 0
         this.state = 'title' // title | intro | play
         this.raycaster = new THREE.Raycaster()
+        this.visited = new Set()
+        this.inMarker = null
 
         window.addEventListener('resize', () => this.resize())
+        window.addEventListener('keydown', (e) =>
+        {
+            if(this.state === 'play' && e.code === 'KeyP' && !(e.target instanceof HTMLInputElement)) ui.togglePhone()
+        })
         this.resize()
+    }
+
+    setBloom(on)
+    {
+        this.bloomOn = on
     }
 
     async build()
     {
         // signs are painted on canvases, so wait for the fonts first
         await Promise.race([
-            Promise.all([ document.fonts.load('80px "Yatra One"'), document.fonts.load('500 34px "Hind"'), document.fonts.load('600 34px "Hind"') ]),
+            Promise.all([
+                document.fonts.load('80px "Anton"'),
+                document.fonts.load('80px "Yellowtail"'),
+                document.fonts.load('500 34px "Barlow Semi Condensed"'),
+                document.fonts.load('600 34px "Barlow Semi Condensed"')
+            ]),
             new Promise((resolve) => setTimeout(resolve, 3000))
         ]).catch(() => {})
 
-        const [ { World }, { Player }, { CameraRig }, { occlusion } ] = await Promise.all([
+        const [ { World }, { Player }, { CameraRig }, { occlusion }, { Minimap } ] = await Promise.all([
             import('./world/world.js'),
             import('./player/player.js'),
             import('./player/cameraRig.js'),
-            import('./world/forest.js')
+            import('./world/forest.js'),
+            import('./ui/minimap.js')
         ])
         this.occlusion = occlusion
         this.world = new World(this.scene)
@@ -87,9 +124,14 @@ class App
         this.rig.titleShift = this.titleShift()
         this.rig.viewShift = { ...this.rig.titleShift }
         this.rig.colliders = this.world.colliders
+        this.minimap = new Minimap(ui.minimapCanvas)
         this.loadCharacter()
 
-        // hide the character inside the studio until the intro
+        // stops in the order the road passes them
+        const order = [ 'achievements', ...projects.map((p) => p.id), 'career', 'contact' ]
+        this.stops = order.map((id) => this.world.interactables.find((i) => i.content.id === id)).filter(Boolean)
+
+        // hide the character inside the house until the intro
         const door = this.doorPoints()
         this.player.x = door.inside.x
         this.player.z = door.inside.z
@@ -126,7 +168,6 @@ class App
 
     titleShift()
     {
-        // push the planet to the right of the title text on wide screens
         const w = window.innerWidth
         const h = window.innerHeight
         if(w > 900) return { x: w * 0.2, y: 0 }
@@ -139,11 +180,10 @@ class App
     {
         const main = layout.main
         const start = main.at(0)
-        const door = layout.studioDoor
-        const out = main.at(9.5 / main.length)
+        const out = main.at(6 / main.length)
         return {
-            inside: { x: start.x - start.tx * 2.4, z: start.z - start.tz * 2.4 },
-            door,
+            inside: layout.studioInside,
+            door: layout.studioDoor,
             out,
             yaw: Math.atan2(start.tx, start.tz),
             outYaw: Math.atan2(out.tx, out.tz)
@@ -157,7 +197,7 @@ class App
         ui.enterWorld()
         this.canvas.focus({ preventScroll: true })
         const door = this.doorPoints()
-        // the camera ends up in front of Ishan, looking back at the studio
+        // the camera ends up in front of Ishan, looking back at his place
         this.rig.yaw = door.outYaw + Math.PI
         this.rig.distance = 8.5
         this.rig.pitch = 0.3
@@ -169,7 +209,7 @@ class App
             { to: { x: door.out.x, z: door.out.z }, speed: 2.4 },
             { face: door.outYaw },
             { wave: skip ? 0.2 : 2.2 },
-            { call: () => this.settle(door.outYaw) }
+            { call: () => { this.settleTarget = door.outYaw } }
         ], () =>
         {
             this.state = 'play'
@@ -179,23 +219,17 @@ class App
         })
     }
 
-    // after the wave, swing the camera round behind Ishan
-    settle(yaw)
-    {
-        this.settleTarget = yaw
-    }
-
     bindPlayerEvents()
     {
         const events = this.player.events
-        events.addEventListener('read', (e) => this.openLetter(e.detail))
+        events.addEventListener('read', (e) => this.openStop(e.detail))
         events.addEventListener('nearby', (e) =>
         {
             const item = e.detail
             if(item && item.content.place !== this.lastPlace)
             {
                 this.lastPlace = item.content.place
-                ui.showPlace(item.content.place)
+                ui.showArea(item.content.place, item.content.title !== item.content.place ? item.content.title : '')
             }
         })
         events.addEventListener('waved', () =>
@@ -204,25 +238,33 @@ class App
             {
                 this.sawContact = true
                 const contact = this.world.interactables.find((i) => i.id === 'contact')
-                if(contact) setTimeout(() => { if(this.player.mode === 'sit') this.openLetter(contact.content) }, 400)
+                if(contact) setTimeout(() => { if(this.player.mode === 'sit') this.openStop(contact.content) }, 400)
             }
         })
-        events.addEventListener('chai-near', () => ui.showPlace('Chai Stall'))
-        events.addEventListener('mount', () => ui.showPlace('Scooter'))
     }
 
-    openLetter(content)
+    openStop(content)
     {
-        ui.openLetter(content)
+        const index = projects.findIndex((p) => p.id === content.id)
+        ui.openCard(content, index >= 0 ? { index, total: projects.length } : {})
         this.input.keys.clear()
+        const before = this.visited.size
+        this.visited.add(content.id)
+        if(this.visited.size === this.stops.length && before < this.stops.length)
+            setTimeout(() => ui.showArea('All caught up', 'Thanks for looking around'), 600)
+    }
+
+    nextStop()
+    {
+        return this.stops.find((s) => !this.visited.has(s.content.id)) || null
     }
 
     promptAction()
     {
         const p = this.player
         if(p.mode === 'ride') p.dismount()
-        else if(p.nearScooter) p.mount()
-        else if(p.nearby) this.openLetter(p.nearby.content)
+        else if(p.nearVehicle) p.mount(p.nearVehicle)
+        else if(p.nearby) this.openStop(p.nearby.content)
         else if(p.mode === 'sit') p.standUp()
     }
 
@@ -230,11 +272,26 @@ class App
     {
         const p = this.player
         if(this.state !== 'play') return ui.setPrompt(null)
-        if(p.mode === 'ride') return ui.setPrompt('E', 'Get off the scooter')
+        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
-        if(p.nearScooter) return ui.setPrompt('E', 'Ride the scooter')
-        if(p.nearby) return ui.setPrompt('Enter', `Read about ${p.nearby.content.title}`)
+        if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
+        if(p.nearby) return ui.setPrompt('Enter', `See ${p.nearby.content.title}`)
         ui.setPrompt(null)
+    }
+
+    // walking (or driving slowly) into a marker opens that stop
+    checkMarkers()
+    {
+        const p = this.player
+        if(p.mode !== 'walk' && !(p.mode === 'ride' && Math.abs(p.speed) < 3)) return
+        let inside = null
+        for(const item of this.world.interactables)
+        {
+            const m = item.marker
+            if(m && Math.hypot(m.x - p.x, m.z - p.z) < 1.25) inside = item
+        }
+        if(inside && inside !== this.inMarker && !ui.modalOpen) this.openStop(inside.content)
+        this.inMarker = inside
     }
 
     click(e)
@@ -251,7 +308,7 @@ class App
             if(item.siteObject) targets.push(item.siteObject)
         }
         const hit = this.raycaster.intersectObjects(targets, true)[0]
-        if(!hit || hit.distance > 60) return
+        if(!hit || hit.distance > 70) return
         const item = this.world.interactables.find((i) =>
         {
             let o = hit.object
@@ -262,7 +319,7 @@ class App
             }
             return false
         })
-        if(item) this.openLetter(item.content)
+        if(item) this.openStop(item.content)
     }
 
     resize()
@@ -273,6 +330,8 @@ class App
         this.camera.fov = w < h ? 58 : 45
         this.camera.updateProjectionMatrix()
         this.renderer.setSize(w, h, false)
+        this.composer.setPixelRatio(this.renderer.getPixelRatio())
+        this.composer.setSize(w, h)
         if(this.rig) this.rig.titleShift = this.titleShift()
     }
 
@@ -281,7 +340,8 @@ class App
         this.timer.update()
         const dt = Math.min(this.timer.getDelta(), 1 / 20)
         this.step(dt)
-        this.renderer.render(this.scene, this.camera)
+        if(this.bloomOn) this.composer.render(dt)
+        else this.renderer.render(this.scene, this.camera)
         this.quality.update(dt)
         this.input.endFrame()
     }
@@ -323,7 +383,9 @@ class App
         }
 
         this.rig.update(dt, time, this.player)
-        this.world.update(time, dt, this.camera)
+        const obstacles = this.state === 'title' ? [] : [ { x: this.player.x, z: this.player.z } ]
+        this.world.update(time, dt, this.camera, obstacles)
+        this.world.markers.update(time, this.visited)
 
         // light, sky and fog follow where we are
         const camDist = this.camera.position.length()
@@ -335,24 +397,45 @@ class App
         const sky = this.world.sky.userData.uniforms
         sky.uUp.value.copy(this.rig.localUp)
         sky.uSpace.value = space
-        this.fog.near = THREE.MathUtils.lerp(55, 400, space)
-        this.fog.far = THREE.MathUtils.lerp(190, 1200, space)
-        // the low sun near the bay warms the haze
+        this.fog.near = THREE.MathUtils.lerp(60, 500, space)
+        this.fog.far = THREE.MathUtils.lerp(210, 1400, space)
+        // the low sun near the beach warms the haze
         const sunLocal = SUN_DIRECTION.dot(this.rig.localUp)
-        this.fog.color.set('#F2D3AE').lerp(new THREE.Color('#F4B98C'), smoothstep(0.55, 0.1, sunLocal) * 0.7)
+        this.fog.color.copy(FOG).lerp(FOG_SUNSET, smoothstep(0.55, 0.1, sunLocal) * 0.8)
 
         if(this.state === 'play')
         {
             if(input.moving && this.time - this.helpTimer > 2.5) ui.fadeHelp()
             if(this.time - this.helpTimer > 25) ui.fadeHelp()
             this.updatePrompt()
+            this.checkMarkers()
             const shore = smoothstep(14, 0, coastDistance(this.player.x, this.player.z))
             this.ambience.update(time, shore)
+            this.updateMap()
         }
+    }
 
+    updateMap()
+    {
+        // the map does not need every frame
+        this.mapFrame = (this.mapFrame || 0) + 1
+        if(this.mapFrame % 2) return
+        const next = this.nextStop()
+        const blips = this.world.interactables.map((i) => ({
+            x: i.marker ? i.marker.x : i.x,
+            z: i.marker ? i.marker.z : i.z,
+            color: i.content.id === 'contact' ? '#2DE2E6' : i.content.id === 'career' || i.content.id === 'achievements' ? '#FFE45E' : '#FF3EA5',
+            dim: this.visited.has(i.content.id),
+            size: next && next === i ? 8 : 6
+        }))
+        for(const v of this.world.vehicles)
+            if(this.player.vehicle !== v) blips.push({ x: v.x, z: v.z, color: '#FFF6EC', size: 4 })
+        const target = next ? (next.marker || next) : null
+        const distance = this.minimap.update(this.player, this.rig.yaw, blips, target)
+        ui.setProgress(this.visited.size, this.stops.length)
+        ui.setNext(next ? `Next: ${next.content.place}${distance ? `, ${Math.round(distance / 10) * 10 || 10} m` : ''}` : 'Chai at the beach is always open')
     }
 }
-
 
 let app
 if(!webglAvailable())

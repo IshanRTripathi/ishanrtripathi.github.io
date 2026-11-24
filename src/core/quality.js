@@ -1,17 +1,21 @@
-// Keeps the frame rate up: lowers the resolution when frames get slow and
-// raises it again when there is room.
+// Keeps the frame rate up: lowers the resolution when frames get slow, then
+// switches off the glow if that is not enough, and raises the resolution
+// again when there is room.
 
 export class Quality
 {
-    constructor(renderer)
+    constructor(renderer, { onRatio, onLowest } = {})
     {
         this.renderer = renderer
+        this.onRatio = onRatio
+        this.onLowest = onLowest
         this.max = Math.min(window.devicePixelRatio || 1, 2)
         this.min = Math.min(0.6, this.max)
         this.ratio = this.max
         this.frames = 0
         this.elapsed = 0
         this.good = 0
+        this.slowAtLowest = 0
         this.fps = 60
         renderer.setPixelRatio(this.ratio)
     }
@@ -30,6 +34,11 @@ export class Quality
             this.set(Math.max(this.min, this.ratio - 0.25))
             this.good = 0
         }
+        else if(this.fps < 45 && this.ratio <= this.min)
+        {
+            this.slowAtLowest++
+            if(this.slowAtLowest === 3) this.onLowest?.()
+        }
         else if(this.fps > 58)
         {
             this.good++
@@ -47,6 +56,6 @@ export class Quality
         this.ratio = ratio
         this.renderer.setPixelRatio(ratio)
         this.renderer.setSize(window.innerWidth, window.innerHeight, false)
-        if(ratio < 1 && this.renderer.shadowMap.enabled) this.renderer.shadowMap.needsUpdate = true
+        this.onRatio?.(ratio)
     }
 }

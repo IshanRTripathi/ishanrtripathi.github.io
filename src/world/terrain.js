@@ -17,7 +17,7 @@ for(const path of layout.paths)
     {
         const a = path.points[i]
         const b = path.points[i + 1]
-        const seg = { ax: a.x, az: a.z, bx: b.x, bz: b.z, half: path.halfWidth }
+        const seg = { ax: a.x, az: a.z, bx: b.x, bz: b.z, half: path.halfWidth, edge: path.edge, road: path.kind === 'road' }
         segments.push(seg)
         const minX = Math.floor((Math.min(a.x, b.x) - 8) / CELL)
         const maxX = Math.floor((Math.max(a.x, b.x) + 8) / CELL)
@@ -34,30 +34,48 @@ for(const path of layout.paths)
     }
 }
 
-// Distance to the nearest path edge (negative inside a path or plaza). Capped at 8.
+function segmentDistance(s, x, z)
+{
+    const dx = s.bx - s.ax
+    const dz = s.bz - s.az
+    const len2 = dx * dx + dz * dz || 1
+    const t = clamp(((x - s.ax) * dx + (z - s.az) * dz) / len2, 0, 1)
+    const px = s.ax + dx * t - x
+    const pz = s.az + dz * t - z
+    return Math.sqrt(px * px + pz * pz)
+}
+
+// Distance to the outer edge of the nearest road, sidewalk, boardwalk or plaza
+// (negative inside). Capped at 8.
 export function pathEdgeDistance(x, z)
 {
     let best = 8
     const list = segIndex.get(Math.floor(x / CELL) * 10007 + Math.floor(z / CELL))
     if(list)
-    {
         for(const s of list)
         {
-            const dx = s.bx - s.ax
-            const dz = s.bz - s.az
-            const len2 = dx * dx + dz * dz || 1
-            const t = clamp(((x - s.ax) * dx + (z - s.az) * dz) / len2, 0, 1)
-            const px = s.ax + dx * t - x
-            const pz = s.az + dz * t - z
-            const d = Math.sqrt(px * px + pz * pz) - s.half
+            const d = segmentDistance(s, x, z) - s.edge
             if(d < best) best = d
         }
-    }
     for(const p of layout.plazas)
     {
         const d = Math.hypot(x - p.x, z - p.z) - p.r
         if(d < best) best = d
     }
+    return best
+}
+
+// Distance to the edge of the asphalt (or boardwalk) only, sidewalks excluded.
+export function roadEdgeDistance(x, z)
+{
+    let best = 8
+    const list = segIndex.get(Math.floor(x / CELL) * 10007 + Math.floor(z / CELL))
+    if(list)
+        for(const s of list)
+        {
+            const d = segmentDistance(s, x, z) - s.half
+            if(d < best) best = d
+        }
     return best
 }
 
@@ -116,7 +134,7 @@ export function padHeight(siteId)
 }
 
 // ------------------------------------------------------------------ surface type
-export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5 }
+export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5, ROAD: 6 }
 
 export function surfaceAt(x, z)
 {
@@ -125,8 +143,8 @@ export function surfaceAt(x, z)
     const s = coastRadius(phi) - r
     if(s < -0.4) return SURFACE.SEABED
     if(s < 0.9) return SURFACE.WET_SAND
-    const edge = noise(x * 0.4, z * 0.4) * 0.28
-    if(pathEdgeDistance(x, z) < edge) return SURFACE.PATH
+    if(roadEdgeDistance(x, z) < 0) return SURFACE.ROAD
+    if(pathEdgeDistance(x, z) < 0.2) return SURFACE.PATH
     const bw = beachWidth(phi) + noise(x * 0.15 + 9, z * 0.15) * 1.2
     if(s < bw) return SURFACE.SAND
     return SURFACE.GRASS

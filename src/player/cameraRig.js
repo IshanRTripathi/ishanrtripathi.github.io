@@ -46,6 +46,16 @@ export class CameraRig
 
     followPose(player, out)
     {
+        // cars get a wider view
+        const wanted = this.distance
+        if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'car') this.distance = Math.max(this.distance, 11)
+        const result = this.followPoseAt(player, out)
+        this.distance = wanted
+        return result
+    }
+
+    followPoseAt(player, out)
+    {
         const P = player.position
         const U = player.up
         const F = mapTangent(player.x, player.z, Math.sin(this.yaw), Math.cos(this.yaw), new THREE.Vector3())
@@ -57,7 +67,8 @@ export class CameraRig
         out.up.copy(U)
 
         // pull in rather than end up inside a building
-        const dist = this.clearDistance(player, this.distance)
+        const minimum = player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'car' ? 6.5 : 3
+        const dist = Math.max(Math.min(minimum, this.distance), this.clearDistance(player, this.distance))
         if(dist < this.distance)
         {
             out.position.copy(P)
@@ -110,7 +121,7 @@ export class CameraRig
         const dz = z - c.z
         const fx = Math.sin(c.yaw)
         const fz = Math.cos(c.yaw)
-        return Math.abs(dx * fz - dz * fx) < c.hw + 0.6 && Math.abs(dx * fx + dz * fz) < c.hd + 0.6
+        return Math.abs(dx * fz - dz * fx) < c.hw + 0.1 && Math.abs(dx * fx + dz * fz) < c.hd + 0.1
     }
 
     startFly(duration = 3.6)
@@ -138,7 +149,7 @@ export class CameraRig
             const sinceDrag = time - this.lastDrag
             if(player.mode === 'ride')
             {
-                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * 2.6))
+                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * (player.vehicle && player.vehicle.kind === 'car' ? 4 : 2.6)))
             }
             else if(player.mode === 'sit' && player.world.stool)
             {

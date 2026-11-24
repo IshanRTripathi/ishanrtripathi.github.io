@@ -7,12 +7,12 @@ import { coastGLSL } from './layout.js'
 
 export function createWater()
 {
-    const geometry = new THREE.IcosahedronGeometry(R, 44)
+    const geometry = new THREE.IcosahedronGeometry(R, 54)
     const uniforms = {
         uTime: { value: 0 },
-        uDeep: { value: new THREE.Color('#1F6A8A') },
-        uShallow: { value: new THREE.Color('#47B5B0') },
-        uShore: { value: new THREE.Color('#9BE0CC') },
+        uDeep: { value: new THREE.Color('#13719A') },
+        uShallow: { value: new THREE.Color('#25C2C2') },
+        uShore: { value: new THREE.Color('#A2F2DE') },
         uFoam: { value: new THREE.Color('#FFF8EC') }
     }
     const material = new THREE.MeshStandardMaterial({
