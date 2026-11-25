@@ -618,7 +618,7 @@ const builders = {
         return group
     },
 
-    // the Velvet Lounge: a plum night club with lit purple windows, a canopy over the door, a script
+    // the Velvet Lounge: a plum building with lit purple windows, a canopy over the door, a script
     // marquee, a vertical neon blade on the corner and a neon beacon on the roof
     lounge: () =>
     {

@@ -245,7 +245,7 @@ export class Interior
 
         // the screen pulses, like a film playing (dimmer and brighter, never grey)
         if(room.screen) room.screen.material.color.copy(room.screenColor).multiplyScalar(0.8 + 0.2 * Math.sin(time * 2.2))
-        // a room can animate its own things, such as the lounge's dance floor, its mirror ball and its light
+        // a room can animate its own things, such as the lounge's tiles, its mirror ball and its light
         room.animate?.(time)
 
         if(input.consume('KeyE') || input.consume('Enter')) this.act()

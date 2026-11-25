@@ -493,7 +493,7 @@ export function buildStudio()
     })
 }
 
-// ------------------------------------------------------------------ the Velvet Lounge (the night club)
+// ------------------------------------------------------------------ the Velvet Lounge
 export function buildLounge()
 {
     const group = new THREE.Group()
@@ -522,7 +522,7 @@ export function buildLounge()
     solid(colliders, -(hw + 1.4) / 2, hd + 0.2, (hw - 1.0) / 2, 0.2)
     solid(colliders, (hw + 1.4) / 2, hd + 0.2, (hw - 1.0) / 2, 0.2)
 
-    // the dance floor: a grid of tiles in the middle of the room, each pulsing on its own beat
+    // a grid of tiles in the middle of the room, each pulsing on its own beat
     const tileColors = [ NEON.pink, NEON.cyan, NEON.purple, NEON.yellow ]
     const tiles = []
     for(let i = 0; i < 4; i++)
@@ -579,7 +579,7 @@ export function buildLounge()
 
     group.add(kit.mesh())
 
-    // the script sign over the DJ booth, and a mirror ball over the dance floor on a short chain
+    // the script sign over the DJ booth, and a mirror ball over the middle of the room on a short chain
     const sign = neonSign('Velvet', { color: NEON.pink, width: 3.6, height: 1.0, script: true })
     sign.position.set(0, 3.8, -hd + 0.4)
     group.add(sign)
@@ -634,7 +634,7 @@ export function buildLounge()
         animate,
         npcs: [
             { gender: 'f', x: -6.05, z: -0.6, yaw: Math.PI / 2, pose: 'idle' }, // the bartender, behind the bar
-            { gender: 'f', x: -0.5, z: 1.3, yaw: Math.PI, pose: 'idle' },       // dancers
+            { gender: 'f', x: -0.5, z: 1.3, yaw: Math.PI, pose: 'idle' },
             { gender: 'm', x: 1.7, z: 2.4, yaw: Math.PI, pose: 'idle' },
             { gender: 'm', x: -2.9, z: 4.6, yaw: Math.PI, pose: 'idle' }        // the bouncer, inside the door
         ]
