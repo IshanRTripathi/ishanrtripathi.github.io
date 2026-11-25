@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { surfacePoint, frameQuaternion, mapToDir } from '../core/geo.js'
-import { heightAt, coastDistance } from '../world/terrain.js'
+import { groundAt, coastDistance } from '../world/terrain.js'
 import { layout } from '../world/layout.js'
 import { Character } from './character.js'
 import { place } from '../world/world.js'
@@ -10,6 +10,10 @@ import { ISLANDS } from '../world/islands.js'
 const WALK = 2.7
 const RUN = 6.2
 const TURN_RATE = 9
+// how far out to sea you can swim, in metres from the nearest land
+const SWIM_LIMIT = -40
+// a swimmer floats with the water level at about his chest: never lower than the ground under him
+const SWIM_FLOAT = -0.15
 
 function angleDiff(a, b)
 {
@@ -150,6 +154,7 @@ export class Player
         this.character.root.add(this.parachute.root)
         this.chute = null // { h, open, yaw } while falling under the canopy
         this.ejected = null // the plane we bailed out of, flying on without us
+        this.swimming = false // in the sea, on foot
         this.landing = null // seconds since the canopy came down, while it folds up on the ground
         this.canopyState = { open: 0, pitch: 0, bank: 0, collapse: 0 }
         this.sync()
@@ -394,19 +399,22 @@ export class Player
             const diff = this.turnTowards(Math.atan2(dx, dz), dt)
             targetSpeed = amount * (input.run ? RUN : WALK) * THREE.MathUtils.clamp(Math.cos(diff) * 0.8 + 0.35, 0, 1)
         }
+        // swimming is slower than walking
+        if(this.swimming) targetSpeed *= 0.55
         const accel = targetSpeed > this.speed ? 10 : 14
         this.speed += (targetSpeed - this.speed) * Math.min(1, dt * accel)
         if(this.speed < 0.02) this.speed = 0
-        this.move(dt, 0.32)
+        // on foot you can swim out to sea, not off the edge of the world
+        this.move(dt, 0.32, SWIM_LIMIT)
     }
 
-    move(dt, radius)
+    move(dt, radius, limit = -1.4)
     {
         const nx = this.x + Math.sin(this.yaw) * this.speed * dt
         const nz = this.z + Math.cos(this.yaw) * this.speed * dt
         const pos = resolveCollisions({ x: nx, z: nz }, radius, this.world.colliders)
-        // the sea stops you once it gets deep
-        if(coastDistance(pos.x, pos.z) < -1.4)
+        // a car or a scooter is stopped by the sea once it gets deep
+        if(coastDistance(pos.x, pos.z) < limit)
         {
             this.speed *= 0.5
             return
@@ -661,7 +669,12 @@ export class Player
         this.bobTime = (this.bobTime || 0) + dt
         // a boat floats on the sea: its height is the sea's, not the seabed's
         const sailing = this.mode === 'ride' && this.vehicle && this.vehicle.kind === 'boat'
-        const h = (sailing ? 0 : heightAt(this.x, this.z)) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
+        // the ground is the rendered ground, so feet stand on it rather than sinking into it. In the
+        // sea you swim: floating at the water's level, and never lower than the ground under you
+        const ground = groundAt(this.x, this.z)
+        this.swimming = this.mode === 'walk' && ground < -0.5
+        const floor = this.swimming ? Math.max(ground, SWIM_FLOAT) : ground
+        const h = (sailing ? 0 : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
         const root = this.character.root
         // the character is swapped for the real model when it loads, so the canopy follows the current one
         if(this.parachute.root.parent !== root) root.add(this.parachute.root)
@@ -704,6 +717,12 @@ export class Player
         if(chuting)
         {
             _tiltEuler.set(-1.0 * (1 - this.chute.open) ** 2, 0, this.chute.sway * 0.12)
+            root.quaternion.multiply(_tiltQuat.setFromEuler(_tiltEuler))
+        }
+        // swimming: the body lies forward, head up, with the water about the chest
+        if(this.swimming)
+        {
+            _tiltEuler.set(-0.9, 0, 0)
             root.quaternion.multiply(_tiltQuat.setFromEuler(_tiltEuler))
         }
         // the canopy: shown while you fall, and while it folds up on the ground after a landing
