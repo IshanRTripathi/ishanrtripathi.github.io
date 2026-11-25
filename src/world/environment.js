@@ -342,8 +342,10 @@ export class Environment
             this.strike += dt
             const x = this.strike
             // a bright flash that flickers twice and fades
-            this.flash = (x < 0.06 ? x / 0.06 : Math.exp(-(x - 0.06) * 9)) + (x > 0.14 && x < 0.32 ? 0.6 * Math.exp(-(x - 0.14) * 12) : 0)
-            this.bolt.visible = x < 0.24 && x % 0.08 < 0.06
+            // one soft flash and a steady bolt: never more than one flash a strike, and
+            // the flash is kept well below a strobe so it stays comfortable to watch
+            this.flash = 0.5 * (x < 0.12 ? x / 0.12 : Math.exp(-(x - 0.12) * 5))
+            this.bolt.visible = x < 0.35
             if(x > 1.2) { this.strike = undefined; this.flash = 0; this.bolt.visible = false }
         }
         for(const th of this.thunderAt) th.at -= dt
@@ -363,7 +365,7 @@ export class Environment
         this.lights.sun.intensity = look.sun * handover
         this.lights.hemi.color.copy(look.hemiSky)
         this.lights.hemi.groundColor.copy(look.hemiGround)
-        this.lights.hemi.intensity = look.hemi + this.flash * 2.2
+        this.lights.hemi.intensity = look.hemi + this.flash * 0.8
         this.lights.direction.copy(this.lightDir)
 
         // ---- sky
@@ -383,7 +385,7 @@ export class Environment
         this.fog.color.copy(look.fog)
         this.fogNear = Math.max(5, 60 * (1 - 0.55 * Math.min(1, sky.rain + sky.snow) - 0.9 * this.weatherWeights.fog))
         this.fogFar = Math.max(48, 210 * (1 - 0.4 * sky.rain - 0.35 * sky.snow - 0.72 * this.weatherWeights.fog))
-        this.renderer.toneMappingExposure = look.exposure + this.flash * 0.25
+        this.renderer.toneMappingExposure = look.exposure + this.flash * 0.12
         if(this.bloom) this.bloom.strength = look.bloom
         const lightsOn = Math.max(look.lights, o * 0.55)
         this.lightsOn = lightsOn
