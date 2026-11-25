@@ -394,4 +394,87 @@ export function buildArcade()
     })
 }
 
-export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe, arcade: buildArcade }
+// ------------------------------------------------------------------ Ishan's studio (the living room)
+export function buildStudio()
+{
+    const group = new THREE.Group()
+    const kit = new Kit()
+    const colliders = []
+    const hw = 5
+    const hd = 4
+    const walls = '#F7AFC6'
+
+    kit.box(hw * 2 + 0.4, 0.2, hd * 2 + 0.4, '#B9895E', { y: -0.1 })
+    kit.box(hw * 2 + 0.4, 5, 0.4, walls, { y: 2.5, z: -hd - 0.2 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: -hw - 0.2, y: 2.5 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: hw + 0.2, y: 2.5 })
+    // the front wall, with the door in the middle
+    kit.box(3.6, 5, 0.4, walls, { x: -3.2, y: 2.5, z: hd + 0.2 })
+    kit.box(3.6, 5, 0.4, walls, { x: 3.2, y: 2.5, z: hd + 0.2 })
+    kit.box(2.0, 0.8, 0.4, walls, { y: 4.6, z: hd + 0.2 })
+    solid(colliders, 0, -hd - 0.2, hw + 0.2, 0.2)
+    solid(colliders, -hw - 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, hw + 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, -3.2, hd + 0.2, 1.8, 0.2)
+    solid(colliders, 3.2, hd + 0.2, 1.8, 0.2)
+
+    // a rug, the sofa on the left wall, a coffee table
+    kit.box(4.0, 0.04, 3.2, '#2DE2E6', { x: -0.4, y: 0.01, z: 0.6 })
+    kit.box(0.9, 0.5, 3.0, '#5A3F8C', { x: -4.3, y: 0.25, z: 0.6 })
+    kit.box(0.5, 0.9, 3.0, '#5A3F8C', { x: -4.7, y: 0.6, z: 0.6 })
+    solid(colliders, -4.3, 0.6, 0.45, 1.5)
+    kit.box(1.4, 0.4, 0.8, '#8A5A3A', { x: -1.2, y: 0.2, z: 0.6 })
+    solid(colliders, -1.2, 0.6, 0.7, 0.4)
+
+    // the desk against the back wall, with its chair in front
+    kit.box(2.6, 0.12, 1.0, '#8A5A3A', { x: 2.0, y: 1.0, z: -3.2 })
+    kit.box(2.6, 0.95, 0.12, '#8A5A3A', { x: 2.0, y: 0.5, z: -3.6 })
+    kit.box(0.5, 1.0, 0.5, '#5A3F8C', { x: 2.0, y: 0.5, z: -1.9 })
+    solid(colliders, 2.0, -3.2, 1.3, 0.5)
+
+    // the bookshelf on the right wall
+    kit.box(0.5, 2.4, 2.4, '#8A5A3A', { x: 4.6, y: 1.2, z: -0.6 })
+    for(let i = 0; i < 9; i++) kit.box(0.1, 0.5, 0.2, [ '#FF4FA3', '#2DE2E6', '#FFE45E', '#A855F7', '#FF8C42' ][i % 5], { x: 4.3, y: 0.5 + (i % 3) * 0.7, z: -1.6 + (i % 5) * 0.4 })
+    solid(colliders, 4.6, -0.6, 0.3, 1.25)
+
+    // a plant in the corner
+    kit.cyl(0.35, 0.3, 0.6, 10, '#C9A36B', { x: 4.1, y: 0.3, z: 2.9 })
+    kit.sphere(0.7, '#3E9C8F', { x: 4.1, y: 1.3, z: 2.9 }, 1)
+    group.add(kit.mesh())
+
+    // the window to the sea, the monitor on the desk, and the pin board by the sofa
+    glow(group, 2.4, 1.6, 0.08, '#9AD0EC', -1.8, 2.3, -hd + 0.2)
+    glow(group, 1.6, 0.9, 0.06, '#1C7F86', 2.0, 1.7, -3.1)
+    const board = new Kit()
+    board.box(1.2, 0.9, 0.06, '#C9A36B', { x: -2.6, y: 2.2, z: -hd + 0.2 })
+    group.add(board.mesh())
+    glow(group, 0.08, 0.08, 0.08, '#FFE45E', -2.6, 2.6, -hd + 0.25)
+
+    const lights = [
+        new THREE.HemisphereLight('#FFE9D2', '#8A5A3A', 2.0),
+        pointLight('#FFC8A2', 2.0, 14, 0, 2.8, 0.5),
+        pointLight('#FFF1A8', 1.2, 10, 2.0, 2.2, -1.8)
+    ]
+    lights.forEach((l) => group.add(l))
+
+    const points = [
+        { kind: 'content', content: 'career', label: 'Read the career timeline on the monitor', x: 2.0, z: -2.5, r: 1.5 },
+        { kind: 'sit', label: 'Sit at the desk', yaw: Math.PI, x: 2.0, z: -1.9, r: 0.9 },
+        { kind: 'sit', label: 'Sit on the sofa', yaw: Math.PI / 2, x: -3.9, z: 0.2, r: 0.9 },
+        { kind: 'sit', label: 'Sit on the sofa', yaw: Math.PI / 2, x: -3.9, z: 1.2, r: 0.9 },
+        { kind: 'content', content: 'contact', label: 'Read the pin board', x: -2.6, z: -2.9, r: 1.5 },
+        { kind: 'info', label: 'Bookshelf', sub: 'Shelves of books and notes from the projects.', x: 3.4, z: -0.6, r: 1.5 }
+    ]
+
+    return finish('studio', group, {
+        background: '#2A1B2E',
+        half: { x: hw, z: hd },
+        colliders,
+        spawn: { x: 0, z: 2.6, yaw: Math.PI },
+        exit: { x: 0, z: hd - 0.5, r: 0.8 },
+        points,
+        lights
+    })
+}
+
+export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe, arcade: buildArcade, studio: buildStudio }
