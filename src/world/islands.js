@@ -20,7 +20,7 @@ export const ISLANDS = [
         hills: 2.6, peak: 0,
         // a stilt hut on the beach side, and palms, ferns and tall rainforest trees
         structures: [ { kind: 'hut', dx: -6, dz: 5 } ],
-        life: { trees: [ 'rain', 'palm', 'rain', 'royal', 'palm', 'rain' ], tree: 0.3, bush: 0.2, flower: 0.12, rock: 0.02 }
+        life: { trees: [ 'rain', 'palm', 'rain', 'royal', 'palm', 'rain' ], tree: 0.16, bush: 0.2, flower: 0.12, rock: 0.02 }
     },
     {
         id: 'frost', name: 'Frost Peak', theme: 'frost', seed: 23,
@@ -29,7 +29,7 @@ export const ISLANDS = [
         hills: 2.2, peak: 9,
         // a log cabin with a warm window, and snowy pines
         structures: [ { kind: 'cabin', dx: 6, dz: -14 } ],
-        life: { trees: [ 'slender', 'slender', 'rain' ], tree: 0.2, bush: 0.06, flower: 0, rock: 0.08 }
+        life: { trees: [ 'slender', 'slender', 'rain' ], tree: 0.1, bush: 0.06, flower: 0, rock: 0.08 }
     },
     {
         id: 'dunes', name: 'Dune Oasis', theme: 'desert', seed: 37,
@@ -38,7 +38,7 @@ export const ISLANDS = [
         hills: 1.4, peak: 0,
         // an oasis pool with a tent beside it, and a few cacti and palms in the dunes
         structures: [ { kind: 'oasis', dx: 0, dz: 0 }, { kind: 'tent', dx: 8, dz: 3 } ],
-        life: { trees: [ 'cactus', 'cactus', 'cactus', 'palm' ], tree: 0.12, bush: 0.05, flower: 0.02, rock: 0.1 }
+        life: { trees: [ 'cactus', 'cactus', 'cactus', 'palm' ], tree: 0.07, bush: 0.05, flower: 0.02, rock: 0.1 }
     }
 ]
 

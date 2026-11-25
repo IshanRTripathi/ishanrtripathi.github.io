@@ -97,7 +97,7 @@ function placeFillers()
                 if(layout.sites.some((site) => site.sign && Math.hypot(x - site.sign.x, z - site.sign.z) < r + 2)) continue
                 if(layout.studioDoor && Math.hypot(x - layout.studioDoor.x, z - layout.studioDoor.z) < r + 6) continue
                 if(layout.props.some((prop) => Math.hypot(x - prop.x, z - prop.z) < r + 3)) continue
-                if(fillers.some((o) => Math.hypot(x - o.x, z - o.z) < r + Math.hypot(o.w, o.d) / 2 + 0.6)) continue
+                if(fillers.some((o) => Math.hypot(x - o.x, z - o.z) < r + Math.hypot(o.w, o.d) / 2 + 2.2)) continue
                 if(fillerCorners(f).some((c) => placementDistance(c.x, c.z) < 0.5 || mainCoastDistance(c.x, c.z) < 3)) continue
                 fillers.push(f)
             }
@@ -174,7 +174,7 @@ function placeTrees(lamps, fillers)
     }
 
     // coconut palms along the beach, thicker around the bay
-    for(let i = 0; i < 8000 && trees.length < 130; i++)
+    for(let i = 0; i < 8000 && trees.length < 90; i++)
     {
         const phi = random() * Math.PI * 2
         const bw = beachWidth(phi)
@@ -182,18 +182,18 @@ function placeTrees(lamps, fillers)
         const x = Math.cos(phi) * r
         const z = Math.sin(phi) * r
         const bay = Math.cos(phi - BAY_ANGLE)
-        if(random() > 0.55 + bay * 0.4) continue
+        if(random() > 0.3 + bay * 0.3) continue
         if(mainCoastDistance(x, z) < 1.6) continue
         if(placementDistance(x, z) < 1.3) continue
         if(blockedBySite(x, z, 1.6)) continue
-        if(nearFiller(fillers, x, z, 1.5)) continue
-        if(near(x, z, 3.4)) continue
+        if(nearFiller(fillers, x, z, 2.6)) continue
+        if(near(x, z, 4.6)) continue
         trees.push({ type: 'palm', x, z, yaw: random() * Math.PI * 2, scale: 0.85 + random() * 0.4, lean: random() })
     }
 
     // tropical green between the blocks, denser where the noise says so
     const inland = [ 'rain', 'palm', 'slender', 'royal', 'rain' ]
-    for(let i = 0; i < 160000 && trees.length < 480; i++)
+    for(let i = 0; i < 160000 && trees.length < 280; i++)
     {
         const x = (random() * 2 - 1) * WORLD_EXTENT
         const z = (random() * 2 - 1) * WORLD_EXTENT
@@ -201,13 +201,14 @@ function placeTrees(lamps, fillers)
         const phi = Math.atan2(z, x)
         if(s < beachWidth(phi) + 1.5) continue
         const density = noise(x * 0.045, z * 0.045) * 0.5 + 0.5
-        if(random() > 0.04 + 0.8 * Math.min(1, Math.max(0, (density - 0.35) / 0.4))) continue
+        if(random() > 0.02 + 0.4 * Math.min(1, Math.max(0, (density - 0.35) / 0.4))) continue
         const type = inland[Math.floor(random() * inland.length)]
         const canopy = type === 'rain' ? 3.6 : type === 'palm' ? 2.6 : 1.6
         if(placementDistance(x, z) < canopy + 0.6) continue
         if(blockedBySite(x, z, 4.5 + canopy)) continue
-        if(nearFiller(fillers, x, z, canopy + 0.8)) continue
-        if(near(x, z, type === 'rain' ? 4.4 : 3.0)) continue
+        // trees keep well clear of the houses, and of each other, so the streets and gardens breathe
+        if(nearFiller(fillers, x, z, canopy + 2.4)) continue
+        if(near(x, z, type === 'rain' ? 5.6 : 4.4)) continue
         trees.push({ type, x, z, yaw: random() * Math.PI * 2, scale: 0.8 + random() * 0.45, lean: random() })
     }
     return trees
@@ -228,7 +229,8 @@ function placeDecor(trees, fillers)
         const pd = placementDistance(x, z)
         if(pd < 0.6) continue
         if(blockedBySite(x, z, 0.8)) continue
-        if(nearFiller(fillers, x, z, 0.3)) continue
+        // bushes, flowers and rocks keep a little space from the houses too
+        if(nearFiller(fillers, x, z, 1.2)) continue
         const phi = Math.atan2(z, x)
         const onBeach = s < beachWidth(phi)
         const roll = random()
@@ -669,7 +671,7 @@ function placeIslands()
             const c4 = c3 + life.rock
             if(roll < c1)
             {
-                if(trees.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < 3.4 * 3.4)) continue
+                if(trees.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < 4.4 * 4.4)) continue
                 const type = life.trees[Math.floor(random() * life.trees.length)]
                 trees.push({ type, x, z, yaw: random() * Math.PI * 2, scale: 0.85 + random() * 0.4, lean: random() })
             }

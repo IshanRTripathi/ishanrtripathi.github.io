@@ -51,7 +51,15 @@ export function windMaterial(strength = 1, foliage = 0)
                     float phase = 0.0;
                 #endif
                 float bend = max(transformed.y, 0.0);
-                bend = bend * bend * ${(0.0035 * strength).toFixed(5)};
+                bend = bend * bend * ${(0.0012 * strength).toFixed(5)};
+                // far trees stand still: at a distance their sway is a pixel or two that shimmers from
+                // frame to frame, and near trees keep their sway
+                #ifdef USE_INSTANCING
+                    vec3 anchor = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+                #else
+                    vec3 anchor = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+                #endif
+                bend *= 1.0 - smoothstep(12.0, 32.0, length(anchor - cameraPosition));
                 transformed.x += sin(uTime * 1.3 + phase) * bend + sin(uTime * 2.9 + phase * 1.7) * bend * 0.3;
                 transformed.z += cos(uTime * 1.1 + phase * 1.3) * bend * 0.6;`)
         // dissolve whatever stands right in front of the camera or between
