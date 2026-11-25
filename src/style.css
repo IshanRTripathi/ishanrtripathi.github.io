@@ -374,6 +374,22 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     text-shadow: 0 0 6px var(--pink), 0 0 18px var(--pink), 0 2px 18px rgba(27, 21, 53, 0.5);
 }
 
+.in-room .minimap,
+.in-room .minimap-next { visibility: hidden; }
+
+.fade
+{
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: #0B0820;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 340ms ease;
+}
+
+.fade.is-on { opacity: 1; }
+
 .island-tip
 {
     position: fixed;

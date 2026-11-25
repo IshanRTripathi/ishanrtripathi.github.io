@@ -297,7 +297,7 @@ export function buildLayout()
         const q = main.at(f - 0.04)
         const signPos = offsetFrom(q, side, ROAD_HALF + SIDEWALK + 0.6)
         sites.push({
-            id: 'career', kind: 'cinema', contentId: 'career',
+            id: 'career', kind: 'cinema', contentId: 'career', interior: 'cinema',
             x: pos.x, z: pos.z, yaw: yawTowards(pos, p), w: 11, d: 7.2, h: 12,
             sign: { x: signPos.x, z: signPos.z, yaw: yawTowards(signPos, q) + 0.5 }
         })
@@ -354,6 +354,13 @@ export function buildLayout()
         return site
     })()
 
+    // --- the hospital, south-east of the middle of the island: its front door opens onto the sidewalk
+    {
+        const pos = { x: 10, z: -25 }
+        const yaw = -0.92
+        sites.push({ id: 'hospital', kind: 'hospital', interior: 'hospital', x: pos.x, z: pos.z, yaw, w: 9, d: 7, h: 8 })
+    }
+
     // --- a short cut from the square straight north across the middle,
     // so the paths make a loop instead of one long line
     {
@@ -385,6 +392,9 @@ export function buildLayout()
         return new Path([ { x: a.x, z: a.z }, apex, { x: b.x, z: b.z } ], ROAD_HALF)
     }
     paths.push(crossRoad(0.1, 0.36, 6), crossRoad(0.5, 0.76, 10))
+
+    // the front door of each building you can walk into: a little in front of its front wall
+    for(const site of sites) if(site.interior) site.entrance = { x: site.x + Math.sin(site.yaw) * (site.d / 2 + 1.2), z: site.z + Math.cos(site.yaw) * (site.d / 2 + 1.2) }
 
     // spawn: just outside the studio door
     const studio = sites[0]

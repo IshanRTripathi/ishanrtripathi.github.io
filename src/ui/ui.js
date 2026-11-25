@@ -37,6 +37,7 @@ export class UI
         this.prompt.addEventListener('click', () => onPrompt())
         this.area = this.$('.area')
         this.islandTip = this.$('.island-tip')
+        this.fadeEl = this.$('.fade')
         this.touch = this.$('.touch')
         this.onClose = onClose
 
@@ -248,6 +249,18 @@ export class UI
         this.prompt.hidden = false
         this.promptKey.textContent = key
         this.promptLabel.textContent = label
+    }
+
+    // inside a building the city's map and its "next stop" line are hidden
+    setInside(on)
+    {
+        document.body.classList.toggle('in-room', !!on)
+    }
+
+    // the screen goes dark (true) or comes back (false), for going in and out of buildings
+    fade(on)
+    {
+        this.fadeEl.classList.toggle('is-on', !!on)
     }
 
     // the name of an island, under the pointer on the landing screen; a touch shows it for a moment

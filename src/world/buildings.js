@@ -558,6 +558,30 @@ const builders = {
         return b.build()
     },
 
+    // the hospital: a white clinic with a teal band under the roof, a red cross over the door and a neon sign
+    hospital: () =>
+    {
+        const b = new Builder()
+        const k = b.clay
+        const w = 9
+        const d = 7
+        plinth(k, w, d)
+        k.box(w, 7.2, d, C.white, { y: 0.5 })
+        k.box(w + 0.2, 0.4, d + 0.2, C.seaGreen, { y: 4.2 })
+        k.box(w + 0.2, 0.3, d + 0.2, C.white, { y: 8.1 })
+        for(const x of [ -3, 0, 3 ])
+            for(const y of [ 2.0, 5.6 ])
+                if(!(x === 0 && y === 2.0)) k.box(1.5, 1.2, 0.16, C.glass, { x, y, z: d / 2 + 0.02 })
+        door(k, 0, d / 2 + 0.02, { w: 1.6, h: 2.3 })
+        // the red cross, high on the front
+        k.box(0.5, 1.6, 0.16, C.red, { y: 6.9, z: d / 2 + 0.06 })
+        k.box(1.6, 0.5, 0.16, C.red, { y: 6.9, z: d / 2 + 0.06 })
+        const sign = neonSign('Clinic', { color: NEON.cyan, width: 3.0, height: 0.7, panel: true })
+        sign.position.set(0, 3.4, d / 2 + 0.3)
+        b.extras.push(sign)
+        return b.build()
+    },
+
     // the cinema: a vertical blade sign, a marquee over the doors, and a
     // big poster frame on the facade for the career timeline
     cinema: (o) =>
