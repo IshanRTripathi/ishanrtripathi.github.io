@@ -933,3 +933,112 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 {
     *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
+
+/* ---------------------------------------------------------------- the plane */
+.flight-hud
+{
+    position: fixed;
+    top: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    width: min(360px, calc(100vw - 32px));
+    padding: 0.55rem 0.8rem 0.6rem;
+    border-radius: 16px;
+    background: var(--night-glass);
+    color: var(--cream);
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+.flight-hud[hidden] { display: none; }
+.flight-stats { margin: 0; font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.02em; }
+.flight-stats span:not(.flight-sep) { color: var(--yellow); }
+.flight-sep { opacity: 0.5; margin: 0 0.3rem; }
+.flight-throttle { height: 6px; margin: 0.4rem auto 0.3rem; border-radius: 999px; background: rgba(255, 246, 236, 0.18); overflow: hidden; width: 80%; }
+.flight-throttle-fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); transform-origin: left center; transform: scaleX(0.6); }
+.flight-hint { margin: 0.2rem 0 0; font-size: 0.85rem; opacity: 0.92; min-height: 1.2em; }
+.flight-buttons { display: none; gap: 8px; justify-content: center; margin-top: 0.45rem; }
+.is-touch .flight-buttons { display: flex; pointer-events: auto; }
+.is-touch .flight-hud { pointer-events: none; }
+.is-touch .flight-buttons .hud-button { touch-action: none; min-width: 9rem; }
+
+/* ---------------------------------------------------------------- the arcade */
+.arcade { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 14px; }
+.arcade[hidden] { display: none; }
+.arcade-backdrop { position: absolute; inset: 0; background: rgba(14, 9, 30, 0.82); backdrop-filter: blur(6px); }
+.arcade-panel
+{
+    position: relative;
+    width: min(820px, 100%);
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
+    padding: 18px 20px 22px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #2A1B4A, #1B1530);
+    color: var(--cream);
+    box-shadow: 0 0 0 2px var(--pink), 0 0 40px rgba(255, 62, 165, 0.45);
+    outline: none;
+}
+.arcade-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.arcade-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 2.1rem; line-height: 1; text-transform: uppercase; color: var(--cyan); text-shadow: 0 0 14px rgba(45, 226, 230, 0.6); }
+.arcade-close, .arcade-back, .arcade-again
+{
+    padding: 0.45rem 0.9rem;
+    border: 1px solid rgba(255, 246, 236, 0.4);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--cream);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.arcade-close:hover, .arcade-back:hover, .arcade-again:hover { border-color: var(--pink); color: #fff; }
+.arcade-close:focus-visible, .arcade-back:focus-visible, .arcade-again:focus-visible, .arcade-game:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.arcade-intro { margin: 0 0 12px; opacity: 0.85; }
+.arcade-games { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.arcade-game
+{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    height: 100%;
+    padding: 14px 14px 16px;
+    border: none;
+    border-radius: 16px;
+    background: rgba(255, 246, 236, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(255, 246, 236, 0.14);
+    color: var(--cream);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.arcade-game:hover { background: rgba(255, 62, 165, 0.16); box-shadow: inset 0 0 0 1px var(--pink); }
+.arcade-game-title { font-family: var(--display); font-size: 1.5rem; text-transform: uppercase; color: var(--yellow); line-height: 1.05; }
+.arcade-game-blurb { font-size: 0.92rem; opacity: 0.9; }
+.arcade-game-controls { font-size: 0.8rem; opacity: 0.65; }
+.arcade-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.arcade-name { font-family: var(--display); font-size: 1.4rem; text-transform: uppercase; color: var(--cyan); }
+.arcade-board { position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 2px var(--cyan), 0 0 22px rgba(45, 226, 230, 0.35); }
+.arcade-canvas { display: block; width: 100%; height: auto; aspect-ratio: 480 / 300; touch-action: none; user-select: none; cursor: pointer; }
+.arcade-over
+{
+    position: absolute; inset: 0; margin: 0; display: grid; place-items: center; text-align: center; padding: 1rem;
+    background: rgba(14, 9, 30, 0.72); color: var(--cream); font-family: var(--display); font-size: 1.4rem; text-transform: uppercase;
+}
+.arcade-over[hidden] { display: none; }
+.arcade-help { margin: 8px 2px 0; font-size: 0.85rem; opacity: 0.7; }
+
+@media (orientation: landscape) and (max-height: 540px)
+{
+    .arcade-panel { padding: 12px 14px 14px; }
+    .arcade-title { font-size: 1.6rem; }
+    .arcade-games { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .arcade-game { padding: 10px 10px 12px; }
+    .arcade-game-title { font-size: 1.2rem; }
+    .arcade-game-blurb { font-size: 0.8rem; }
+    .flight-hud { top: 58px; width: min(300px, calc(100vw - 32px)); padding: 0.4rem 0.6rem 0.45rem; }
+    .flight-stats { font-size: 1.1rem; }
+}

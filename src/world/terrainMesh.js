@@ -23,7 +23,7 @@ export const PALETTE = {
 const jitterNoise = createNoise2D(31)
 const colorNoise = createNoise2D(41)
 
-export function createTerrainMesh({ radius = 82, spacing = 1.0 } = {})
+export function createTerrainMesh({ radius = 124, spacing = 1.45 } = {})
 {
     const rowH = spacing * Math.sqrt(3) / 2
     const rows = Math.ceil(radius * 2 / rowH) + 1

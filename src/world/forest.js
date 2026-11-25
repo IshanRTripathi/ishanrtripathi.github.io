@@ -132,7 +132,7 @@ function rainGeometry()
     kit.cyl(0.14, 0.22, 1.9, 5, '#7A5A40', { x: -0.5, y: 2.0, rz: 0.75, ry: 0.4 })
     // wide umbrella canopy of chunky clusters
     const clusters = [ [ 0, 3.7, 0, 2.6 ], [ 2.1, 3.4, 0.6, 1.8 ], [ -2.0, 3.45, -0.4, 1.9 ], [ 0.6, 3.5, 2.0, 1.7 ], [ -0.6, 3.4, -2.0, 1.8 ], [ 1.6, 3.6, -1.6, 1.5 ], [ -1.4, 3.6, 1.7, 1.5 ] ]
-    clusters.forEach(([ x, y, z, r ], i) => kit.sphere(r, leaf.rain[i % 3], { x, y, z, sy: 0.48 }, 1))
+    clusters.forEach(([ x, y, z, r ], i) => kit.sphere(r, leaf.rain[i % 3], { x, y, z, sy: 0.48 }))
     return kit.geometry()
 }
 
@@ -167,9 +167,9 @@ function slenderGeometry()
 function bushGeometry()
 {
     const kit = new Kit()
-    kit.sphere(0.7, '#5F9A43', { y: 0.35, sy: 0.75 }, 1)
-    kit.sphere(0.5, '#6FAA4B', { x: 0.5, y: 0.3, z: 0.2, sy: 0.75 }, 1)
-    kit.sphere(0.45, '#568F3D', { x: -0.45, y: 0.28, z: -0.15, sy: 0.75 }, 1)
+    kit.sphere(0.7, '#5F9A43', { y: 0.35, sy: 0.75 })
+    kit.sphere(0.5, '#6FAA4B', { x: 0.5, y: 0.3, z: 0.2, sy: 0.75 })
+    kit.sphere(0.45, '#568F3D', { x: -0.45, y: 0.28, z: -0.15, sy: 0.75 })
     return kit.geometry()
 }
 

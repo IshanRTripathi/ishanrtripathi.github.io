@@ -87,7 +87,44 @@ export class UI
 
     get modalOpen()
     {
-        return !this.cardLayer.hidden || !this.pageLayer.hidden || !this.phoneLayer.hidden
+        return !this.cardLayer.hidden || !this.pageLayer.hidden || !this.phoneLayer.hidden || !!this.externalModal?.()
+    }
+
+    // ---------------------------------------------------------------- the plane
+    // the flight readout at the top of the screen, while you are in the plane
+    setFlight(f)
+    {
+        const el = this.$('.flight-hud')
+        if(!el) return
+        if(!f)
+        {
+            el.hidden = true
+            return
+        }
+        el.hidden = false
+        this.$('[data-flight="speed"]').textContent = String(f.speedKmh)
+        this.$('[data-flight="alt"]').textContent = String(f.altitude)
+        this.$('.flight-throttle-fill').style.transform = `scaleX(${f.throttle.toFixed(2)})`
+        const hint = f.hintTime > 0 ? f.hint : f.onGround ? (f.v < 1 ? 'W to taxi, A and D to steer' : '') : 'W nose up, S nose down, A and D bank, R and F throttle'
+        if(this.flightHint !== hint)
+        {
+            this.flightHint = hint
+            this.$('.flight-hint').textContent = hint
+        }
+    }
+
+    // the throttle buttons on a touch screen: hold to change the power
+    bindThrottle(input)
+    {
+        for(const btn of document.querySelectorAll('[data-throttle]'))
+        {
+            const dir = btn.dataset.throttle === 'up' ? 1 : -1
+            const release = () => { input.throttleHold = 0 }
+            btn.addEventListener('pointerdown', (e) => { e.preventDefault(); input.throttleHold = dir; btn.setPointerCapture?.(e.pointerId) })
+            btn.addEventListener('pointerup', release)
+            btn.addEventListener('pointercancel', release)
+            btn.addEventListener('lostpointercapture', release)
+        }
     }
 
     ready()

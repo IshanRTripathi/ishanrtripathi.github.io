@@ -49,6 +49,8 @@ export class CameraRig
         // cars get a wider view
         const wanted = this.distance
         if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'car') this.distance = Math.max(this.distance, 11)
+        // the plane gets room to see the ground fall away
+        if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'plane') this.distance = Math.max(this.distance, 17)
         const result = this.followPoseAt(player, out)
         this.distance = wanted
         return result
@@ -67,7 +69,7 @@ export class CameraRig
         out.up.copy(U)
 
         // pull in rather than end up inside a building
-        const minimum = player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'car' ? 6.5 : 3
+        const minimum = player.mode === 'ride' && player.vehicle && (player.vehicle.kind === 'car' || player.vehicle.kind === 'plane') ? (player.vehicle.kind === 'plane' ? 8 : 6.5) : 3
         const dist = Math.max(Math.min(minimum, this.distance), this.clearDistance(player, this.distance))
         if(dist < this.distance)
         {

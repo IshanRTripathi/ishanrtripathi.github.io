@@ -4,6 +4,8 @@ My portfolio as a small open-world city, in the spirit of the neon Miami crime-g
 
 The city lives on its own clock. A day takes about eight minutes, with long, slow dawns and dusks: golden hour, sunset over the bay, a blue hour with the first stars, a moonlit night when the neon, windows and lanterns come into their own, and a pastel dawn. Every new day brings the next season (spring blossom, summer, autumn leaves, winter snow), and the weather changes every minute or two to suit it: clear skies, clouds, rain, thunderstorms with lightning, snowfall, morning fog.
 
+Past the city there is an airstrip. Walk up to the little plane at the near end, press E to climb in, and fly: hold R to add throttle, F to ease off, W and S to point the nose up and down, and A and D to bank and turn. Take off down the strip, climb, and come back to land on it. Landing short or too fast bounces you back up (or, if it's bad enough, back to the runway). The Game Arcade hall is past the far end of the strip: walk in through its door and pick a game from the list. Three original games are there so far (a stacking tower, a coin catcher and a bouncing paddle), and your best scores stay on this device.
+
 The phone (P) has my contacts, career, trophies and a Sky app to pick the time of day, season or weather by hand. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
 
 ![The city](public/social/share.png)
@@ -18,7 +20,7 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
-Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of a car or the scooter, Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E).
+Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of a car, the scooter or the plane, Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E). In the plane: W and S for the nose, A and D to bank, R and F for throttle. On a phone, the left thumb steers the plane and two throttle buttons appear at the top. In the arcade: arrows or A and D, Space to drop or launch, Escape to go back, or tap and drag on a phone.
 
 To see a particular sky, add it to the address: `?time=dawn` (or `day`, `dusk`, `night`, or a fraction of the day like `0.8`), `?season=winter`, `?weather=storm` (`clear`, `cloudy`, `rain`, `storm`, `snow`, `fog`).
 
@@ -86,7 +88,9 @@ Three.js and Vite, no framework.
 - `src/world/`: terrain, roads, sea, sky, Art Deco buildings and city blocks, neon, palms (instanced, swaying in the wind), traffic, markers, boats, birds, the car and scooter.
 - `src/world/environment.js`: the clock, the seasons and the weather. It moves the sun (placed over wherever you are, so dawn and dusk happen at the same moment all over the tiny planet), blends the sky, light, fog and glow between night, blue hour, dawn, day and dusk, and greys it all over in bad weather. `seasonal.js` patches the materials so snow settles on whatever faces the sky, leaves turn and blossom comes out; `weather.js` has the rain, snow and lightning; `src/core/audio.js` makes the rain, wind, thunder, birds and crickets.
 - `src/world/details.js`: the evening. Lanterns with pools of light along the boardwalk, the beach road and round the chai shack, fences, stepping stones, flower beds along the sidewalks, grass and fireflies. `duskAt()` in `layout.js` says how far into the evening each spot is, so windows light up and street lights get warmer the closer you get to the sunset beach.
-- `src/player/`: the character, walking and driving, and the follow camera.
+- `src/player/`: the character, walking and driving, the follow camera, and `flight.js`, the plane's arcade flight model (speed sets the lift, the nose sets the climb, the bank sets the turn).
+- `src/world/plane.js` and `airstrip.js`: the plane and the runway, built from the same clay parts as the city. The runway is a straight strip on a ring round the island, flattened into the ground by the terrain pads.
+- `src/arcade/games.js` and `src/ui/arcade.js`: the arcade's games and the game-select hall.
 - `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.
 
 To keep it at 60 fps, repeated things are instanced, all city blocks are one mesh, buildings behind the planet's curve are not drawn, and if the frame rate drops the resolution goes down first and the neon glow switches off last.

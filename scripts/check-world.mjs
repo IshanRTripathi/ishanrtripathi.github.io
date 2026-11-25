@@ -127,6 +127,12 @@ for(const p of scatter.loop)
 for(const boat of scatter.boats)
     if(coastDistance(boat.x, boat.z) > -3) fail(`boat too close to the shore at (${boat.x.toFixed(1)}, ${boat.z.toFixed(1)})`)
 
+// the airstrip: every point on dry land, and the arcade well clear of it
+for(const q of layout.runway.points)
+    if(coastDistance(q.x, q.z) < 8) { fail(`runway runs too close to the sea at (${q.x.toFixed(1)}, ${q.z.toFixed(1)})`); break }
+for(const q of layout.runway.points)
+    if(Math.hypot(q.x - layout.arcade.x, q.z - layout.arcade.z) < 12) { fail('the arcade is too close to the runway'); break }
+
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)
 if(spawnPath > 0) fail('spawn point is not on a path')
 

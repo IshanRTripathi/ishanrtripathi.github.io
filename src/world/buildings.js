@@ -364,6 +364,24 @@ function project(kind, { wall, neon, neon2, awningColors, sculpture, sculptureY 
 }
 
 const builders = {
+    // the Game Arcade: a lavender hall with a joystick on the roof and a neon sign
+    arcade: (o) => project('arcade', {
+        wall: C.lavender, neon: NEON.cyan, neon2: NEON.pink, awningColors: [ C.flamingo, C.white ],
+        sculpture: (k, y) =>
+        {
+            // a big arcade joystick on the roof
+            k.cyl(0.1, 0.12, 1.1, 8, C.black, { y })
+            k.box(0.5, 0.12, 0.5, C.steelDark, { y: y + 1.0 })
+            k.sphere(0.24, NEON.pink, { y: y + 1.35 }, 1)
+            k.cyl(0.6, 0.6, 0.12, 12, C.teal, { y: y - 0.02 })
+        },
+        sign: o.sign || 'Game Arcade',
+        extra: (k) =>
+        {
+            // a row of bright cabinets in the window
+            for(let i = 0; i < 4; i++) k.box(0.7, 1.7, 0.5, i % 2 ? C.teal : C.flamingo, { x: -3.2 + i * 0.95, y: 0.5, z: 3.3 })
+        }
+    }, o),
     tiffin: (o) => project('tiffin', {
         wall: C.mint, neon: NEON.pink, neon2: NEON.yellow, awningColors: [ C.flamingo, C.white ],
         sculpture: tiffin, sign: o.sign,

@@ -13,6 +13,8 @@ export class Input
         this.drag = { dx: 0, dy: 0, active: false, lastTime: -Infinity }
         this.zoom = 0
         this.stick = { x: 0, y: 0, active: false }
+        // the on-screen throttle buttons in the plane: +1 more power, -1 less
+        this.throttleHold = 0
         this.lastActivity = 0
 
         window.addEventListener('keydown', (e) =>

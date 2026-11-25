@@ -11,7 +11,11 @@ const CELL = 4
 const segIndex = new Map()
 const segments = []
 
-for(const path of layout.paths)
+// the runway counts as a road for everything placed on the ground
+const strips = [ ...layout.paths ]
+if(layout.runway) strips.push({ points: layout.runway.points, halfWidth: layout.runway.width / 2, edge: layout.runway.width / 2 + 1, kind: 'road' })
+
+for(const path of strips)
 {
     for(let i = 0; i < path.points.length - 1; i++)
     {
@@ -115,10 +119,25 @@ const pads = layout.sites.map((site) =>
     return { x: site.x, z: site.z, radius, height: rawHeight(site.x, site.z) }
 })
 
+// The runway: a flat strip at one height, so the plane can roll along it
+const runwayPads = []
+if(layout.runway)
+{
+    const pts = layout.runway.points
+    const samples = []
+    for(let i = 0; i < pts.length - 1; i++)
+        for(let k = 0; k < 4; k++)
+            samples.push({ x: pts[i].x + (pts[i + 1].x - pts[i].x) * k / 4, z: pts[i].z + (pts[i + 1].z - pts[i].z) * k / 4 })
+    samples.push(pts[pts.length - 1])
+    const top = Math.max(...samples.map((p) => rawHeight(p.x, p.z))) + 0.35
+    for(const p of samples) runwayPads.push({ x: p.x, z: p.z, radius: 6.5, height: top })
+}
+const allPads = [ ...pads, ...runwayPads ]
+
 export function heightAt(x, z)
 {
     let h = rawHeight(x, z)
-    for(const pad of pads)
+    for(const pad of allPads)
     {
         const d = Math.hypot(x - pad.x, z - pad.z)
         if(d < pad.radius + 3)

@@ -118,6 +118,15 @@ export const credits = [
     { what: 'Cars', who: 'Kenney', href: 'https://kenney.nl' }
 ]
 
+// the Game Arcade hall: not a project, but a stop you walk into
+export const arcade = {
+    id: 'arcade',
+    kind: 'arcade',
+    title: 'Game Arcade',
+    place: 'Game Arcade',
+    line: 'Pick a game and play. Your best scores stay on this device.'
+}
+
 export const contact = {
     id: 'contact',
     title: 'Chai?',
