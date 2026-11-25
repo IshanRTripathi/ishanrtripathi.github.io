@@ -3,6 +3,7 @@ import { Kit, clayMaterial } from '../models/kit.js'
 import { frameMatrix } from '../core/geo.js'
 import { heightAt } from './terrain.js'
 import { neonMaterial } from './neon.js'
+import { duskAt } from './layout.js'
 
 // Instanced trees and small props. Each type is one draw call.
 
@@ -265,6 +266,13 @@ export function createForest(scatter)
     const placeLamp = (l, m) => frameMatrix(l.x, l.z, l.yaw, heightAt(l.x, l.z) + 0.15, 1, m)
     group.add(instanced(lampGeometry(), clayMaterial, scatter.lamps, placeLamp))
     const bulbs = instanced(bulbGeometry(), neonMaterial, scatter.lamps, placeLamp)
+    // dimmer in the afternoon, warmer and brighter towards the sunset
+    const warm = new THREE.Color('#FF9C4A')
+    scatter.lamps.forEach((l, i) =>
+    {
+        const dusk = duskAt(l.x, l.z)
+        bulbs.setColorAt(i, new THREE.Color(1, 1, 1).lerp(warm, dusk * 0.55).multiplyScalar(0.55 + 0.8 * dusk))
+    })
     bulbs.castShadow = false
     group.add(bulbs)
 

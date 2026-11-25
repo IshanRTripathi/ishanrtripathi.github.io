@@ -24,7 +24,7 @@ On phones it plays best sideways: the left thumb anywhere on the left half is a 
 
 Everything people read is in [`src/content.js`](src/content.js): intro, projects, career stops, achievements and links. Add a project there and it gets a building, a sign, a marker and a spot on the GPS. The giant object on its roof comes from its `building` field (`tiffin`, `calculator`, `clock`, `phone`, `arcade`).
 
-If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
+If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light, lantern, fence or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
 
 ## Models
 
@@ -80,6 +80,7 @@ Three.js and Vite, no framework.
 
 - `src/core/geo.js`: the island is laid out on a flat map and wrapped onto a small planet. Everything is placed with map coordinates.
 - `src/world/`: terrain, roads, sea, sky, Art Deco buildings and city blocks, neon, palms (instanced, swaying in the wind), traffic, markers, boats, birds, the car and scooter.
+- `src/world/details.js`: the evening. Lanterns with pools of light along the boardwalk, the beach road and round the chai shack, fences, stepping stones, flower beds along the sidewalks, grass and fireflies. `duskAt()` in `layout.js` says how far into the evening each spot is, so windows light up and street lights get warmer the closer you get to the sunset beach.
 - `src/player/`: the character, walking and driving, and the follow camera.
 - `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.
 

@@ -125,6 +125,7 @@ class App
         ])
         this.occlusion = occlusion
         this.world = new World(this.scene)
+        this.world.renderer = this.renderer
         this.world.sky.userData.uniforms.uSun.value.copy(SUN_DIRECTION)
         this.player = new Player(this.world, this.input)
         this.rig = new CameraRig(this.camera, this.input)
