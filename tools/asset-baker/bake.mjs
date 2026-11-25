@@ -59,14 +59,39 @@ const RECIPE = {
     'parked-3': { src: CAR + 'hatchback-sports.glb', repaint: paint(green, '#C4A8F0', 0.5), fit: [ 1.9, 1.6, 4.3 ], manifest: { kind: 'parked' } },
     'palm-curved': { src: NATURE + 'PalmTree_1.obj', linear: true, leaves: { sat: 0.18, lift: 0.14 }, height: 1, manifest: { kind: 'instanced', target: 'palm', height: 7.6 }, ratio: 0.25, error: 0.02 },
     'palm-straight': { src: NATURE + 'PalmTree_3.obj', linear: true, leaves: { sat: 0.18, lift: 0.14 }, height: 1, manifest: { kind: 'instanced', target: 'royal', height: 8.4 }, ratio: 0.25, error: 0.02 },
-    cruise: { src: 'ships/Ships by @Quaternius/OBJ/CruiseShip.obj', linear: true, height: 1, manifest: { kind: 'scenery', length: 46 } }
+    cruise: { src: 'ships/Ships by @Quaternius/OBJ/CruiseShip.obj', linear: true, height: 1, manifest: { kind: 'scenery', length: 46 } },
+    // the people on the road: the same rig as the character, with each clothing part kept as its own
+    // material, so a season's outfit is set in the game by colour. Skin, hair and shoes stay as they are.
+    'npc-female': {
+        type: 'character',
+        src: 'chars/Ultimate Animated Character Pack - Nov 2019/FBX/Casual_Female.fbx',
+        parts: true,
+        colors: { Skin: '#B07B56', Face: '#2A211D', Hair: '#3B2A22', Shirt: '#F4B6C2', Pants: '#F3E6C9', Belt: '#3A2A20' },
+        keep: [ 'Idle', 'Walk', 'SitDown', 'StandUp' ],
+        manifest: { kind: 'npc', fit: [ 1.2, 1.7, 1.2 ], yaw: 0, walkStride: 1.9 },
+        ratio: 1
+    },
+    'npc-male': {
+        type: 'character',
+        src: 'chars/Ultimate Animated Character Pack - Nov 2019/FBX/Casual_Male.fbx',
+        parts: true,
+        colors: { Skin: '#B07B56', Face: '#2A211D', Hair: '#231A17', Shirt: '#9ED5A6', Pants: '#B69D74', Belt: '#3A2A20' },
+        keep: [ 'Idle', 'Walk', 'SitDown', 'StandUp' ],
+        manifest: { kind: 'npc', fit: [ 1.2, 1.75, 1.2 ], yaw: 0, walkStride: 1.9 },
+        ratio: 1
+    }
 }
+
+// ONLY=npc-female,npc-male bakes just those entries and keeps the rest of the manifest as it was
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null
+const WANTED = (name) => !ONLY || ONLY.includes(name)
 
 // ------------------------------------------------------------------ download + unzip
 async function fetchPacks()
 {
     for(const [ name, file ] of Object.entries(PACKS))
     {
+        if(ONLY && name !== 'chars') continue
         const dir = path.join(CACHE, name)
         if(fs.existsSync(dir)) continue
         console.log('downloading', decodeURIComponent(file))
@@ -128,10 +153,11 @@ async function main()
     fs.mkdirSync(MODELS, { recursive: true })
     for(const [ name, r ] of Object.entries(RECIPE))
     {
+        if(!WANTED(name)) continue
         console.log('baking', name)
         const glb = await page.evaluate(async ({ r }) =>
         {
-            if(r.type === 'character') return (await window.conv.character('/dl/' + r.src, { colors: r.colors, keep: r.keep })).glb
+            if(r.type === 'character') return (await window.conv.character('/dl/' + r.src, { colors: r.colors, keep: r.keep, parts: !!r.parts })).glb
             return (await window.conv.bakeStatic('/dl/' + r.src, r)).glb
         }, { r })
         fs.writeFileSync(path.join(MODELS, name + '.glb'), Buffer.from(glb, 'base64'))
@@ -143,11 +169,15 @@ async function main()
     // compress: fresh originals, per-model simplification
     for(const [ name, r ] of Object.entries(RECIPE))
     {
+        if(!WANTED(name)) continue
         fs.rmSync(path.join(ROOT, 'tripo/originals', name + '.glb'), { force: true })
         execFileSync('node', [ path.join(ROOT, 'scripts/optimize-models.mjs'), name, '--ratio', String(r.ratio ?? 1), '--error', String(r.error ?? 0.002) ], { stdio: 'inherit' })
     }
 
-    const json = { models: manifest }
+    // a partial bake keeps the entries it did not touch
+    const previous = ONLY && fs.existsSync(path.join(MODELS, 'manifest.json')) ? JSON.parse(fs.readFileSync(path.join(MODELS, 'manifest.json'), 'utf8')).models : []
+    const kept = previous.filter((m) => !manifest.some((b) => b.id === m.id))
+    const json = { models: ONLY ? [ ...kept, ...manifest ] : manifest }
     fs.writeFileSync(path.join(MODELS, 'manifest.json'), JSON.stringify(json, null, 2) + '\n')
     console.log(`wrote ${manifest.length} models and public/models/manifest.json`)
 }

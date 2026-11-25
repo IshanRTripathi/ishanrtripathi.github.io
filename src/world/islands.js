@@ -14,6 +14,7 @@ export const AIRSTRIP = { length: 70, width: 12 }
 export const ISLANDS = [
     {
         id: 'jungle', name: 'Jungle Cove', theme: 'jungle', seed: 11,
+        blurb: 'Palms, rainforest and a stilt hut on the beach',
         at: polar(176, 0.3), radius: 46,
         // coast waves: [amplitude, whole-number frequency, phase]
         waves: [ [ 2.2, 3, 0.4 ], [ 1.2, 6, 1.9 ] ],
@@ -24,6 +25,7 @@ export const ISLANDS = [
     },
     {
         id: 'frost', name: 'Frost Peak', theme: 'frost', seed: 23,
+        blurb: 'Snowy pines, a log cabin and a warm window',
         at: polar(178, 2.4), radius: 48,
         waves: [ [ 1.8, 2, 2.6 ], [ 1.0, 5, 0.9 ] ],
         hills: 2.2, peak: 9,
@@ -33,6 +35,7 @@ export const ISLANDS = [
     },
     {
         id: 'dunes', name: 'Dune Oasis', theme: 'desert', seed: 37,
+        blurb: 'Sand dunes, cacti and an oasis with a tent',
         at: polar(174, 4.6), radius: 46,
         waves: [ [ 1.6, 4, 1.2 ], [ 0.9, 7, 0.3 ] ],
         hills: 1.4, peak: 0,

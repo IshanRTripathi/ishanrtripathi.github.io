@@ -244,7 +244,7 @@ window.conv = {
     },
 
     // rigged character: recolour materials by name, clean up clip names
-    async character(url, { colors = {}, keep = null } = {})
+    async character(url, { colors = {}, keep = null, parts = false } = {})
     {
         const { object, animations } = await load(url)
         // one skinned mesh, one material: each part's colour goes into the vertices
@@ -252,6 +252,32 @@ window.conv = {
         {
             if(!c.isMesh) return
             const mats = Array.isArray(c.material) ? c.material : [ c.material ]
+            // parts: each clothing part keeps its own named material, so the game can dress the same
+            // figure in other colours (a season's outfit) without another model
+            if(parts)
+            {
+                // the triangles are regrouped by material, so each material is one draw, not one per
+                // little group the FBX split it into
+                const g = c.geometry
+                const index = g.index ? Array.from(g.index.array) : Array.from({ length: g.attributes.position.count }, (_, i) => i)
+                const triMat = new Uint16Array(index.length / 3)
+                const groups = g.groups.length ? g.groups : [ { start: 0, count: index.length, materialIndex: 0 } ]
+                for(const group of groups) for(let i = group.start; i < group.start + group.count; i += 3) triMat[i / 3] = group.materialIndex
+                const next = []
+                const grouped = []
+                for(let m = 0; m < mats.length; m++)
+                {
+                    const start = next.length
+                    for(let t = 0; t < triMat.length; t++) if(triMat[t] === m) next.push(index[t * 3], index[t * 3 + 1], index[t * 3 + 2])
+                    if(next.length > start) grouped.push({ start, count: next.length - start, materialIndex: m })
+                }
+                g.setIndex(next)
+                g.clearGroups()
+                for(const gr of grouped) g.addGroup(gr.start, gr.count, gr.materialIndex)
+                c.material = mats.map((m) => new THREE.MeshStandardMaterial({ name: m.name, color: colors[m.name] || (m.color ? '#' + m.color.getHexString() : '#ffffff'), roughness: 0.85, metalness: 0 }))
+                if(c.isSkinnedMesh) c.normalizeSkinWeights()
+                return
+            }
             const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry
             const count = g.attributes.position.count
             const col = new Float32Array(count * 3)

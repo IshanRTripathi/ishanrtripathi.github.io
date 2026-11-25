@@ -89,6 +89,30 @@
       "file": "cruise.glb",
       "kind": "scenery",
       "length": 46
+    },
+    {
+      "id": "npc-female",
+      "file": "npc-female.glb",
+      "kind": "npc",
+      "fit": [
+        1.2,
+        1.7,
+        1.2
+      ],
+      "yaw": 0,
+      "walkStride": 1.9
+    },
+    {
+      "id": "npc-male",
+      "file": "npc-male.glb",
+      "kind": "npc",
+      "fit": [
+        1.2,
+        1.75,
+        1.2
+      ],
+      "yaw": 0,
+      "walkStride": 1.9
     }
   ]
 }
