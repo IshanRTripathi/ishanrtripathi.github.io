@@ -1,16 +1,66 @@
 import * as THREE from 'three'
-import { surfacePoint, frameMatrix } from '../core/geo.js'
+import { surfacePoint, frameQuaternion } from '../core/geo.js'
 import { heightAt } from './terrain.js'
 import { Kit, clayMaterial } from '../models/kit.js'
-import { neonMaterial } from './neon.js'
 
-// The runway: dark asphalt laid on the ground the terrain flattened for it,
-// white centre dashes, neon edge lights, green and red thresholds at the ends,
-// and a windsock by the near end. Everything follows the planet's curve.
+// Every airstrip, the main one and one on each island: dark asphalt laid on the
+// ground the terrain flattened for it, white centre dashes and bars at the ends,
+// runway lights that run in a chase along the strip (brighter at night), green and
+// red thresholds, and a windsock whose sleeve swings with the wind. Everything
+// follows the planet's curve.
 
 const ASPHALT = '#4A4D59'
 const PAINT = '#FFF6EC'
 const LIFT = 0.12
+const YELLOW = new THREE.Color('#FFE45E')
+const GREEN = new THREE.Color('#6CFF8E')
+const RED = new THREE.Color('#FF2E4D')
+
+// shared by every airstrip, so one update drives them all: the clock, how dark it is,
+// and how many pixels a metre of light is on screen
+export const airstripUniforms = { uTime: { value: 0 }, uNight: { value: 0 }, uScale: { value: 800 } }
+
+// the wind as an angle: a slow sway with a quicker flutter on top
+export function windAngle(time)
+{
+    return 0.9 * Math.sin(time * 0.21) + 0.35 * Math.sin(time * 0.67 + 1.3)
+}
+
+// a soft dot of light; each one flashes in turn along the strip, so the lights run like a chase
+const lightMaterial = new THREE.ShaderMaterial({
+    uniforms: airstripUniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */`
+        attribute vec3 aColor;
+        attribute float aSeq;
+        uniform float uScale;
+        varying vec3 vColor;
+        varying float vSeq;
+        void main()
+        {
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * mv;
+            gl_PointSize = clamp(0.45 * uScale / -mv.z, 2.0, 16.0);
+            vColor = aColor;
+            vSeq = aSeq;
+        }`,
+    fragmentShader: /* glsl */`
+        uniform float uTime;
+        uniform float uNight;
+        varying vec3 vColor;
+        varying float vSeq;
+        void main()
+        {
+            float d = length(gl_PointCoord - 0.5);
+            float core = smoothstep(0.5, 0.0, d);
+            float chase = 0.5 + 0.5 * sin(uTime * 3.4 - vSeq);
+            float level = mix(0.5, 1.0, uNight) * (0.3 + 0.7 * chase * chase);
+            gl_FragColor = vec4(vColor * level * 2.4, core * level);
+            #include <colorspace_fragment>
+        }`
+})
 
 export function buildAirstrip(runway)
 {
@@ -50,7 +100,8 @@ export function buildAirstrip(runway)
         const b = a + 1
         const c = a + 2
         const d = a + 3
-        indices.push(a, c, b, b, c, d)
+        // wound so the faces point up, out of the ground (the other way round, they are culled from above)
+        indices.push(a, b, c, b, d, c)
     }
     const asphaltGeo = new THREE.BufferGeometry()
     asphaltGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
@@ -67,7 +118,8 @@ export function buildAirstrip(runway)
         const corners = [
             [ -along, -across ], [ along, -across ], [ along, across ], [ -along, across ]
         ].map(([ u, w ]) => ({ x: cx + t.x * u + n.x * w, z: cz + t.z * u + n.z * w }))
-        for(const k of [ 0, 1, 2, 0, 2, 3 ])
+        // the same winding as the asphalt, so the paint faces up too
+        for(const k of [ 0, 2, 1, 0, 3, 2 ])
         {
             const v = lay(corners[k].x, corners[k].z, LIFT + 0.02)
             paint.push(v.x, v.y, v.z)
@@ -101,52 +153,61 @@ export function buildAirstrip(runway)
         group.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: PAINT, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })))
     }
 
-    // lights and a windsock, in one clay and one neon mesh
-    const clay = new Kit()
-    const glow = new Kit()
-    const _m = new THREE.Matrix4()
-    const place = (kit, x, z, yaw, lift) =>
+    // the runway lights: a row down each side every 9 metres, and the thresholds
+    const lights = { positions: [], colors: [], seq: [] }
+    const light = (x, z, color, seq) =>
     {
-        frameMatrix(x, z, yaw, heightAt(x, z) + lift, 1, _m)
-        kit.stack.push(_m.clone())
-        return () => kit.stack.pop()
+        const v = lay(x, z, 0.35)
+        lights.positions.push(v.x, v.y, v.z)
+        lights.colors.push(color.r, color.g, color.b)
+        lights.seq.push(seq)
     }
-    // edge lights every 9 metres, down both sides
     for(let i = 0; i < pts.length; i++)
     {
         const { n } = frame(i)
-        for(const side of [ -1, 1 ])
-        {
-            const x = pts[i].x + n.x * (hw + 0.6) * side
-            const z = pts[i].z + n.z * (hw + 0.6) * side
-            const pop = place(glow, x, z, 0, 0.35)
-            glow.sphere(0.2, '#FFE45E', {}, 1)
-            pop()
-        }
+        for(const side of [ -1, 1 ]) light(pts[i].x + n.x * (hw + 0.6) * side, pts[i].z + n.z * (hw + 0.6) * side, YELLOW, i * 0.55)
     }
     // thresholds: green at the take-off end, red at the far end
-    for(const [ i, color ] of [ [ 0, '#6CFF8E' ], [ pts.length - 1, '#FF2E4D' ] ])
+    for(const [ i, color ] of [ [ 0, GREEN ], [ pts.length - 1, RED ] ])
     {
         const { n, t } = frame(i)
-        for(let k = -hw; k <= hw + 0.01; k += 2)
-        {
-            const pop = place(glow, pts[i].x + n.x * k + t.x * 1.2, pts[i].z + n.z * k + t.z * 1.2, 0, 0.3)
-            glow.sphere(0.18, color, {}, 1)
-            pop()
-        }
+        for(let k = -hw; k <= hw + 0.01; k += 2) light(pts[i].x + n.x * k + t.x * 1.2, pts[i].z + n.z * k + t.z * 1.2, color, 0)
     }
-    // a windsock by the near end: a pole, and a striped sleeve that streams with the wind
+    const lightGeo = new THREE.BufferGeometry()
+    lightGeo.setAttribute('position', new THREE.Float32BufferAttribute(lights.positions, 3))
+    lightGeo.setAttribute('aColor', new THREE.Float32BufferAttribute(lights.colors, 3))
+    lightGeo.setAttribute('aSeq', new THREE.Float32BufferAttribute(lights.seq, 1))
+    group.add(new THREE.Points(lightGeo, lightMaterial))
+
+    // a windsock by the near end: a pole, and a striped sleeve on top that swings to point downwind
+    const windsock = new THREE.Group()
+    windsock.name = 'windsock'
     {
         const { n, t } = frame(0)
         const x = pts[0].x - n.x * (hw + 3.2) - t.x * 2
         const z = pts[0].z - n.z * (hw + 3.2) - t.z * 2
-        const pop = place(clay, x, z, 0, 0)
-        clay.cyl(0.05, 0.07, 3.6, 6, '#F3EEE6', { y: 1.8 })
-        clay.cone(0.26, 1.6, 8, '#FF8C42', { y: 3.2, rx: Math.PI / 2, rz: 0.3, center: true, sz: 1 })
-        clay.box(0.2, 0.06, 1.6, '#FFF6EC', { y: 3.2, z: 0.8, rx: 0.05 })
-        pop()
+        windsock.position.copy(surfacePoint(x, z, heightAt(x, z)))
+        windsock.quaternion.copy(frameQuaternion(x, z, 0))
     }
-    if(clay.parts.length) group.add(clay.mesh(clayMaterial))
-    if(glow.parts.length) group.add(new THREE.Mesh(glow.geometry(), neonMaterial))
+    const pole = new Kit()
+    pole.cyl(0.05, 0.07, 3.6, 6, '#F3EEE6', { y: 1.8 })
+    windsock.add(pole.mesh(clayMaterial))
+    const sleeve = new THREE.Group()
+    sleeve.position.y = 3.2
+    const cloth = new Kit()
+    cloth.cone(0.26, 1.6, 8, '#FF8C42', { rx: Math.PI / 2, rz: 0.3, center: true, sz: 1 })
+    cloth.box(0.2, 0.06, 1.6, '#FFF6EC', { z: 0.8, rx: 0.05 })
+    sleeve.add(cloth.mesh(clayMaterial))
+    windsock.add(sleeve)
+    group.add(windsock)
+    group.userData.sleeve = sleeve
+
     return group
+}
+
+// the windsock turns with the wind; the lights follow the shared clock (see airstripUniforms)
+export function animateAirstrip(group, time)
+{
+    const sleeve = group.userData.sleeve
+    if(sleeve) sleeve.rotation.y = windAngle(time)
 }

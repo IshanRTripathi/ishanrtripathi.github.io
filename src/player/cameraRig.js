@@ -126,6 +126,12 @@ export class CameraRig
         return Math.abs(dx * fz - dz * fx) < c.hw + 0.1 && Math.abs(dx * fx + dz * fz) < c.hd + 0.1
     }
 
+    // after a jump: the camera goes straight to where the player is, instead of sliding there
+    snap()
+    {
+        this.smoothed = null
+    }
+
     startFly(duration = 3.6)
     {
         this.mode = 'fly'

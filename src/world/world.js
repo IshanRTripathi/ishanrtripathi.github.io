@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { R, frameQuaternion, frameMatrix, surfacePoint, mapToDir } from '../core/geo.js'
 import { layout } from './layout.js'
-import { heightAt, padHeight } from './terrain.js'
+import { heightAt, padHeight, clearDistance } from './terrain.js'
 import { scatter } from './scatter.js'
 import { createTerrainMesh, createPlanetCore } from './terrainMesh.js'
 import { createWater } from './water.js'
@@ -17,7 +17,8 @@ import { Traffic } from './traffic.js'
 import { Markers } from './markers.js'
 import { Birds } from './birds.js'
 import { createDetails, updateDetails } from './details.js'
-import { buildAirstrip } from './airstrip.js'
+import { buildAirstrip, animateAirstrip, airstripUniforms } from './airstrip.js'
+import { ISLANDS, islandCoastRadius } from './islands.js'
 import { buildPlane } from './plane.js'
 import { buildIslandStructures } from './islandBuildings.js'
 import { Flight } from '../player/flight.js'
@@ -68,6 +69,8 @@ export class World
         this.cullables = [] // objects hidden when behind the planet's curve
         this.boats = []
         this.vehicles = [] // everything you can get into
+        this.airstrips = [] // { id, name, runway, group }: the city's and each island's
+        this.night = 0 // 0 (day) .. 1 (night): the runway lights brighten as it gets dark
 
         this.sky = createSky()
         scene.add(this.sky)
@@ -146,23 +149,19 @@ export class World
         this.addVehicle({ id: 'scooter', kind: 'scooter', model: scooter, spot: scooterSpot, radius: 0.7, maxSpeed: 11, reverse: 3, accel: 2.2, steer: 1.7, seat: new THREE.Vector3(0, 0.2, -0.32), label: 'Ride the scooter', box: { hw: 0.4, hd: 1.0 } })
         this.scooter = scooter
 
-        // the airstrip, and the plane parked at its near end
-        this.airstrip = buildAirstrip(layout.runway)
-        scene.add(this.airstrip)
-        const planeModel = buildPlane()
-        const flight = new Flight(planeModel)
-        const start = layout.runway.start
-        flight.spawn = { x: start.x, z: start.z, yaw: start.yaw }
-        flight.reset(start.x, start.z, start.yaw)
-        const planeCollider = { type: 'box', x: start.x, z: start.z, yaw: start.yaw, hw: 1.3, hd: 2.4, vehicle: 'plane' }
-        this.colliders.push(planeCollider)
-        this.vehicles.push({
-            id: 'plane', kind: 'plane', model: planeModel, flight, x: start.x, z: start.z, yaw: start.yaw,
-            collider: planeCollider, radius: 2, box: { hw: 4.2, hd: 4.2 }, seat: planeModel.seat,
-            label: 'Fly the plane', hideRider: true, maxSpeed: 36, reverse: 0, accel: 1, steer: 1
+        // the airstrips: the city's, and one on each island. Each has a plane parked at its
+        // near end, ready to fly, and boats moored offshore of the islands
+        const strips = [ { id: 'city', name: 'City airstrip', runway: layout.runway } ]
+        for(const island of ISLANDS) strips.push({ id: island.id, name: island.name, runway: island.runway })
+        this.airstrips = strips.map(({ id, name, runway }) =>
+        {
+            const group = buildAirstrip(runway)
+            scene.add(group)
+            this.cullables.push({ object: group, x: runway.mid.x, z: runway.mid.z, radius: runway.length / 2 })
+            return { id, name, runway, group }
         })
-        scene.add(planeModel.root)
-        flight.apply(planeModel.root)
+        for(const strip of this.airstrips) this.addPlane(strip.id === 'city' ? 'plane' : `plane-${strip.id}`, strip.runway)
+        for(const island of ISLANDS) this.moorBoats(island)
 
         // traffic on the loop road
         this.traffic = new Traffic(scatter.loop, 5)
@@ -191,6 +190,45 @@ export class World
         place(v.model.root, v.x, v.z, v.yaw, heightAt(v.x, v.z) + 0.05)
         this.scene.add(v.model.root)
         this.vehicles.push(v)
+    }
+
+    // a plane parked at an airstrip's near end, facing down the strip, ready to fly
+    addPlane(id, runway)
+    {
+        const model = buildPlane()
+        const flight = new Flight(model)
+        const start = runway.start
+        flight.spawn = { x: start.x, z: start.z, yaw: start.yaw }
+        flight.reset(start.x, start.z, start.yaw)
+        const collider = { type: 'box', x: start.x, z: start.z, yaw: start.yaw, hw: 1.3, hd: 2.4, vehicle: id }
+        this.colliders.push(collider)
+        this.vehicles.push({
+            id, kind: 'plane', model, flight, x: start.x, z: start.z, yaw: start.yaw,
+            collider, radius: 2, box: { hw: 4.2, hd: 4.2 }, seat: model.seat,
+            label: 'Fly the plane', hideRider: true, maxSpeed: 36, reverse: 0, accel: 1, steer: 1
+        })
+        this.scene.add(model.root)
+        flight.apply(model.root)
+    }
+
+    // two boats moored offshore of an island, on opposite sides, clear of its airstrip
+    moorBoats(island)
+    {
+        const sides = [ { k: 0, kind: 'yacht' }, { k: 3, kind: 'speedboat' } ]
+        for(const { k, kind } of sides)
+        {
+            const phi = k * Math.PI / 3 + 0.4
+            const r = islandCoastRadius(island, phi) + 6.5
+            const x = island.at.x + Math.cos(phi) * r
+            const z = island.at.z + Math.sin(phi) * r
+            if(clearDistance(x, z) < 12) continue
+            const boat = createBoat(kind)
+            place(boat, x, z, phi + Math.PI / 2, 0)
+            boat.userData.base = boat.position.clone()
+            boat.userData.baseQuaternion = boat.quaternion.clone()
+            this.scene.add(boat)
+            this.boats.push(boat)
+        }
     }
 
     // a traffic car close enough to get into (it stops for you if you stand in its way)
@@ -364,6 +402,16 @@ export class World
     update(time, dt, camera, obstacles = [])
     {
         this.water.userData.uniforms.uTime.value = time
+        // the airstrips: the lights run on the shared clock, the windsocks turn with the wind
+        airstripUniforms.uTime.value = time
+        airstripUniforms.uNight.value = this.night
+        // pixels per metre at one metre away, so a light keeps its size on screen
+        if(this.renderer)
+        {
+            const size = this.renderer.getDrawingBufferSize(this._size || (this._size = new THREE.Vector2()))
+            airstripUniforms.uScale.value = size.y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))
+        }
+        for(const strip of this.airstrips) animateAirstrip(strip.group, time)
         // from far out, over the whole planet, the small things are too small to see: skip them
         const far = camera.position.length() > R * 1.6
         if(far !== this.farView)

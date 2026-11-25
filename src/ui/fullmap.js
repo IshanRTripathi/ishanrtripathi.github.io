@@ -1,31 +1,54 @@
 import { drawCity } from './minimap.js'
 
-// The full city map: north-up, the whole island and the airstrip, with the
-// stops, the Game Arcade, the plane, and the route to the next stop. Opens with
-// M (or the Map button), and closes with M, Escape or the close button. While it
-// is open the city is paused, like the phone and the cards.
+// The full city map: north-up, the whole island and the islands, with the airstrips,
+// the stops, the Game Arcade, the planes, and the route to the next stop. Opens with
+// M, the Map button or a tap on the minimap, and closes with M, Escape or the close
+// button. Every airstrip is a place to fly to: tap it on the map, or use the buttons
+// under the map. While it is open the city is paused, like the phone and the cards.
 
 const EXTENT = 224 // metres from the middle of the main island to the edge of the map, far enough for the islands
 const SIZE = 720 // canvas pixels
+const TAP = 30 // how close, in canvas pixels, a tap has to be to a destination
 
 export class FullMap
 {
-    constructor({ canOpen, onOpen, onClose } = {})
+    constructor({ canOpen, onOpen, onClose, onJump } = {})
     {
         this.canOpen = canOpen || (() => true)
         this.onOpen = onOpen
         this.onClose = onClose
+        this.onJump = onJump
         this.open_ = false
         this.city = null
+        this.destinations = [] // { id, label, x, z, spot }: where you can jump to
+        this.hits = [] // where each destination is drawn, in canvas pixels, for taps
         this.root = document.querySelector('.fullmap')
         this.canvas = this.root.querySelector('.fullmap-canvas')
         this.ctx = this.canvas.getContext('2d')
+        this.jumps = this.root.querySelector('[data-jumps]')
         this.root.querySelector('[data-fullmap="close"]').addEventListener('click', () => this.close())
         this.root.querySelector('.fullmap-backdrop').addEventListener('click', () => this.close())
         window.addEventListener('keydown', (e) => this.onKey(e))
+        this.canvas.addEventListener('click', (e) => { const dest = this.destinationAt(e); if(dest) this.onJump?.(dest) })
+        this.canvas.addEventListener('pointermove', (e) => { this.canvas.style.cursor = this.destinationAt(e) ? 'pointer' : 'default' })
     }
 
     get isOpen() { return this.open_ }
+
+    // the places to fly to, and the buttons under the map that jump to them
+    setDestinations(list)
+    {
+        this.destinations = list
+        this.jumps.replaceChildren(...list.map((d) =>
+        {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'fullmap-jump'
+            button.textContent = d.label
+            button.addEventListener('click', () => this.onJump?.(d))
+            return button
+        }))
+    }
 
     toggle()
     {
@@ -67,7 +90,23 @@ export class FullMap
         }
     }
 
-    // scene: { player, stops, vehicles, runway, route, visited }
+    // the destination under a pointer, if any
+    destinationAt(e)
+    {
+        const rect = this.canvas.getBoundingClientRect()
+        const x = (e.clientX - rect.left) * (SIZE / rect.width)
+        const y = (e.clientY - rect.top) * (SIZE / rect.height)
+        let best = null
+        let bestD = TAP
+        for(const h of this.hits)
+        {
+            const d = Math.hypot(x - h.x, y - h.y)
+            if(d < bestD) { best = h.dest; bestD = d }
+        }
+        return best
+    }
+
+    // scene: { player, stops, vehicles, runways, route, visited }
     draw(scene)
     {
         if(!this.open_ || !this.city) return
@@ -79,19 +118,25 @@ export class FullMap
         ctx.clearRect(0, 0, SIZE, SIZE)
         ctx.drawImage(this.city, 0, 0, SIZE, SIZE)
 
-        // the airstrip, with a label
-        const rw = scene.runway
-        if(rw && rw.length)
+        // every airstrip: a dark line under a dashed cream one, so it reads on sand, grass and snow alike
+        const trace = (points) =>
         {
             ctx.beginPath()
-            rw.forEach((p, i) => (i ? ctx.lineTo(sx(p.x), sz(p.z)) : ctx.moveTo(sx(p.x), sz(p.z))))
-            ctx.strokeStyle = 'rgba(255, 246, 236, 0.85)'
-            ctx.lineWidth = 2
+            points.forEach((p, i) => (i ? ctx.lineTo(sx(p.x), sz(p.z)) : ctx.moveTo(sx(p.x), sz(p.z))))
+        }
+        for(const points of scene.runways || [])
+        {
+            trace(points)
+            ctx.strokeStyle = 'rgba(27, 21, 53, 0.7)'
+            ctx.lineWidth = 5
+            ctx.setLineDash([])
+            ctx.stroke()
+            trace(points)
+            ctx.strokeStyle = '#FFF6EC'
+            ctx.lineWidth = 2.5
             ctx.setLineDash([ 6, 5 ])
             ctx.stroke()
             ctx.setLineDash([])
-            const mid = rw[Math.floor(rw.length / 2)]
-            this.label('Airstrip', sx(mid.x), sz(mid.z) - 12, '#FFF6EC')
         }
 
         // the route to the next stop
@@ -107,8 +152,26 @@ export class FullMap
             ctx.setLineDash([])
         }
 
-        // the islands, by name
-        for(const isl of scene.islands || []) this.label(isl.label, sx(isl.x), sz(isl.z) - 40 * px, '#FFF6EC')
+        // the places to jump to: a marker and a name at each airstrip
+        this.hits = []
+        for(const d of this.destinations)
+        {
+            const x = sx(d.x)
+            const y = sz(d.z)
+            ctx.beginPath()
+            ctx.moveTo(x, y - 9)
+            ctx.lineTo(x + 9, y)
+            ctx.lineTo(x, y + 9)
+            ctx.lineTo(x - 9, y)
+            ctx.closePath()
+            ctx.fillStyle = '#FFF6EC'
+            ctx.fill()
+            ctx.lineWidth = 2
+            ctx.strokeStyle = '#1B1535'
+            ctx.stroke()
+            this.label(d.label, x, y - 20, '#FFF6EC')
+            this.hits.push({ x, y, dest: d })
+        }
 
         // stops: the projects, career, trophies, the arcade and the chai shack
         for(const s of scene.stops)
@@ -126,7 +189,7 @@ export class FullMap
             this.label(s.label, sx(s.x), sz(s.z) + 17, dim ? 'rgba(255,246,236,0.6)' : '#FFF6EC')
         }
 
-        // vehicles: the plane as a plane, the rest as dots
+        // vehicles: the planes as planes, the rest as dots
         for(const v of scene.vehicles)
         {
             if(v.kind === 'plane') this.planeIcon(sx(v.x), sz(v.z), v.yaw, v.label)

@@ -3,6 +3,7 @@
 import { createNoise2D, fbm, smoothstep, lerp, clamp } from '../core/noise.js'
 import { layout, coastRadius, beachWidth } from './layout.js'
 import { ISLANDS, islandSigned, islandHeight, nearestIsland } from './islands.js'
+import { clearZone } from './runways.js'
 
 const noise = createNoise2D(7)
 const noiseB = createNoise2D(19)
@@ -12,9 +13,10 @@ const CELL = 4
 const segIndex = new Map()
 const segments = []
 
-// the runway counts as a road for everything placed on the ground
+// the runways count as roads for everything placed on the ground: the main one, and one on each island
+const runways = [ layout.runway, ...ISLANDS.map((island) => island.runway) ].filter(Boolean)
 const strips = [ ...layout.paths ]
-if(layout.runway) strips.push({ points: layout.runway.points, halfWidth: layout.runway.width / 2, edge: layout.runway.width / 2 + 1, kind: 'road' })
+for(const runway of runways) strips.push({ points: runway.points, halfWidth: runway.width / 2, edge: runway.width / 2 + 1, kind: 'road' })
 
 for(const path of strips)
 {
@@ -129,20 +131,47 @@ const pads = layout.sites.map((site) =>
     return { x: site.x, z: site.z, radius, height: rawHeight(site.x, site.z) }
 })
 
-// The runway: a flat strip at one height, so the plane can roll along it
-const runwayPads = []
-if(layout.runway)
+// Each airstrip is a flat strip at one height, so the plane can roll along it: the
+// ground under it is levelled to the highest point of it, plus a little. The main
+// strip is levelled to the main island's ground, each island's to its own.
+function runwayPads(runway, ground)
 {
-    const pts = layout.runway.points
+    const pts = runway.points
     const samples = []
     for(let i = 0; i < pts.length - 1; i++)
         for(let k = 0; k < 4; k++)
             samples.push({ x: pts[i].x + (pts[i + 1].x - pts[i].x) * k / 4, z: pts[i].z + (pts[i + 1].z - pts[i].z) * k / 4 })
     samples.push(pts[pts.length - 1])
-    const top = Math.max(...samples.map((p) => rawHeight(p.x, p.z))) + 0.35
-    for(const p of samples) runwayPads.push({ x: p.x, z: p.z, radius: 6.5, height: top })
+    const top = Math.max(...samples.map((p) => ground(p.x, p.z))) + 0.35
+    // one pad at each corner point is enough: the pads overlap along the strip
+    return pts.map((p) => ({ x: p.x, z: p.z, radius: 6.5, height: top }))
 }
-const allPads = [ ...pads, ...runwayPads ]
+const allPads = [
+    ...pads,
+    ...(layout.runway ? runwayPads(layout.runway, rawHeight) : []),
+    ...ISLANDS.flatMap((island) => runwayPads(island.runway, landHeight))
+]
+
+// The clear ground in front of every airstrip (see runways.js): nothing is placed in it
+const clearZones = runways.map(clearZone)
+
+// how far a point is from the nearest clear ground (negative inside it)
+export function clearDistance(x, z)
+{
+    let best = 30
+    for(const zone of clearZones)
+    {
+        const d = segmentDistance(zone, x, z) - zone.half
+        if(d < best) best = d
+    }
+    return best
+}
+
+// how far a point is from anything placement must keep clear: the paths, and the airstrips' clear ground
+export function placementDistance(x, z)
+{
+    return Math.min(pathEdgeDistance(x, z), clearDistance(x, z))
+}
 
 // the ground of the main island, or of whichever island is higher here
 function landHeight(x, z)

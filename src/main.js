@@ -10,7 +10,6 @@ import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
 import { ArcadeHall } from './ui/arcade.js'
 import { FullMap } from './ui/fullmap.js'
-import { ISLANDS } from './world/islands.js'
 import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
@@ -96,7 +95,10 @@ class App
         this.arcade = new ArcadeHall({ onClose: () => this.canvas.focus({ preventScroll: true }) })
         ui.bindThrottle(this.input)
         // the city map, opened with M or the Map button; the city pauses behind it
-        this.fullMap = new FullMap({ canOpen: () => this.state === 'play' && !this.arcade.isOpen && !ui.modalOpen })
+        this.fullMap = new FullMap({
+            canOpen: () => this.state === 'play' && !this.arcade.isOpen && !ui.modalOpen,
+            onJump: (dest) => this.jump(dest)
+        })
         ui.onMap = () => this.fullMap.toggle()
         ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen
         this.wasFlying = false
@@ -148,6 +150,9 @@ class App
         this.occlusion = occlusion
         this.world = new World(this.scene)
         this.world.renderer = this.renderer
+        // the places the map can fly you to: the city's airstrip, and each island's
+        this.destinations = this.world.airstrips.map((strip) => this.destinationFor(strip))
+        this.fullMap.setDestinations(this.destinations)
         // time of day, seasons and weather
         this.environment = new Environment({
             scene: this.scene, renderer: this.renderer, lights: this.lights, sky: this.world.sky, fog: this.fog,
@@ -243,6 +248,40 @@ class App
             yaw: Math.atan2(start.tx, start.tz),
             outYaw: Math.atan2(out.tx, out.tz)
         }
+    }
+
+    // a place to fly to: beside the plane at the near end of an airstrip, facing down it
+    destinationFor(strip)
+    {
+        const { runway } = strip
+        const start = runway.start
+        // a few metres to the side of the plane, so you stand beside it, not in it
+        const side = { x: -runway.t.z, z: runway.t.x }
+        return {
+            id: strip.id,
+            label: strip.name,
+            x: runway.mid.x,
+            z: runway.mid.z,
+            spot: { x: start.x + side.x * 4.5, z: start.z + side.z * 4.5, yaw: start.yaw }
+        }
+    }
+
+    // the map's fast travel: close the map and stand beside the plane at that airstrip
+    jump(dest)
+    {
+        if(this.state !== 'play' || this.arcade.isOpen) return false
+        if(!this.player.jumpTo(dest.spot.x, dest.spot.z, dest.spot.yaw))
+        {
+            ui.showArea('Not yet', 'Land the plane and stop before you jump')
+            return false
+        }
+        // the camera turns to face the way you now face, down the strip, and goes straight there
+        this.rig.yaw = dest.spot.yaw
+        this.rig.snap()
+        this.fullMap.close()
+        this.ambience.ui('confirm')
+        ui.showArea(dest.label, 'Your plane is parked at the near end of the strip')
+        return true
     }
 
     explore(skip = false)
@@ -472,6 +511,7 @@ class App
 
         this.rig.update(dt, time, this.player)
         const obstacles = this.state === 'title' ? [] : [ { x: this.player.x, z: this.player.z } ]
+        this.world.night = this.environment.nightness ?? 0
         this.world.update(time, dt, this.camera, obstacles)
         this.world.markers.update(time, this.visited)
 
@@ -548,8 +588,7 @@ class App
             player: { x: p.x, z: p.z, yaw: p.yaw },
             stops: this.mapStops,
             vehicles: this.world.vehicles.map((v) => ({ kind: v.kind, x: v.x, z: v.z, yaw: v.yaw })),
-            islands: ISLANDS.map((i) => ({ x: i.at.x, z: i.at.z, label: i.name })),
-            runway: layout.runway.points,
+            runways: this.world.airstrips.map((strip) => strip.runway.points),
             route: this.mapRoute || [],
             visited: this.visited
         })

@@ -2,6 +2,7 @@
 // Pure data + math: it is shared by the renderer and by scripts/check-world.mjs.
 
 import { projects } from '../content.js'
+import { makeRunway } from './runways.js'
 
 // ------------------------------------------------------------------ coast
 // The sunset bay faces this map angle. The sun sits above it, so the walk
@@ -205,21 +206,7 @@ function buildRunway()
     const mid = polar(RUNWAY.radius, RUNWAY.angle)
     // the tangent to the ring: the way round the island
     const t = { x: -Math.sin(RUNWAY.angle), z: Math.cos(RUNWAY.angle) }
-    const points = []
-    for(let i = 0; i <= 14; i++)
-    {
-        const s = -RUNWAY.length / 2 + RUNWAY.length * i / 14
-        points.push({ x: mid.x + t.x * s, z: mid.z + t.z * s })
-    }
-    const a = points[0]
-    const b = points[1]
-    return {
-        points,
-        width: RUNWAY.width,
-        // the plane starts at the near end, pointing down the strip
-        start: { x: a.x, z: a.z, yaw: Math.atan2(b.x - a.x, b.z - a.z) },
-        end: points[points.length - 1]
-    }
+    return makeRunway(mid, t, RUNWAY.length, RUNWAY.width)
 }
 
 function offsetFrom(p, side, distance)

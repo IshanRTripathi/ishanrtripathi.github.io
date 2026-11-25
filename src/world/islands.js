@@ -1,15 +1,20 @@
 import { createNoise2D, fbm, smoothstep } from '../core/noise.js'
+import { makeRunway, clearZone, distanceToSegment, CLEAR } from './runways.js'
 
-// The islands around the planet. Each one has its own theme, its own coast and
-// its own hills. This file has no other dependencies, so the terrain, the water
-// shader, the scatter, the structures and the map can all read it.
+// The islands around the planet. Each one has its own theme, its own coast, its own
+// hills and its own airstrip. This file has no other dependencies (apart from the
+// runway helpers), so the terrain, the water shader, the scatter, the structures,
+// the map and the check script can all read it.
 
 const polar = (r, a) => ({ x: Math.cos(a) * r, z: Math.sin(a) * r })
+
+// every island's airstrip: a straight runway across the island
+export const AIRSTRIP = { length: 70, width: 12 }
 
 export const ISLANDS = [
     {
         id: 'jungle', name: 'Jungle Cove', theme: 'jungle', seed: 11,
-        at: polar(176, 0.3), radius: 30,
+        at: polar(176, 0.3), radius: 46,
         // coast waves: [amplitude, whole-number frequency, phase]
         waves: [ [ 2.2, 3, 0.4 ], [ 1.2, 6, 1.9 ] ],
         hills: 2.6, peak: 0,
@@ -19,7 +24,7 @@ export const ISLANDS = [
     },
     {
         id: 'frost', name: 'Frost Peak', theme: 'frost', seed: 23,
-        at: polar(178, 2.4), radius: 31,
+        at: polar(178, 2.4), radius: 48,
         waves: [ [ 1.8, 2, 2.6 ], [ 1.0, 5, 0.9 ] ],
         hills: 2.2, peak: 9,
         // a log cabin with a warm window, and snowy pines
@@ -28,7 +33,7 @@ export const ISLANDS = [
     },
     {
         id: 'dunes', name: 'Dune Oasis', theme: 'desert', seed: 37,
-        at: polar(174, 4.6), radius: 28,
+        at: polar(174, 4.6), radius: 46,
         waves: [ [ 1.6, 4, 1.2 ], [ 0.9, 7, 0.3 ] ],
         hills: 1.4, peak: 0,
         // an oasis pool with a tent beside it, and a few cacti and palms in the dunes
@@ -120,3 +125,57 @@ export function islandsGLSL()
     }
     return s + '  return best;\n}\n'
 }
+
+// Find where an island's airstrip goes: a straight line across the island, on the
+// flattest ground it can find, with the sea and the island's buildings kept well
+// away. It is found once, when this module loads, and kept as island.runway. The
+// numbers it was chosen by are kept as island.airstrip, for the check script.
+function findAirstrip(index)
+{
+    const island = ISLANDS[index]
+    const half = AIRSTRIP.length / 2
+    const spots = structureSpots(island)
+    let best = null
+    let fallback = null
+    for(let deg = 0; deg < 180; deg += 3)
+    {
+        const a = (deg * Math.PI) / 180
+        const t = { x: Math.cos(a), z: Math.sin(a) }
+        const n = { x: -t.z, z: t.x }
+        for(let off = -22; off <= 22; off += 1)
+        {
+            const mid = { x: island.at.x + n.x * off, z: island.at.z + n.z * off }
+            let lo = Infinity
+            let hi = -Infinity
+            let coast = Infinity
+            for(let s = -half - 3; s <= half + 3; s += 1)
+            {
+                const x = mid.x + t.x * s
+                const z = mid.z + t.z * s
+                const sg = islandSigned(island, x, z)
+                coast = Math.min(coast, sg)
+                if(Math.abs(s) <= half)
+                {
+                    const h = islandHeight(index, x, z, sg)
+                    lo = Math.min(lo, h)
+                    hi = Math.max(hi, h)
+                }
+            }
+            const runway = makeRunway(mid, t, AIRSTRIP.length, AIRSTRIP.width)
+            const zone = clearZone(runway)
+            let near = Infinity
+            for(const spot of spots) near = Math.min(near, distanceToSegment(zone, spot.x, spot.z))
+            const range = hi - lo
+            const candidate = { runway, range, coast, near }
+            const fits = coast >= 5 && range <= 3 && near >= CLEAR.half + 3
+            const cost = range + 0.05 * Math.abs(off)
+            if(fits && (!best || cost < best.cost)) best = { ...candidate, cost }
+            if(coast >= 3 && (!fallback || range < fallback.range)) fallback = candidate
+        }
+    }
+    const pick = best || fallback
+    island.runway = pick.runway
+    island.airstrip = { range: pick.range, coast: pick.coast, near: pick.near, fits: !!best }
+}
+
+ISLANDS.forEach((_, index) => findAirstrip(index))

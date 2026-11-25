@@ -4,7 +4,8 @@
 
 import { layout } from '../src/world/layout.js'
 import { scatter, siteRadius } from '../src/world/scatter.js'
-import { pathEdgeDistance, roadEdgeDistance, coastDistance } from '../src/world/terrain.js'
+import { pathEdgeDistance, roadEdgeDistance, coastDistance, clearDistance, heightAt } from '../src/world/terrain.js'
+import { ISLANDS, structureSpots } from '../src/world/islands.js'
 
 const problems = []
 const fail = (msg) => problems.push(msg)
@@ -140,6 +141,69 @@ for(const q of layout.runway.points)
     if(coastDistance(q.x, q.z) < 8) { fail(`runway runs too close to the sea at (${q.x.toFixed(1)}, ${q.z.toFixed(1)})`); break }
 for(const q of layout.runway.points)
     if(Math.hypot(q.x - layout.arcade.x, q.z - layout.arcade.z) < 12) { fail('the arcade is too close to the runway'); break }
+
+// every airstrip, the city's and each island's: flat, on dry land, with the spot you jump to on land
+const strips = [ { name: 'the city airstrip', runway: layout.runway } ]
+for(const island of ISLANDS) strips.push({ name: `the ${island.name} airstrip`, runway: island.runway })
+for(const { name, runway } of strips)
+{
+    const t = runway.t
+    const n = { x: -t.z, z: t.x }
+    const hw = runway.width / 2
+    let lo = Infinity
+    let hi = -Infinity
+    for(let s = -runway.length / 2; s <= runway.length / 2; s += 2)
+        for(const side of [ -hw * 0.8, 0, hw * 0.8 ])
+        {
+            const h = heightAt(runway.mid.x + t.x * s + n.x * side, runway.mid.z + t.z * s + n.z * side)
+            lo = Math.min(lo, h)
+            hi = Math.max(hi, h)
+        }
+    if(hi - lo > 0.35) fail(`${name} is not flat (${(hi - lo).toFixed(2)} m from end to end)`)
+    for(const q of runway.points)
+        if(coastDistance(q.x, q.z) < 4) { fail(`${name} runs too close to the sea at (${q.x.toFixed(1)}, ${q.z.toFixed(1)})`); break }
+    // the spot the map jumps you to: beside the plane at the near end, on land
+    const spot = { x: runway.start.x + n.x * 4.5, z: runway.start.z + n.z * 4.5 }
+    if(coastDistance(spot.x, spot.z) < 2) fail(`the jump spot for ${name} is in the sea`)
+}
+for(const island of ISLANDS)
+    if(!island.airstrip.fits) fail(`${island.name} has no good place for its airstrip (range ${island.airstrip.range.toFixed(2)} m, coast ${island.airstrip.coast.toFixed(2)} m)`)
+
+// nothing stands or grows in front of an airstrip: its clear ground is kept empty, the roads and the landmarks too
+const clear = (name, list) =>
+{
+    for(const item of list)
+        if(clearDistance(item.x, item.z) < 0) { fail(`${name} in front of an airstrip at (${item.x.toFixed(1)}, ${item.z.toFixed(1)})`); return }
+}
+clear('tree', scatter.trees)
+clear('bush', scatter.bushes)
+clear('flower', scatter.flowers)
+clear('rock', scatter.rocks)
+clear('street light', scatter.lamps)
+clear('street palm', scatter.streetPalms)
+clear('beach umbrella', scatter.umbrellas)
+clear('lifeguard tower', scatter.towers)
+clear('lantern', scatter.lanterns)
+clear('stepping stone', scatter.stones)
+clear('flower bed', scatter.borders)
+clear('grass tuft', scatter.tufts)
+clear('firefly', scatter.fireflies)
+clear('parked car', scatter.parkedCars)
+clear('traffic loop', scatter.loop)
+for(const f of scatter.fillers)
+    for(const a of [ -1, 0, 1 ])
+        for(const b of [ -1, 0, 1 ])
+        {
+            const x = f.x + Math.cos(f.yaw) * a * f.w / 2 + Math.sin(f.yaw) * b * f.d / 2
+            const z = f.z - Math.sin(f.yaw) * a * f.w / 2 + Math.cos(f.yaw) * b * f.d / 2
+            if(clearDistance(x, z) < 0) { fail(`city block in front of an airstrip at (${x.toFixed(1)}, ${z.toFixed(1)})`); break }
+        }
+for(const site of layout.sites)
+    for(const c of corners(site))
+        if(clearDistance(c.x, c.z) < 0) { fail(`${site.id} stands in front of an airstrip`); break }
+for(const island of ISLANDS)
+    for(const spot of structureSpots(island))
+        if(clearDistance(spot.x, spot.z) < 0) fail(`${island.name}: ${spot.kind} stands in front of its airstrip`)
 
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)
 if(spawnPath > 0) fail('spawn point is not on a path')
