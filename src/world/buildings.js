@@ -155,7 +155,7 @@ function decoBlock(b, o)
 {
     const { w, d, wall, trim = C.white, floors = 2, neon = NEON.pink, neon2 = NEON.cyan, dusk = 0, seed = 0 } = o
     // share of windows with the lights on
-    const lit = 0.12 + 0.6 * dusk
+    const lit = 0.3 + 0.5 * dusk
     const kit = b.clay
     const fh = 3.0
     const r = 0.75
@@ -207,7 +207,7 @@ function decoBlock(b, o)
     // ground floor shop front
     kit.box(w * 0.42, 1.7, 0.14, trim, { x: -w * 0.18, y: 1.0, z: d / 2 })
     kit.box(w * 0.38, 1.5, 0.18, C.glassLight, { x: -w * 0.18, y: 1.1, z: d / 2 + 0.01 })
-    if(b.glow && hash(seed, 9, 9) < 0.25 + 0.7 * dusk)
+    if(b.glow && hash(seed, 9, 9) < 0.4 + 0.55 * dusk)
         b.glow.box(w * 0.38 - 0.14, 1.36, 0.03, windowLight(dusk, hash(seed, 7, 7), 0.05), { x: -w * 0.18, y: 1.17, z: d / 2 + 0.115 })
     door(kit, w * 0.27, d / 2 + 0.02, { frame: trim })
     return top

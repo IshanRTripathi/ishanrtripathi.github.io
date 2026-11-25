@@ -228,6 +228,7 @@ function createFireflies(list)
         uniforms: {
             uTime: { value: 0 },
             uScale: { value: 800 },
+            uVisible: { value: 1 },
             uColor: { value: new THREE.Color('#E9FF8F') }
         },
         vertexShader: /* glsl */ `
@@ -256,12 +257,14 @@ function createFireflies(list)
             }`,
         fragmentShader: /* glsl */ `
             uniform vec3 uColor;
+            uniform float uVisible;
             varying float vLight;
             void main()
             {
+                if(uVisible < 0.01) discard;
                 float d = length(gl_PointCoord - 0.5) * 2.0;
                 float core = max(0.0, 1.0 - d);
-                float light = (core * core * core * core * 3.2 + core * core * 0.35) * vLight;
+                float light = (core * core * core * core * 3.2 + core * core * 0.35) * vLight * uVisible;
                 gl_FragColor = vec4(uColor * light, 1.0);
                 #include <colorspace_fragment>
             }`,
@@ -335,7 +338,7 @@ export function createDetails(scatter, colliders)
     group.add(borders)
 
     // grass tufts
-    const tuftMaterial = windMaterial(9)
+    const tuftMaterial = windMaterial(9, 1)
     tuftMaterial.side = THREE.DoubleSide
     const tufts = instanced(tuftGeometry(), tuftMaterial, scatter.tufts,
         (t, m) => frameMatrix(t.x, t.z, t.yaw, heightAt(t.x, t.z) - 0.03, t.scale, m),
@@ -359,6 +362,7 @@ export function createDetails(scatter, colliders)
         (p) => _c.copy(POOL_LIGHT).multiplyScalar(p.k))
     lightPools.renderOrder = 2
     group.add(lightPools)
+    group.userData.poolMaterial = poolMaterial
 
     // fireflies
     const fireflies = createFireflies(scatter.fireflies)

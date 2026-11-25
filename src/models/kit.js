@@ -1,15 +1,16 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { makeSeasonal } from '../world/seasonal.js'
 
 // A tiny modelling kit: every part is a primitive with a flat vertex colour.
 // All parts merge into one mesh, so a whole building is a single draw call.
 
-export const clayMaterial = new THREE.MeshStandardMaterial({
+export const clayMaterial = makeSeasonal(new THREE.MeshStandardMaterial({
     vertexColors: true,
     flatShading: true,
     roughness: 0.88,
     metalness: 0
-})
+}), { key: 'clay' })
 
 const _m = new THREE.Matrix4()
 const _q = new THREE.Quaternion()

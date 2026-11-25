@@ -1,8 +1,10 @@
 # ishanr.com
 
-My portfolio as a small open-world city at sunset, in the spirit of the neon Miami crime-game genre (original art, names and story, nothing borrowed from any one game). You walk out of my place, wave hi, and follow the GPS on the minimap past one pastel Art Deco building per project. Step into a glowing marker to open a project briefing, jump in the convertible or on the scooter, catch my career on the cinema poster, and end at the chai shack on the beach where I sit down and wave you over.
+My portfolio as a small open-world city, in the spirit of the neon Miami crime-game genre (original art, names and story, nothing borrowed from any one game). You walk out of my place, wave hi, and follow the GPS on the minimap past one pastel Art Deco building per project. Step into a glowing marker to open a project briefing, jump in the convertible, on the scooter or into any car in town, catch my career on the cinema poster, and end at the chai shack on the beach where I sit down and wave you over.
 
-The phone (P) has my contacts, career and trophies. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
+The city lives on its own clock. A day takes about eight minutes, with long, slow dawns and dusks: golden hour, sunset over the bay, a blue hour with the first stars, a moonlit night when the neon, windows and lanterns come into their own, and a pastel dawn. Every new day brings the next season (spring blossom, summer, autumn leaves, winter snow), and the weather changes every minute or two to suit it: clear skies, clouds, rain, thunderstorms with lightning, snowfall, morning fog.
+
+The phone (P) has my contacts, career, trophies and a Sky app to pick the time of day, season or weather by hand. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
 
 ![The city](public/social/share.png)
 
@@ -16,7 +18,9 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
-Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around.
+Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of a car or the scooter, Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E).
+
+To see a particular sky, add it to the address: `?time=dawn` (or `day`, `dusk`, `night`, or a fraction of the day like `0.8`), `?season=winter`, `?weather=storm` (`clear`, `cloudy`, `rain`, `storm`, `snow`, `fog`).
 
 On phones it plays best sideways: the left thumb anywhere on the left half is a joystick (push all the way to run, or to drive), the right thumb drags to look, and a big button bottom right does whatever is nearby (get in the car, open a project, stand up). Tapping Explore goes fullscreen and locks to landscape where the browser allows it (Android Chrome; iPhone Safari has no fullscreen for pages, so it just plays in the browser). Held upright, a hint suggests turning the phone, and can be dismissed. Phones also get a lower resolution cap and a smaller shadow map.
 
@@ -80,6 +84,7 @@ Three.js and Vite, no framework.
 
 - `src/core/geo.js`: the island is laid out on a flat map and wrapped onto a small planet. Everything is placed with map coordinates.
 - `src/world/`: terrain, roads, sea, sky, Art Deco buildings and city blocks, neon, palms (instanced, swaying in the wind), traffic, markers, boats, birds, the car and scooter.
+- `src/world/environment.js`: the clock, the seasons and the weather. It moves the sun (placed over wherever you are, so dawn and dusk happen at the same moment all over the tiny planet), blends the sky, light, fog and glow between night, blue hour, dawn, day and dusk, and greys it all over in bad weather. `seasonal.js` patches the materials so snow settles on whatever faces the sky, leaves turn and blossom comes out; `weather.js` has the rain, snow and lightning; `src/core/audio.js` makes the rain, wind, thunder, birds and crickets.
 - `src/world/details.js`: the evening. Lanterns with pools of light along the boardwalk, the beach road and round the chai shack, fences, stepping stones, flower beds along the sidewalks, grass and fireflies. `duskAt()` in `layout.js` says how far into the evening each spot is, so windows light up and street lights get warmer the closer you get to the sunset beach.
 - `src/player/`: the character, walking and driving, and the follow camera.
 - `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.

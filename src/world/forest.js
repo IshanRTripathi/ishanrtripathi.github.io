@@ -4,6 +4,7 @@ import { frameMatrix } from '../core/geo.js'
 import { heightAt } from './terrain.js'
 import { neonMaterial } from './neon.js'
 import { duskAt } from './layout.js'
+import { seasonalShader } from './seasonal.js'
 
 // Instanced trees and small props. Each type is one draw call.
 
@@ -24,9 +25,12 @@ float bayer4(vec2 p)
     return (m[i.x + i.y * 4] + 0.5) / 16.0;
 }`
 
-export function windMaterial(strength = 1)
+// foliage: how much the leaves change with the seasons (0 for flowers)
+export function windMaterial(strength = 1, foliage = 0)
 {
     const material = clayMaterial.clone()
+    // each strength compiles its own shader
+    material.customProgramCacheKey = () => `wind-${strength}-${foliage}`
     material.onBeforeCompile = (shader) =>
     {
         shader.uniforms.uTime = wind.uTime
@@ -68,6 +72,7 @@ export function windMaterial(strength = 1)
                 float fadeLine = (1.0 - smoothstep(1.4, 3.0, toLine)) * step(along, segLen - 0.9) * uFadeOn;
                 float fade = max(fadeNear, fadeLine * 0.9);
                 if(fade > bayer4(gl_FragCoord.xy)) discard;`)
+        seasonalShader(shader, { foliage })
     }
     return material
 }
@@ -231,8 +236,8 @@ export function createForest(scatter)
 {
     const group = new THREE.Group()
     group.name = 'forest'
-    const treeMaterial = windMaterial(1)
-    const palmMaterial = windMaterial(0.8)
+    const treeMaterial = windMaterial(1, 1)
+    const palmMaterial = windMaterial(0.8, 0.25)
     const geometries = { palm: palmGeometry(), royal: royalGeometry(), rain: rainGeometry(), slender: slenderGeometry() }
     const all = [ ...scatter.trees, ...scatter.streetPalms ]
 
@@ -249,7 +254,7 @@ export function createForest(scatter)
         group.add(mesh)
     }
 
-    const bushMaterial = windMaterial(2.5)
+    const bushMaterial = windMaterial(2.5, 1)
     const bushes = instanced(bushGeometry(), bushMaterial, scatter.bushes, (b, m) => frameMatrix(b.x, b.z, b.yaw, heightAt(b.x, b.z) - 0.05, b.scale, m))
     bushes.castShadow = false
     group.add(bushes)

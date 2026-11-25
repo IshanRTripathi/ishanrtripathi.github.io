@@ -10,7 +10,7 @@ import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
 import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
-import { createLights, SUN_DIRECTION } from './world/lights.js'
+import { createLights } from './world/lights.js'
 import { UI } from './ui/ui.js'
 import { projects } from './content.js'
 
@@ -39,7 +39,6 @@ function webglAvailable()
 }
 
 const FOG = new THREE.Color('#F5AE93')
-const FOG_SUNSET = new THREE.Color('#F28A7A')
 
 class App
 {
@@ -116,17 +115,31 @@ class App
             new Promise((resolve) => setTimeout(resolve, 3000))
         ]).catch(() => {})
 
-        const [ { World }, { Player }, { CameraRig }, { occlusion }, { Minimap } ] = await Promise.all([
+        const [ { World }, { Player }, { CameraRig }, { occlusion }, { Minimap }, { Environment } ] = await Promise.all([
             import('./world/world.js'),
             import('./player/player.js'),
             import('./player/cameraRig.js'),
             import('./world/forest.js'),
-            import('./ui/minimap.js')
+            import('./ui/minimap.js'),
+            import('./world/environment.js')
         ])
         this.occlusion = occlusion
         this.world = new World(this.scene)
         this.world.renderer = this.renderer
-        this.world.sky.userData.uniforms.uSun.value.copy(SUN_DIRECTION)
+        // time of day, seasons and weather
+        this.environment = new Environment({
+            scene: this.scene, renderer: this.renderer, lights: this.lights, sky: this.world.sky, fog: this.fog,
+            bloom: this.bloom, ambience: this.ambience, details: this.world.details, params
+        })
+        ui.bindSky({
+            state: () => this.environment.state,
+            set: (kind, value) =>
+            {
+                if(kind === 'time') this.environment.setTime(value)
+                if(kind === 'season') this.environment.setSeason(value)
+                if(kind === 'weather') this.environment.setWeather(value)
+            }
+        })
         this.player = new Player(this.world, this.input)
         this.rig = new CameraRig(this.camera, this.input)
         this.rig.titleShift = this.titleShift()
@@ -151,7 +164,9 @@ class App
 
         // compile shaders before the first frame anyone sees
         this.rig.update(0, 0, this.player)
+        this.environment.prepareCompile(true)
         this.renderer.compile(this.scene, this.camera)
+        this.environment.prepareCompile(false)
         this.renderer.setAnimationLoop(() => this.tick())
 
         if(params.has('debug')) window.app = this
@@ -408,17 +423,17 @@ class App
         const camDist = this.camera.position.length()
         const space = smoothstep(R * 1.25, R * 2.4, camDist)
         const focus = this.state === 'title' ? new THREE.Vector3(0, R, 0) : this.player.position
+        this.environment.update(dt, focus, { camera: this.camera, space, time })
         this.lights.update(focus)
         this.occlusion.uFadeOn.value = this.rig.mode === 'follow' ? 1 : 0
         this.occlusion.uFadeTarget.value.copy(this.player.position).addScaledVector(this.player.up, 1.1)
         const sky = this.world.sky.userData.uniforms
         sky.uUp.value.copy(this.rig.localUp)
         sky.uSpace.value = space
-        this.fog.near = THREE.MathUtils.lerp(60, 500, space)
-        this.fog.far = THREE.MathUtils.lerp(210, 1400, space)
-        // the low sun near the beach warms the haze
-        const sunLocal = SUN_DIRECTION.dot(this.rig.localUp)
-        this.fog.color.copy(FOG).lerp(FOG_SUNSET, smoothstep(0.55, 0.1, sunLocal) * 0.8)
+        this.fog.near = THREE.MathUtils.lerp(this.environment.fogNear, 500, space)
+        this.fog.far = THREE.MathUtils.lerp(this.environment.fogFar, 1400, space)
+        // the HUD shows the season, the time and the weather
+        if(Math.floor(time) !== Math.floor(time - dt)) ui.setSky(this.environment.label)
 
         if(this.state === 'play')
         {
