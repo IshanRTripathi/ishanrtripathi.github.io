@@ -5,7 +5,7 @@ import { drawCity } from './minimap.js'
 // M (or the Map button), and closes with M, Escape or the close button. While it
 // is open the city is paused, like the phone and the cards.
 
-const EXTENT = 136 // metres from the middle of the island to the edge of the map
+const EXTENT = 224 // metres from the middle of the main island to the edge of the map, far enough for the islands
 const SIZE = 720 // canvas pixels
 
 export class FullMap
@@ -106,6 +106,9 @@ export class FullMap
             ctx.stroke()
             ctx.setLineDash([])
         }
+
+        // the islands, by name
+        for(const isl of scene.islands || []) this.label(isl.label, sx(isl.x), sz(isl.z) - 40 * px, '#FFF6EC')
 
         // stops: the projects, career, trophies, the arcade and the chai shack
         for(const s of scene.stops)

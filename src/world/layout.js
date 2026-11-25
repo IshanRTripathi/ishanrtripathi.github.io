@@ -10,14 +10,14 @@ export const BAY_ANGLE = -0.62
 export const SUN_ELEVATION = 0.74 // radians above the horizon at the island centre
 
 export const COAST = {
-    base: 92,
+    base: 108,
     // amplitude, frequency, phase
     waves: [ [ 5.2, 2, 0.6 ], [ 3.9, 3, 2.1 ], [ 2.4, 5, 4.0 ], [ 1.4, 7, 1.3 ], [ 0.7, 11, 5.2 ] ],
     // headland for the lighthouse: [angle, width, height]
     bumps: [ [ 1.95, 0.22, 8 ], [ -2.55, 0.3, 3.8 ] ],
     // a cove cut in beside the lighthouse, so the boardwalk to it stays short: [angle, width, depth]
     // (the bay gets its own cove, so the road to the chai shack and the beach are exactly where they were)
-    coves: [ [ 1.95, 0.5, 32 ], [ BAY_ANGLE, 0.45, 32 ] ]
+    coves: [ [ 1.95, 0.5, 48 ], [ BAY_ANGLE, 0.45, 48 ] ]
 }
 
 function angleDelta(a, b)
@@ -373,12 +373,15 @@ export function buildLayout()
         const from = main.at(0.06)
         const to = main.at(0.765)
         const deg = Math.PI / 180
-        paths.push(new Path([
+        const cut = new Path([
             { x: from.x, z: from.z },
             polar(11.5, -40 * deg),
             polar(18, -78 * deg),
             { x: to.x, z: to.z }
-        ], ROAD_HALF))
+        ], ROAD_HALF)
+        // marked by name, not by its position in the list, since the other paths may change
+        cut.cut = true
+        paths.push(cut)
     }
 
     // spawn: just outside the studio door

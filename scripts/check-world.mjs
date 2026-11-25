@@ -120,6 +120,14 @@ for(const t of scatter.trees)
     for(const f of scatter.fillers)
         if(Math.hypot(t.x - f.x, t.z - f.z) < Math.hypot(f.w, f.d) / 2) { fail(`tree inside a city block at (${t.x.toFixed(1)}, ${t.z.toFixed(1)})`); break }
 
+// the traffic loop is one unbroken circuit (a jump would send cars piling up at the join)
+for(let i = 1; i < scatter.loop.length; i++)
+{
+    const a = scatter.loop[i - 1]
+    const b = scatter.loop[i]
+    if(Math.hypot(b.x - a.x, b.z - a.z) > 2) { fail(`traffic loop is broken at (${a.x.toFixed(1)}, ${a.z.toFixed(1)})`); break }
+}
+
 // traffic must stay on asphalt
 for(const p of scatter.loop)
     if(roadEdgeDistance(p.x, p.z) > 0) { fail('traffic loop leaves the road'); break }

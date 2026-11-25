@@ -19,6 +19,7 @@ import { Birds } from './birds.js'
 import { createDetails, updateDetails } from './details.js'
 import { buildAirstrip } from './airstrip.js'
 import { buildPlane } from './plane.js'
+import { buildIslandStructures } from './islandBuildings.js'
 import { Flight } from '../player/flight.js'
 import { projects, achievements, career, contact, arcade } from '../content.js'
 import { registry, sized } from '../models/registry.js'
@@ -78,13 +79,31 @@ export class World
         scene.add(createRoads())
 
         // city blocks, all in one mesh
-        const fillers = createFillers(scatter.fillers, (f) => frameMatrix(f.x, f.z, f.yaw, heightAt(f.x, f.z) - 0.15))
-        scene.add(fillers)
+        // city blocks, one merged mesh per 48 m cell, so the camera can skip the far ones
+        const blockCells = new Map()
+        for(const f of scatter.fillers)
+        {
+            const key = Math.floor(f.x / 48) + ',' + Math.floor(f.z / 48)
+            if(!blockCells.has(key)) blockCells.set(key, [])
+            blockCells.get(key).push(f)
+        }
+        this.blocks = []
+        for(const cell of blockCells.values())
+        {
+            const group = createFillers(cell, (f) => frameMatrix(f.x, f.z, f.yaw, heightAt(f.x, f.z) - 0.15))
+            this.blocks.push(group)
+            scene.add(group)
+        }
         for(const f of scatter.fillers)
             this.colliders.push({ type: 'box', x: f.x, z: f.z, yaw: f.yaw, hw: f.w / 2 + 0.2, hd: f.d / 2 + 0.2 })
 
         this.forest = createForest(scatter)
         scene.add(this.forest)
+        // the islands' landmarks: the hut, the cabin, the oasis and the tent
+        const landmarks = buildIslandStructures()
+        this.landmarks = landmarks.group
+        scene.add(landmarks.group)
+        this.colliders.push(...landmarks.colliders)
         for(const t of [ ...scatter.trees, ...scatter.streetPalms ])
             this.colliders.push({ type: 'circle', x: t.x, z: t.z, r: (t.type === 'rain' ? 0.6 : 0.35) * t.scale, thin: true })
         for(const l of scatter.lamps) this.colliders.push({ type: 'circle', x: l.x, z: l.z, r: 0.2, thin: true })
@@ -295,11 +314,16 @@ export class World
             const { id, kind, entry, object } = m
             if(kind === 'instanced' && m.geometry)
             {
-                const target = this.forest.userData.byType?.[entry.target]
-                if(target)
+                // every cell's mesh of that type takes the model
+                const targets = this.forest.userData.byType?.[entry.target] || []
+                if(targets.length)
                 {
-                    target.geometry = sized(m.geometry, { height: entry.height || 7 })
-                    target.computeBoundingSphere()
+                    const geometry = sized(m.geometry, { height: entry.height || 7 })
+                    for(const target of targets)
+                    {
+                        target.geometry = geometry
+                        target.computeBoundingSphere()
+                    }
                 }
             }
             else if(kind === 'scenery' && id === 'cruise' && m.geometry)
@@ -340,6 +364,13 @@ export class World
     update(time, dt, camera, obstacles = [])
     {
         this.water.userData.uniforms.uTime.value = time
+        // from far out, over the whole planet, the small things are too small to see: skip them
+        const far = camera.position.length() > R * 1.6
+        if(far !== this.farView)
+        {
+            this.farView = far
+            for(const g of [ this.forest, this.details, this.landmarks, ...(this.blocks || []) ]) if(g) g.visible = !far
+        }
         updateWind(time)
         this.sky.position.copy(camera.position)
 

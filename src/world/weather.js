@@ -49,7 +49,7 @@ function frameUniforms()
     }
 }
 
-export function createRain(count = 2600)
+export function createRain(count = 1300)
 {
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.BufferAttribute(seeds(count, 2), 3))
@@ -82,7 +82,7 @@ export function createRain(count = 2600)
             varying float vAlpha;
             void main()
             {
-                gl_FragColor = vec4(uColor, vAlpha * 0.6);
+                gl_FragColor = vec4(uColor, vAlpha * 0.38);
                 #include <colorspace_fragment>
             }`
     })

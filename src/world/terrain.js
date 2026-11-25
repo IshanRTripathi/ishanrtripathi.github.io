@@ -2,6 +2,7 @@
 
 import { createNoise2D, fbm, smoothstep, lerp, clamp } from '../core/noise.js'
 import { layout, coastRadius, beachWidth } from './layout.js'
+import { ISLANDS, islandSigned, islandHeight, nearestIsland } from './islands.js'
 
 const noise = createNoise2D(7)
 const noiseB = createNoise2D(19)
@@ -84,11 +85,20 @@ export function roadEdgeDistance(x, z)
 }
 
 // ------------------------------------------------------------------ coast
-export function coastDistance(x, z)
+// signed distance to the shore of the main island only: the placement of the main island uses this
+export function mainCoastDistance(x, z)
 {
     const r = Math.hypot(x, z)
     const phi = Math.atan2(z, x)
     return coastRadius(phi) - r
+}
+
+// signed distance to the nearest shore, of the main island or of any island: positive on land
+export function coastDistance(x, z)
+{
+    const r = Math.hypot(x, z)
+    const phi = Math.atan2(z, x)
+    return Math.max(coastRadius(phi) - r, nearestIsland(x, z).s)
 }
 
 // ------------------------------------------------------------------ height
@@ -134,9 +144,26 @@ if(layout.runway)
 }
 const allPads = [ ...pads, ...runwayPads ]
 
-export function heightAt(x, z)
+// the ground of the main island, or of whichever island is higher here
+function landHeight(x, z)
 {
     let h = rawHeight(x, z)
+    for(let i = 0; i < ISLANDS.length; i++)
+    {
+        const s = islandSigned(ISLANDS[i], x, z)
+        // far from an island there is only sea, which is the same as the main island's sea
+        if(s > -6)
+        {
+            const v = islandHeight(i, x, z, s)
+            if(v > h) h = v
+        }
+    }
+    return h
+}
+
+export function heightAt(x, z)
+{
+    let h = landHeight(x, z)
     for(const pad of allPads)
     {
         const d = Math.hypot(x - pad.x, z - pad.z)
@@ -153,13 +180,24 @@ export function padHeight(siteId)
 }
 
 // ------------------------------------------------------------------ surface type
-export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5, ROAD: 6 }
+export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5, ROAD: 6, JUNGLE: 7, SNOW: 8, DUNE: 9 }
+
+// the ground on an island, by how far in from the shore it is
+function islandGround(isl)
+{
+    if(isl.s < 0.9) return SURFACE.WET_SAND
+    if(isl.s < 3) return SURFACE.SAND
+    const theme = isl.island.theme
+    return theme === 'jungle' ? SURFACE.JUNGLE : theme === 'frost' ? SURFACE.SNOW : SURFACE.DUNE
+}
 
 export function surfaceAt(x, z)
 {
     const r = Math.hypot(x, z)
     const phi = Math.atan2(z, x)
     const s = coastRadius(phi) - r
+    const isl = nearestIsland(x, z)
+    if(isl.s > s && isl.s >= -0.4) return islandGround(isl)
     if(s < -0.4) return SURFACE.SEABED
     if(s < 0.9) return SURFACE.WET_SAND
     if(roadEdgeDistance(x, z) < 0) return SURFACE.ROAD

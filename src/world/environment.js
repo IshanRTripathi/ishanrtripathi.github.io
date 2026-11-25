@@ -242,7 +242,11 @@ export class Environment
             const d = ((t - c + 1.5) % 1 - 0.5) / w
             return Math.exp(-d * d)
         }
-        return 1 - 0.74 * bump(0.25, 0.055) - 0.74 * bump(0.745, 0.06) + 0.6 * bump(0.0, 0.1)
+        const base = 1 - 0.74 * bump(0.25, 0.055) - 0.74 * bump(0.745, 0.06) + 0.6 * bump(0.0, 0.1)
+        // the night, from the end of dusk to the start of dawn, passes four times faster: a quarter of its length
+        const u = t < 0.5 ? t + 1 : t
+        const night = smooth(0.765, 0.78, u) * (1 - smooth(1.22, 1.235, u))
+        return base * (1 + 3 * night)
     }
 
     update(dt, focus, { camera, space = 0, time = 0 } = {})
@@ -404,7 +408,7 @@ export class Environment
 
         // ---- rain and snow around us (not from orbit)
         const near = 1 - space
-        for(const [ mesh, amount ] of [ [ this.rain, sky.rain * near ], [ this.snow, sky.snow * near ] ])
+        for(const [ mesh, amount ] of [ [ this.rain, sky.rain * near * 0.5 ], [ this.snow, sky.snow * near ] ])
         {
             mesh.visible = amount > 0.01
             if(!mesh.visible) continue
@@ -425,5 +429,7 @@ export class Environment
             birds: smooth(-0.02, 0.2, s) * (1 - smooth(0.5, 0.8, s) * 0.5) * (1 - o) * (1 - winter) * near,
             crickets: smooth(-0.05, -0.2, s) * (1 - winter) * (1 - sky.rain) * near
         })
+        // the music turns to the night theme as the sun goes down
+        this.ambience?.setNight?.(smooth(-0.05, -0.2, s))
     }
 }

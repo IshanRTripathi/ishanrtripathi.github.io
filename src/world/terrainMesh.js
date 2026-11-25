@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { R, surfacePoint } from '../core/geo.js'
 import { createNoise2D, mulberry32 } from '../core/noise.js'
 import { heightAt, surfaceAt, coastDistance, SURFACE } from './terrain.js'
+import { ISLANDS } from './islands.js'
 import { makeSeasonal } from './seasonal.js'
 
 // Flat-shaded low-poly island: a jittered triangle grid in map space, wrapped onto
@@ -14,6 +15,9 @@ export const PALETTE = {
     sand: [ '#F6E6CB', '#F3E0C2', '#F8EBD5' ],
     grass: [ '#86C25E', '#7DBA57', '#90C966', '#82BE5B' ],
     grassHigh: [ '#6FAE4F', '#76B353' ],
+    jungle: [ '#3F8A3A', '#4A9A40', '#347A36', '#2F7535' ],
+    snow: [ '#F4F8FC', '#E6EEF6', '#FFFFFF' ],
+    dune: [ '#F2C77E', '#EDB96A', '#F6D18E' ],
     path: [ '#E6D8C6', '#E1D2BF', '#EADDCC' ],
     road: '#454854',
     rock: '#B4A89A',
@@ -23,21 +27,26 @@ export const PALETTE = {
 const jitterNoise = createNoise2D(31)
 const colorNoise = createNoise2D(41)
 
-export function createTerrainMesh({ radius = 124, spacing = 1.45 } = {})
+const TILE = 40
+
+// One grid of triangles over a round region of the map. Each region is its own mesh, so the
+// camera can skip the ones it cannot see (the islands are far away from the main island).
+function buildRegion(region, spacing, material)
 {
+    const { cx, cz, radius, seed } = region
     const rowH = spacing * Math.sqrt(3) / 2
     const rows = Math.ceil(radius * 2 / rowH) + 1
     const cols = Math.ceil(radius * 2 / spacing) + 2
     const grid = []
     for(let j = 0; j < rows; j++)
     {
-        const z = -radius + j * rowH
+        const z = cz - radius + j * rowH
         const row = []
         for(let i = 0; i < cols; i++)
         {
-            let x = -radius + i * spacing + (j % 2 ? spacing / 2 : 0)
+            let x = cx - radius + i * spacing + (j % 2 ? spacing / 2 : 0)
             let zz = z
-            const inside = Math.hypot(x, zz) <= radius + spacing
+            const inside = Math.hypot(x - cx, zz - cz) <= radius + spacing
             if(inside)
             {
                 x += jitterNoise(x * 0.9, zz * 0.9) * spacing * 0.22
@@ -48,10 +57,10 @@ export function createTerrainMesh({ radius = 124, spacing = 1.45 } = {})
         grid.push(row)
     }
 
-    const positions = []
-    const colors = []
+    // triangles go into tiles of TILE metres, each its own mesh with its own bounds
+    const tiles = new Map()
     const color = new THREE.Color()
-    const random = mulberry32(5)
+    const random = mulberry32(seed)
     const v = new THREE.Vector3()
 
     const pushTri = (a, b, c) =>
@@ -59,12 +68,15 @@ export function createTerrainMesh({ radius = 124, spacing = 1.45 } = {})
         if(!a || !b || !c) return
         const cx = (a.x + b.x + c.x) / 3
         const cz = (a.z + b.z + c.z) / 3
+        const key = Math.floor((cx - region.cx) / TILE) + ',' + Math.floor((cz - region.cz) / TILE)
+        let tile = tiles.get(key)
+        if(!tile) tiles.set(key, tile = { positions: [], colors: [] })
         faceColor(cx, cz, (a.h + b.h + c.h) / 3, Math.max(a.h, b.h, c.h) - Math.min(a.h, b.h, c.h), random, color)
         for(const p of [ a, b, c ])
         {
             surfacePoint(p.x, p.z, p.h, v)
-            positions.push(v.x, v.y, v.z)
-            colors.push(color.r, color.g, color.b)
+            tile.positions.push(v.x, v.y, v.z)
+            tile.colors.push(color.r, color.g, color.b)
         }
     }
 
@@ -91,17 +103,34 @@ export function createTerrainMesh({ radius = 124, spacing = 1.45 } = {})
         }
     }
 
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    geometry.computeVertexNormals()
-    geometry.computeBoundingSphere()
+    const group = new THREE.Group()
+    group.name = region.name
+    for(const tile of tiles.values())
+    {
+        const geometry = new THREE.BufferGeometry()
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(tile.positions, 3))
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(tile.colors, 3))
+        geometry.computeVertexNormals()
+        geometry.computeBoundingSphere()
+        const mesh = new THREE.Mesh(geometry, material)
+        mesh.receiveShadow = true
+        mesh.name = region.name
+        group.add(mesh)
+    }
+    return group
+}
 
+export function createTerrainMesh({ radius = 136, spacing = 1.45 } = {})
+{
     const material = makeSeasonal(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 }), { key: 'terrain', foliage: 1, ground: true })
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.receiveShadow = true
-    mesh.name = 'terrain'
-    return mesh
+    const group = new THREE.Group()
+    group.name = 'terrain'
+    group.add(buildRegion({ cx: 0, cz: 0, radius, seed: 5, name: 'terrain-main' }, spacing, material))
+    ISLANDS.forEach((island, i) =>
+    {
+        group.add(buildRegion({ cx: island.at.x, cz: island.at.z, radius: island.radius + 6, seed: 50 + i, name: `terrain-${island.id}` }, spacing, material))
+    })
+    return group
 }
 
 function pick(list, random)
@@ -132,6 +161,18 @@ function faceColor(x, z, h, slope, random, out)
             break
         case SURFACE.ROAD:
             out.set(PALETTE.road)
+            break
+        case SURFACE.JUNGLE:
+            out.set(pick(PALETTE.jungle, random))
+            out.offsetHSL(n * 0.01, 0, n * 0.02)
+            break
+        case SURFACE.SNOW:
+            // bare rock shows through on the steep faces, snow everywhere else
+            if(slope > 1.4) out.set(PALETTE.rock)
+            else out.set(pick(PALETTE.snow, random))
+            break
+        case SURFACE.DUNE:
+            out.set(pick(PALETTE.dune, random))
             break
         default:
             if(slope > 1.1) out.set(PALETTE.rock)
