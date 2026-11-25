@@ -133,6 +133,7 @@ export class World
         const planeModel = buildPlane()
         const flight = new Flight(planeModel)
         const start = layout.runway.start
+        flight.spawn = { x: start.x, z: start.z, yaw: start.yaw }
         flight.reset(start.x, start.z, start.yaw)
         const planeCollider = { type: 'box', x: start.x, z: start.z, yaw: start.yaw, hw: 1.3, hd: 2.4, vehicle: 'plane' }
         this.colliders.push(planeCollider)

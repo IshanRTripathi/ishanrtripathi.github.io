@@ -4,6 +4,7 @@ import { heightAt, coastDistance } from '../world/terrain.js'
 import { layout } from '../world/layout.js'
 import { Character } from './character.js'
 import { place } from '../world/world.js'
+import { buildParachute, openParachute } from '../world/parachute.js'
 
 const WALK = 2.7
 const RUN = 6.2
@@ -100,6 +101,12 @@ export class Player
         this.atChai = false
         this.chaiDone = false
         this.events = new EventTarget()
+        // the parachute, shown only while falling
+        this.parachute = buildParachute()
+        this.parachute.root.visible = false
+        this.character.root.add(this.parachute.root)
+        this.chute = null // { h, open, yaw } while falling under the canopy
+        this.ejected = null // the plane we bailed out of, flying on without us
         this.sync()
     }
 
@@ -204,6 +211,7 @@ export class Player
         const canStand = this.mode === 'sit' || (this.mode === 'script' && this.script?.cancellable)
         if(canStand && (input.moving || input.consume('KeyE', 'Space'))) this.standUp()
         else if(this.mode === 'script' || (this.mode === 'sit' && this.script)) this.updateScript(dt)
+        else if(this.mode === 'chute') this.updateChute(dt)
         else if(this.mode === 'ride' && this.vehicle && this.vehicle.flight) this.updateFlight(dt)
         else if(this.mode === 'ride') this.updateRide(dt)
         else this.updateWalk(dt, cameraYaw)
@@ -220,7 +228,84 @@ export class Player
             if(input.consume('Enter') && this.nearby) this.emit('read', this.nearby.content)
         }
         this.checkChai(dt)
+        if(this.ejected) this.updateEjected(dt)
         this.sync(dt)
+    }
+
+    // ---------------------------------------------------------------- parachute
+    // E in the air: bail out. The plane is left to glide down, and you float to the ground
+    eject()
+    {
+        const v = this.vehicle
+        const f = v.flight
+        f.throttle = 0
+        f.say('Bailed out. The plane glides on without you', 3)
+        this.ejected = v
+        this.chute = { h: f.h, open: 0, yaw: this.yaw }
+        this.x = f.x
+        this.z = f.z
+        this.vehicle = null
+        this.nearVehicle = null
+        this.nearby = null
+        this.mode = 'chute'
+        this.speed = 0
+        this.emit('eject')
+    }
+
+    updateChute(dt)
+    {
+        const c = this.chute
+        const input = this.input
+        // the canopy fills over about a second; until then you fall fast
+        c.open = Math.min(1, c.open + dt / 1.1)
+        const brake = Math.max(0, input.move.y) // W slows the fall
+        const dive = Math.max(0, -input.move.y) // S speeds it up
+        // steer with A and D: the canopy turns on the wind
+        c.yaw -= input.move.x * 0.6 * dt * c.open
+        const forward = 5.5 * c.open * (1 - 0.3 * brake)
+        const sink = (1 - c.open) * 9 + c.open * Math.max(1.6, 4.2 - 1.6 * brake + 1.6 * dive)
+        c.h -= sink * dt
+        this.yaw = c.yaw
+        this.x += Math.sin(c.yaw) * forward * dt
+        this.z += Math.cos(c.yaw) * forward * dt
+        // keep the drift over the island, not out to sea
+        if(coastDistance(this.x, this.z) < 4)
+        {
+            this.x *= 0.995
+            this.z *= 0.995
+        }
+        openParachute(this.parachute, c.open)
+        this.parachute.root.visible = true
+        if(c.h <= 0) this.landChute()
+    }
+
+    landChute()
+    {
+        this.chute = null
+        this.mode = 'walk'
+        this.speed = 0
+        this.parachute.root.visible = false
+        this.emit('landed')
+    }
+
+    // the plane flies on, with its throttle cut, until it lands or crashes; then it is left where it ends up
+    updateEjected(dt)
+    {
+        const v = this.ejected
+        const f = v.flight
+        f.update(dt, { x: 0, y: -0.25 }, this.world.colliders, resolveCollisions)
+        v.x = f.x
+        v.z = f.z
+        v.yaw = f.yaw
+        if(v.collider)
+        {
+            v.collider.x = f.x
+            v.collider.z = f.z
+            v.collider.yaw = f.yaw
+            v.collider.disabled = !f.onGround
+        }
+        f.apply(v.model.root)
+        if(f.onGround && f.v < 1 && f.crashed <= 0) this.ejected = null
     }
 
     updateWalk(dt, cameraYaw)
@@ -286,10 +371,16 @@ export class Player
     dismount()
     {
         const v = this.vehicle
-        // a plane can only be left on the ground and nearly still
-        if(v.flight && (!v.flight.onGround || Math.abs(v.flight.v) > 3))
+        // in the air, E bails out under the parachute
+        if(v.flight && !v.flight.onGround)
         {
-            v.flight.say('Land and slow down before you climb out', 3)
+            this.eject()
+            return
+        }
+        // on the ground a plane can only be left when it is nearly still
+        if(v.flight && Math.abs(v.flight.v) > 3)
+        {
+            v.flight.say('Slow down before you climb out', 3)
             return
         }
         v.x = this.x
@@ -439,8 +530,11 @@ export class Player
     {
         // in the plane the camera follows the aircraft, up in the air as well as on the ground
         const flying = this.mode === 'ride' && this.vehicle && this.vehicle.flight
-        const h = heightAt(this.x, this.z) + (flying ? this.vehicle.flight.h : 0)
+        const chuting = this.mode === 'chute' && this.chute
+        const h = heightAt(this.x, this.z) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
         const root = this.character.root
+        // the character is swapped for the real model when it loads, so the canopy follows the current one
+        if(this.parachute.root.parent !== root) root.add(this.parachute.root)
         // sitting on the stool: face the visitor (stool yaw), seat height handled by the pose
         let yaw = this.yaw
         if(this.mode === 'sit' && this.world.stool) yaw = this.world.stool.yaw

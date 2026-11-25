@@ -55,6 +55,10 @@ export class UI
         this.card = this.$('.card')
         this.cardLayer.addEventListener('click', (e) => { if(e.target.closest('[data-action="close"]')) this.closeCard() })
 
+        // the map, the plane's tips and how-to-fly
+        this.$('[data-action="map"]').addEventListener('click', () => this.onMap?.())
+        document.querySelectorAll('[data-flight-tips]').forEach((b) => b.addEventListener('click', () => this.showFlightTips(b.dataset.flightTips === 'show')))
+
         // phone
         this.phoneLayer = this.$('.phone-layer')
         this.phoneView = this.$('.phone-view')
@@ -102,15 +106,79 @@ export class UI
             return
         }
         el.hidden = false
+        el.classList.remove('is-chute')
         this.$('[data-flight="speed"]').textContent = String(f.speedKmh)
         this.$('[data-flight="alt"]').textContent = String(f.altitude)
         this.$('.flight-throttle-fill').style.transform = `scaleX(${f.throttle.toFixed(2)})`
-        const hint = f.hintTime > 0 ? f.hint : f.onGround ? (f.v < 1 ? 'W to taxi, A and D to steer' : '') : 'W nose up, S nose down, A and D bank, R and F throttle'
+        const hint = this.flightTip(f)
         if(this.flightHint !== hint)
         {
             this.flightHint = hint
             this.$('.flight-hint').textContent = hint
         }
+    }
+
+    // the readout while under the parachute: height, and how to steer
+    setChute(c)
+    {
+        const el = this.$('.flight-hud')
+        if(!el) return
+        if(!c)
+        {
+            el.hidden = true
+            return
+        }
+        el.hidden = false
+        el.classList.add('is-chute')
+        this.$('[data-flight="speed"]').textContent = '–'
+        this.$('[data-flight="alt"]').textContent = String(Math.max(0, Math.round(c.h)))
+        this.$('.flight-throttle-fill').style.transform = 'scaleX(0)'
+        const hint = c.open < 1 ? 'Parachute opening' : 'A and D steer. W slows the fall, S dives'
+        if(this.flightHint !== hint)
+        {
+            this.flightHint = hint
+            this.$('.flight-hint').textContent = hint
+        }
+    }
+
+    // what to do next, from where the plane is: the hint changes as you take off, fly and land
+    flightTip(f)
+    {
+        if(f.hintTime > 0) return f.hint
+        if(!f.onGround)
+        {
+            if(f.h < 40 && f.vy < -1.5) return 'Landing: ease off with F, level the nose, and line up with the strip'
+            return 'In the air. W climbs, S levels off, A and D bank'
+        }
+        if(f.v < 1) return 'Hold R to add power. The plane lifts off at about 80 km/h'
+        if(f.v < 21.5) return `Keep holding R: ${f.speedKmh} km/h, about 80 to lift off`
+        if(f.pitch < 0.07) return 'Now push W to lift the nose'
+        return 'Pulling up'
+    }
+
+    // the how-to card, shown when you climb in and hidden again after a while
+    showFlightTips(on)
+    {
+        const el = this.$('.flight-tips')
+        if(!el) return
+        clearTimeout(this.flightTipsTimer)
+        el.hidden = !on
+        if(on) this.flightTipsTimer = setTimeout(() => { el.hidden = true }, 45000)
+    }
+
+    // a tip above the plane while you stand next to it: at is the plane's place on screen, or null
+    setPlaneTip(at)
+    {
+        const el = this.$('.plane-tip')
+        if(!el) return
+        if(!at)
+        {
+            el.hidden = true
+            return
+        }
+        el.hidden = false
+        el.style.left = `${at.x}px`
+        el.style.top = `${at.y}px`
     }
 
     // the throttle buttons on a touch screen: hold to change the power

@@ -1042,3 +1042,127 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     .flight-hud { top: 58px; width: min(300px, calc(100vw - 32px)); padding: 0.4rem 0.6rem 0.45rem; }
     .flight-stats { font-size: 1.1rem; }
 }
+
+/* ---------------------------------------------------------------- the city map (M) */
+.fullmap { position: fixed; inset: 0; z-index: 32; display: grid; place-items: center; padding: 14px; }
+.fullmap[hidden] { display: none; }
+.fullmap-backdrop { position: absolute; inset: 0; background: rgba(14, 9, 30, 0.8); backdrop-filter: blur(5px); }
+.fullmap-panel
+{
+    position: relative;
+    width: min(900px, 100%);
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
+    padding: 16px 18px 18px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #2A1B4A, #1B1530);
+    color: var(--cream);
+    box-shadow: 0 0 0 2px var(--cyan), 0 0 40px rgba(45, 226, 230, 0.3);
+    outline: none;
+}
+.fullmap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.fullmap-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 2rem; line-height: 1; text-transform: uppercase; color: var(--cyan); }
+.fullmap-close
+{
+    padding: 0.45rem 0.9rem;
+    border: 1px solid rgba(255, 246, 236, 0.4);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--cream);
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.fullmap-close:hover { border-color: var(--pink); color: #fff; }
+.fullmap-close:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.fullmap-body { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; align-items: start; }
+.fullmap-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 14px; box-shadow: 0 0 0 2px var(--pink); }
+.fullmap-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 0.95rem; }
+.fullmap-sw { display: inline-block; width: 14px; height: 14px; margin-right: 9px; border-radius: 50%; background: var(--sw); vertical-align: -2px; box-shadow: 0 0 0 2px #1B1535; }
+.fullmap-sw-plane { background: #FFFFFF; border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 50% 70%, 0 100%); }
+.fullmap-sw-route { width: 22px; height: 0; border-radius: 0; background: none; border-top: 4px dashed #FF3EA5; box-shadow: none; vertical-align: 3px; }
+.fullmap-tip { margin-top: 6px; font-size: 0.82rem; opacity: 0.7; }
+
+@media (orientation: landscape) and (max-height: 540px)
+{
+    .fullmap-panel { padding: 10px 12px 12px; }
+    .fullmap-title { font-size: 1.5rem; }
+    .fullmap-canvas { width: min(100%, calc(100dvh - 150px)); margin: 0 auto; }
+    .fullmap-body { grid-template-columns: auto minmax(0, 1fr); }
+    .fullmap-legend { font-size: 0.8rem; gap: 5px; }
+}
+
+/* ---------------------------------------------------------------- the plane's tips */
+kbd
+{
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.9em;
+    padding: 0 0.35em;
+    border-radius: 6px;
+    background: rgba(255, 246, 236, 0.16);
+    border: 1px solid rgba(255, 246, 236, 0.3);
+}
+.plane-tip
+{
+    position: fixed;
+    z-index: 7;
+    transform: translate(-50%, -100%);
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    background: var(--night-glass);
+    color: var(--cream);
+    font-weight: 700;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+.plane-tip[hidden] { display: none; }
+.plane-tip::after
+{
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--night-glass);
+    border-bottom: 0;
+}
+.flight-tips
+{
+    position: fixed;
+    top: 116px;
+    right: 16px;
+    z-index: 6;
+    width: min(340px, calc(100vw - 32px));
+    padding: 0.85rem 1rem 0.9rem;
+    border-radius: 18px;
+    background: var(--night-glass);
+    color: var(--cream);
+    font-size: 0.92rem;
+    line-height: 1.35;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.flight-tips[hidden] { display: none; }
+.flight-tips-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 0.45rem; color: var(--yellow); }
+.flight-tips-close
+{
+    padding: 0.3rem 0.75rem;
+    border: 1px solid rgba(255, 246, 236, 0.4);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--cream);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.flight-tips-close:hover { border-color: var(--pink); }
+.flight-tips ol { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; }
+@media (orientation: landscape) and (max-height: 540px)
+{
+    .flight-tips { top: 96px; width: min(300px, calc(100vw - 32px)); padding: 0.6rem 0.75rem; font-size: 0.82rem; }
+}
+.flight-hud.is-chute .flight-buttons { display: none !important; }
