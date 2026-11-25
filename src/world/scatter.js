@@ -5,6 +5,7 @@ import { mulberry32, createNoise2D } from '../core/noise.js'
 import { layout, ROAD_HALF, SIDEWALK, BAY_ANGLE, coastRadius, beachWidth, duskAt } from './layout.js'
 import { placementDistance, roadEdgeDistance, mainCoastDistance } from './terrain.js'
 import { ISLANDS, islandSigned, structureSpots } from './islands.js'
+import { placeSeats } from './seats.js'
 
 const noise = createNoise2D(77)
 
@@ -81,7 +82,7 @@ function placeFillers()
         for(let i = 0; i <= count; i++)
             for(const side of [ 1, -1 ])
             {
-                if(random() < 0.2) continue
+                if(random() < 0.5) continue
                 const p = path.at(Math.min(1, (i + random() * 0.3) / count))
                 const w = 6.5 + random() * 2.5
                 const d = 5.5 + random() * 2
@@ -104,7 +105,7 @@ function placeFillers()
     }
 
     // fill the open ground further from the roads, each block facing the nearest road
-    for(let i = 0; i < 16000 && fillers.length < 80; i++)
+    for(let i = 0; i < 16000 && fillers.length < 40; i++)
     {
         const x = (random() * 2 - 1) * WORLD_EXTENT
         const z = (random() * 2 - 1) * WORLD_EXTENT
@@ -688,16 +689,19 @@ export function buildScatter()
 {
     const lamps = placeLamps()
     const fillers = placeFillers()
-    const streetPalms = placeStreetPalms(lamps, fillers)
-    const trees = placeTrees(lamps, fillers)
-    const decor = placeDecor(trees, fillers)
+    // the benches and beach seats go in after the houses, and trees and decor keep clear of them
+    const seats = placeSeats(lamps, fillers)
+    const clear = [ ...fillers, ...seats.map((s) => ({ x: s.x, z: s.z, w: 2.4, d: 1.6 })) ]
+    const streetPalms = placeStreetPalms(lamps, clear)
+    const trees = placeTrees(lamps, clear)
+    const decor = placeDecor(trees, clear)
     const boats = placeBoats()
     const beach = placeBeach(trees)
     const parkedCars = placeParkedCars()
     const details = placeDetails({ lamps, fillers, streetPalms, trees, ...decor, ...beach })
     const island = placeIslands()
     return {
-        lamps, fillers, streetPalms, boats, ...beach, parkedCars, ...details, loop: trafficLoop(),
+        lamps, fillers, seats, streetPalms, boats, ...beach, parkedCars, ...details, loop: trafficLoop(),
         // the islands' life is merged in, so the forest, the collisions and the checks all see it
         trees: [ ...trees, ...island.trees ],
         bushes: [ ...decor.bushes, ...island.bushes ],

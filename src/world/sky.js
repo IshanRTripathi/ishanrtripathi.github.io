@@ -139,13 +139,10 @@ export function createSky()
                 // lightning lights up the whole sky
                 col += vec3(0.75, 0.8, 1.0) * uFlash * (0.5 + 0.5 * smoothstep(-0.1, 0.5, h));
 
-                // seen from far away, fade towards a calm gradient (dusk by day, deep blue at night)
-                vec3 space = mix(vec3(1.0, 0.42, 0.24), vec3(0.98, 0.45, 0.45), smoothstep(-0.5, 0.0, vScreenY));
-                space = mix(space, vec3(0.62, 0.22, 0.52), smoothstep(0.0, 0.35, vScreenY));
-                space = mix(space, vec3(0.14, 0.12, 0.38), smoothstep(0.35, 0.8, vScreenY));
-                vec3 spaceNight = mix(vec3(0.16, 0.14, 0.34), vec3(0.05, 0.06, 0.16), smoothstep(-0.3, 0.6, vScreenY));
-                spaceNight += vec3(0.8, 0.85, 1.0) * star * smoothstep(-0.2, 0.3, vScreenY);
-                space = mix(space, spaceNight, uNight);
+                // seen from high up, the same sky as below, looked down on: it follows the time of day
+                vec3 space = mix(uHorizon, uMid, smoothstep(-0.2, 0.4, vScreenY));
+                space = mix(space, uZenith, smoothstep(0.35, 0.9, vScreenY));
+                space += vec3(0.8, 0.85, 1.0) * star * uNight * smoothstep(-0.2, 0.3, vScreenY);
                 col = mix(col, space, uSpace);
 
                 gl_FragColor = vec4(col, 1.0);

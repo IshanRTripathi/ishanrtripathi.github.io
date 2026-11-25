@@ -308,7 +308,7 @@ class App
             { to: { x: door.out.x, z: door.out.z }, speed: 2.4 },
             { face: door.outYaw },
             { wave: skip ? 0.2 : 2.2 },
-            { call: () => { this.settleTarget = door.outYaw } }
+            { call: () => { this.settleTarget = door.outYaw; this.settleStart = this.time } }
         ], () =>
         {
             this.state = 'play'
@@ -505,7 +505,9 @@ class App
             let d = this.settleTarget - this.rig.yaw
             while(d > Math.PI) d -= Math.PI * 2
             while(d < -Math.PI) d += Math.PI * 2
-            this.rig.yaw += d * (1 - Math.exp(-dt * 2.4))
+            // the turn eases in over a second, so it never starts by snapping round at full speed
+            const ramp = Math.min(1, Math.max(0, (time - this.settleStart) / 1.2))
+            this.rig.yaw += d * (1 - Math.exp(-dt * 2.4)) * ramp * ramp * (3 - 2 * ramp)
             this.rig.lastDrag = time
             if(Math.abs(d) < 0.01 || input.drag.dx) this.settleTarget = undefined
         }
@@ -513,12 +515,14 @@ class App
         this.rig.update(dt, time, this.player)
         const obstacles = this.state === 'title' ? [] : [ { x: this.player.x, z: this.player.z } ]
         this.world.night = this.environment.nightness ?? 0
+        this.world.season = this.environment.season ?? 0
         this.world.update(time, dt, this.camera, obstacles)
         this.world.markers.update(time, this.visited)
 
         // light, sky and fog follow where we are
         const camDist = this.camera.position.length()
-        const space = smoothstep(R * 1.25, R * 2.4, camDist)
+        // the sky only turns to space well above a normal flight, so the day and night show from the air
+        const space = smoothstep(R * 2, R * 3, camDist)
         const focus = this.state === 'title' ? new THREE.Vector3(0, R, 0) : this.player.position
         this.environment.update(dt, focus, { camera: this.camera, space, time })
         this.lights.update(focus)
