@@ -362,6 +362,10 @@ export class World
     // Swap procedural stand-ins for real models when they exist
     async loadModels()
     {
+        // the people on the road, once their figures have loaded (they are not in the list below)
+        const [ female, male ] = await Promise.all([ registry.figure('npc-female'), registry.figure('npc-male') ])
+        this.people.populate({ female, male })
+
         const loaded = await registry.loadAvailable()
         const CAR_FIT = { fit: [ 1.9, 1.6, 4.3 ] }
         const traffic = loaded.filter((m) => m.kind === 'traffic' && m.geometry).map((m) => sized(m.geometry, m.entry.fit ? m.entry : CAR_FIT))

@@ -36,6 +36,7 @@ export class UI
         this.promptLabel = this.$('.prompt-label')
         this.prompt.addEventListener('click', () => onPrompt())
         this.area = this.$('.area')
+        this.islandTip = this.$('.island-tip')
         this.touch = this.$('.touch')
         this.onClose = onClose
 
@@ -247,6 +248,29 @@ export class UI
         this.prompt.hidden = false
         this.promptKey.textContent = key
         this.promptLabel.textContent = label
+    }
+
+    // the name of an island, under the pointer on the landing screen; a touch shows it for a moment
+    showIslandTip(name, sub, x, y, touch = false)
+    {
+        const tip = this.islandTip
+        tip.querySelector('.island-tip-name').textContent = name
+        tip.querySelector('.island-tip-sub').textContent = sub
+        // beside the pointer, kept on screen
+        const left = Math.min(x + 16, window.innerWidth - 256)
+        tip.style.left = `${Math.max(8, left)}px`
+        tip.style.top = `${Math.max(8, y + 16)}px`
+        tip.classList.add('is-visible')
+        tip.setAttribute('aria-hidden', 'false')
+        clearTimeout(this.islandTipTimer)
+        if(touch) this.islandTipTimer = setTimeout(() => this.hideIslandTip(), 2600)
+    }
+
+    hideIslandTip()
+    {
+        clearTimeout(this.islandTipTimer)
+        this.islandTip.classList.remove('is-visible')
+        this.islandTip.setAttribute('aria-hidden', 'true')
     }
 
     showArea(name, sub = '')

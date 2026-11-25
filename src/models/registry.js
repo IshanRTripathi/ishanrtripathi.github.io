@@ -151,7 +151,7 @@ export const registry = {
     // every non-character model that exists, loaded in parallel
     async loadAvailable()
     {
-        const entries = (await this.entries()).filter((e) => (e.kind || 'site') !== 'character' && e.id !== 'character')
+        const entries = (await this.entries()).filter((e) => (e.kind || 'site') !== 'character' && e.id !== 'character' && e.kind !== 'npc')
         const results = await Promise.all(entries.map(async (entry) =>
         {
             try
@@ -166,6 +166,23 @@ export const registry = {
             }
         }))
         return results.filter(Boolean)
+    },
+
+    // a rigged figure for the people on the road: its model and clips, loaded once and cloned per person
+    async figure(id)
+    {
+        const entry = (await this.entries()).find((e) => e.id === id)
+        if(!entry) return null
+        try
+        {
+            const { gltf, object } = await this.load(entry)
+            return { object, animations: gltf.animations, entry }
+        }
+        catch(error)
+        {
+            console.warn('Could not load the figure', id, error)
+            return null
+        }
     },
 
     async character()

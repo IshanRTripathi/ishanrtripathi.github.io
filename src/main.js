@@ -3,14 +3,15 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { R } from './core/geo.js'
+import { R, dirToMap } from './core/geo.js'
 import { smoothstep } from './core/noise.js'
 import { Input } from './core/input.js'
 import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
 import { ArcadeHall } from './ui/arcade.js'
 import { FullMap } from './ui/fullmap.js'
-import { layout } from './world/layout.js'
+import { layout, coastRadius } from './world/layout.js'
+import { ISLANDS, islandSigned } from './world/islands.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
 import { UI } from './ui/ui.js'
@@ -41,6 +42,23 @@ function webglAvailable()
 }
 
 const FOG = new THREE.Color('#F5AE93')
+
+// the planet's surface, for the landing screen's hover: a ray from the camera meets it at the sea's level
+const PLANET = new THREE.Sphere(new THREE.Vector3(), R)
+const _planetHit = new THREE.Vector3()
+const MAIN_ISLAND = { name: 'The city', blurb: 'My projects, the trophies and the chai shack on the beach' }
+
+// the island at a point on the map (x, z), if it is on land: the main island, or one of the others
+function islandUnder(m)
+{
+    let best = { s: coastRadius(Math.atan2(m.z, m.x)) - Math.hypot(m.x, m.z), island: MAIN_ISLAND }
+    for(const island of ISLANDS)
+    {
+        const s = islandSigned(island, m.x, m.z)
+        if(s > best.s) best = { s, island }
+    }
+    return best.s > 0.6 ? best.island : null
+}
 
 class App
 {
@@ -196,6 +214,10 @@ class App
 
         this.bindPlayerEvents()
         this.canvas.addEventListener('pointerup', (e) => this.click(e))
+        // the landing screen: the island under the pointer is named in a tooltip
+        this.canvas.addEventListener('pointermove', (e) => { if(e.pointerType !== 'touch') this.hoverIsland(e) })
+        this.canvas.addEventListener('pointerdown', (e) => { if(e.pointerType === 'touch') this.hoverIsland(e) })
+        this.canvas.addEventListener('pointerleave', () => ui.hideIslandTip())
 
         // compile shaders before the first frame anyone sees
         this.rig.update(0, 0, this.player)
@@ -418,6 +440,20 @@ class App
         }
         if(inside && inside !== this.inMarker && !ui.modalOpen) this.openStop(inside.content)
         this.inMarker = inside
+    }
+
+    // the island under a pointer on the landing screen, if it is over land
+    hoverIsland(e)
+    {
+        // a drag turns the planet and hides the name until it stops
+        if(this.state !== 'title' || ui.modalOpen || this.input.drag.moved > 6) { ui.hideIslandTip(); return }
+        const rect = this.canvas.getBoundingClientRect()
+        const pointer = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1)
+        this.raycaster.setFromCamera(pointer, this.camera)
+        const hit = this.raycaster.ray.intersectSphere(PLANET, _planetHit)
+        const island = hit ? islandUnder(dirToMap(hit.normalize())) : null
+        if(!island) { ui.hideIslandTip(); return }
+        ui.showIslandTip(island.name, island.blurb, e.clientX, e.clientY, e.pointerType === 'touch')
     }
 
     click(e)

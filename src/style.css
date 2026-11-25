@@ -374,6 +374,42 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     text-shadow: 0 0 6px var(--pink), 0 0 18px var(--pink), 0 2px 18px rgba(27, 21, 53, 0.5);
 }
 
+.island-tip
+{
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 30;
+    max-width: 240px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(27, 21, 53, 0.86);
+    box-shadow: 0 6px 22px rgba(27, 21, 53, 0.35);
+    color: var(--cream);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.island-tip.is-visible { opacity: 1; }
+
+.island-tip-name
+{
+    margin: 0;
+    font-weight: 800;
+    font-size: 0.98rem;
+    color: #FFE3F2;
+}
+
+.island-tip-sub
+{
+    margin: 0.15rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--cream);
+    opacity: 0.9;
+}
+
 .area-sub
 {
     margin: 0.1rem 0 0;
