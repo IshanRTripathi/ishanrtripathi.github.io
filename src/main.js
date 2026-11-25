@@ -15,7 +15,8 @@ import { ISLANDS, islandSigned } from './world/islands.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
 import { UI } from './ui/ui.js'
-import { projects } from './content.js'
+import { projects, career, contact } from './content.js'
+import { Interior } from './interior/interior.js'
 
 const params = new URLSearchParams(location.search)
 const isTouch = window.matchMedia('(pointer: coarse)').matches || params.has('touch')
@@ -46,6 +47,8 @@ const FOG = new THREE.Color('#F5AE93')
 // the planet's surface, for the landing screen's hover: a ray from the camera meets it at the sea's level
 const PLANET = new THREE.Sphere(new THREE.Vector3(), R)
 const _planetHit = new THREE.Vector3()
+// what a building's door leads into, for the prompt
+const PLACE = { cinema: 'the movie hall', hospital: 'the hospital' }
 const MAIN_ISLAND = { name: 'The city', blurb: 'My projects, the trophies and the chai shack on the beach' }
 
 // the island at a point on the map (x, z), if it is on land: the main island, or one of the others
@@ -81,7 +84,9 @@ class App
 
         // neon glow
         this.composer = new EffectComposer(this.renderer)
-        this.composer.addPass(new RenderPass(this.scene, this.camera))
+        // the pass draws whichever scene is on show: the city, or the room you are in
+        this.renderPass = new RenderPass(this.scene, this.camera)
+        this.composer.addPass(this.renderPass)
         this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.7, 0.4, 0.95)
         this.composer.addPass(this.bloom)
         this.composer.addPass(new OutputPass())
@@ -187,6 +192,12 @@ class App
         })
         this.player = new Player(this.world, this.input)
         this.rig = new CameraRig(this.camera, this.input)
+        // the buildings you can walk into, and the rooms inside them
+        this.doors = layout.sites.filter((site) => site.entrance)
+        this.interior = new Interior({
+            input: this.input, ui, player: this.player, camera: this.camera, rig: this.rig, renderer: this.renderer, world: this.world,
+            openContent: (id) => this.openStop(id === 'career' ? career : contact)
+        })
         this.rig.titleShift = this.titleShift()
         this.rig.viewShift = { ...this.rig.titleShift }
         this.rig.colliders = this.world.colliders
@@ -410,19 +421,36 @@ class App
     promptAction()
     {
         const p = this.player
+        if(this.interior.active) return this.interior.act()
+        // standing at a front door comes first: a stop that is only near by does not take it
         if(p.mode === 'ride') p.dismount()
         else if(p.nearVehicle) p.mount(p.nearVehicle)
+        else if(p.mode === 'walk' && this.doorNear()) this.interior.enter(this.doorNear())
         else if(p.nearby) this.openStop(p.nearby.content)
         else if(p.mode === 'sit') p.standUp()
+    }
+
+    // the building whose front door you are standing at, if any
+    doorNear()
+    {
+        const p = this.player
+        return this.doors.find((site) => Math.hypot(site.entrance.x - p.x, site.entrance.z - p.z) < 2.4) || null
     }
 
     updatePrompt()
     {
         const p = this.player
         if(this.state !== 'play') return ui.setPrompt(null)
+        if(this.interior.active)
+        {
+            const prompt = this.interior.prompt()
+            return prompt ? ui.setPrompt(prompt.key, prompt.label) : ui.setPrompt(null)
+        }
         if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? (p.vehicle.flight.onGround ? 'Get out of the plane' : 'Bail out with the parachute') : p.vehicle.kind === 'boat' ? 'Get off the boat' : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
         if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
+        const door = p.mode === 'walk' ? this.doorNear() : null
+        if(door) return ui.setPrompt('E', `Go inside ${PLACE[door.interior] || 'the building'}`)
         if(p.nearby) return ui.setPrompt('Enter', `See ${p.nearby.content.title}`)
         ui.setPrompt(null)
     }
@@ -506,7 +534,7 @@ class App
         this.quality.update(dt)
         this.step(dt)
         if(this.bloomOn) this.composer.render(dt)
-        else this.renderer.render(this.scene, this.camera)
+        else this.renderer.render(this.renderPass.scene, this.camera)
         this.input.endFrame()
     }
 
@@ -533,6 +561,18 @@ class App
             input.move.x = 0
             input.move.y = 0
         }
+
+        // inside a building only the room is updated and drawn: the city, the traffic and the weather are not
+        if(this.interior.active)
+        {
+            this.interior.update(dt, time)
+            this.renderPass.scene = this.interior.scene
+            if(this.state === 'play') this.updatePrompt()
+            return
+        }
+        this.renderPass.scene = this.scene
+        // E at a front door goes in (before the player's own E, which is for vehicles)
+        if(this.state === 'play' && this.player.mode === 'walk' && !this.player.nearVehicle && this.doorNear() && input.consume('KeyE')) this.interior.enter(this.doorNear())
 
         if(this.state !== 'title') this.player.update(dt, this.rig.yaw, time)
 
