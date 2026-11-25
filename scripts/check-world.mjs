@@ -146,13 +146,15 @@ clearOfHouses('rock', scatter.rocks, 1.1)
 clearOfHouses('flower', scatter.flowers, 1.1)
 
 // the buildings you can walk into: the front door opens onto a road, is on land, and has a room behind it
-const ROOM_KINDS = [ 'cinema', 'hospital' ]
+const ROOM_KINDS = [ 'cinema', 'hospital', 'cafe' ]
 for(const site of layout.sites)
 {
     if(!site.entrance) continue
     const e = site.entrance
     if(!ROOM_KINDS.includes(site.interior)) fail(`${site.id}: no room for "${site.interior}"`)
-    if(pathEdgeDistance(e.x, e.z) > 2.6) fail(`${site.id}: its door is ${pathEdgeDistance(e.x, e.z).toFixed(1)} m from the road`)
+    // the café's shack stands on the sand at the end of the road, so its door may be a little further from it
+    const reach = site.interior === 'cafe' ? 3.6 : 2.6
+    if(pathEdgeDistance(e.x, e.z) > reach) fail(`${site.id}: its door is ${pathEdgeDistance(e.x, e.z).toFixed(1)} m from the road`)
     if(coastDistance(e.x, e.z) < 1) fail(`${site.id}: its door is at the water's edge at (${e.x.toFixed(1)}, ${e.z.toFixed(1)})`)
 }
 

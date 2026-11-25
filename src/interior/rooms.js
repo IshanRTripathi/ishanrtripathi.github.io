@@ -224,4 +224,93 @@ export function buildHospital()
     })
 }
 
-export const ROOMS = { cinema: buildCinema, hospital: buildHospital }
+// ------------------------------------------------------------------ the café (the chai shack)
+export function buildCafe()
+{
+    const group = new THREE.Group()
+    const kit = new Kit()
+    const colliders = []
+    const hw = 5
+    const hd = 4
+    const walls = '#3E9C8F'
+    const wood = '#8A5A3A'
+
+    kit.box(hw * 2 + 0.4, 0.2, hd * 2 + 0.4, '#B9895E', { y: -0.1 })
+    kit.box(hw * 2 + 0.4, 5, 0.4, walls, { y: 2.5, z: -hd - 0.2 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: -hw - 0.2, y: 2.5 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: hw + 0.2, y: 2.5 })
+    // the front wall, with the door in the middle
+    kit.box(3.6, 5, 0.4, walls, { x: -3.2, y: 2.5, z: hd + 0.2 })
+    kit.box(3.6, 5, 0.4, walls, { x: 3.2, y: 2.5, z: hd + 0.2 })
+    kit.box(2.0, 0.8, 0.4, walls, { y: 4.6, z: hd + 0.2 })
+    solid(colliders, 0, -hd - 0.2, hw + 0.2, 0.2)
+    solid(colliders, -hw - 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, hw + 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, -3.2, hd + 0.2, 1.8, 0.2)
+    solid(colliders, 3.2, hd + 0.2, 1.8, 0.2)
+
+    // the counter along the back, with shelves and two tea urns
+    kit.box(5.6, 1.05, 0.9, wood, { x: -1.8, y: 0.525, z: -2.8 })
+    kit.box(5.8, 0.1, 1.1, '#F5E6D3', { x: -1.8, y: 1.1, z: -2.8 })
+    solid(colliders, -1.8, -2.8, 2.9, 0.55)
+    kit.cyl(0.35, 0.4, 0.8, 10, '#C9A36B', { x: -3.4, y: 1.5, z: -2.8 })
+    kit.cyl(0.35, 0.4, 0.8, 10, '#C9A36B', { x: -0.4, y: 1.5, z: -2.8 })
+    kit.box(5.6, 1.2, 0.3, wood, { x: -1.8, y: 2.1, z: -hd + 0.25 })
+    for(let i = 0; i < 6; i++) kit.cyl(0.09, 0.07, 0.22, 7, '#F4E1C1', { x: -3.4 + i * 0.5, y: 2.3, z: -3.9 })
+
+    // stools at the counter, and two small tables with chairs by the window
+    for(const x of [ -3.0, -1.8, -0.6 ])
+    {
+        kit.cyl(0.28, 0.28, 0.08, 10, '#C9A36B', { x, y: 0.45, z: -1.6 })
+        kit.cyl(0.05, 0.05, 0.42, 6, '#5A3A22', { x, y: 0.21, z: -1.6 })
+    }
+    for(const z of [ 1.2, 2.8 ])
+    {
+        kit.cyl(0.5, 0.5, 0.06, 12, '#F5E6D3', { x: 2.5, y: 0.8, z })
+        kit.cyl(0.07, 0.07, 0.78, 6, '#5A3A22', { x: 2.5, y: 0.4, z })
+        solid(colliders, 2.5, z, 0.45, 0.45)
+    }
+    for(const [ x, z ] of [ [ 1.6, 1.2 ], [ 3.4, 1.2 ], [ 1.6, 2.8 ], [ 3.4, 2.8 ] ])
+    {
+        kit.box(0.5, 0.06, 0.5, '#E0483D', { x, y: 0.42, z })
+        kit.box(0.5, 0.5, 0.06, '#E0483D', { x, y: 0.7, z: z + (x < 2.5 ? -0.22 : 0.22) })
+    }
+    group.add(kit.mesh())
+
+    // the window to the sea, the menu board by the door, and the neon chai sign
+    glow(group, 3.4, 1.8, 0.08, '#9AD0EC', 2.5, 2.4, -hd + 0.2)
+    const sign = neonSign('Chai', { color: NEON.cyan, width: 1.8, height: 0.75, script: true })
+    sign.position.set(-1.8, 3.6, -hd + 0.45)
+    group.add(sign)
+    glow(group, 1.6, 1.2, 0.06, '#1F2A2A', 3.6, 2.2, hd - 0.1)
+
+    const lights = [
+        new THREE.HemisphereLight('#FFE9D2', '#8A5A3A', 1.6),
+        pointLight('#FFC8A2', 2.0, 14, -1.8, 2.6, 0),
+        pointLight('#FFF1A8', 1.2, 10, 3.2, 2.4, 2.0)
+    ]
+    lights.forEach((l) => group.add(l))
+
+    const points = [
+        { kind: 'content', content: 'contact', label: 'Order a chai', x: -1.8, z: -0.6, r: 1.7 },
+        { kind: 'info', label: 'Menu', sub: 'Masala chai, ginger chai, and the cheapest cup on the beach.', x: 3.6, z: 3.4, r: 1.6 },
+        { kind: 'info', label: 'Look at the sea', sub: 'The sun goes down right there, most evenings.', x: 2.5, z: -2.0, r: 1.8 },
+        { kind: 'sit', label: 'Sit down', yaw: Math.PI, x: -3.0, z: -1.6, r: 0.9 },
+        { kind: 'sit', label: 'Sit down', yaw: Math.PI, x: -1.8, z: -1.6, r: 0.9 },
+        { kind: 'sit', label: 'Sit down', yaw: Math.PI, x: -0.6, z: -1.6, r: 0.9 },
+        { kind: 'sit', label: 'Sit down', yaw: Math.PI / 2, x: 1.6, z: 1.2, r: 0.9 },
+        { kind: 'sit', label: 'Sit down', yaw: -Math.PI / 2, x: 3.4, z: 1.2, r: 0.9 }
+    ]
+
+    return finish('cafe', group, {
+        background: '#1D2B2A',
+        half: { x: hw, z: hd },
+        colliders,
+        spawn: { x: 0, z: 2.0, yaw: Math.PI },
+        exit: { x: 0, z: hd - 0.5, r: 0.8 },
+        points,
+        lights
+    })
+}
+
+export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe }

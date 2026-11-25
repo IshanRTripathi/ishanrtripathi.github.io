@@ -312,8 +312,10 @@ export function buildLayout()
         // the stool sits in front of the stall, a little to the side
         const right = { x: -outward.z, z: outward.x }
         const stool = { x: pos.x - outward.x * 2.6 + right.x * 1.6, z: pos.z - outward.z * 2.6 + right.z * 1.6 }
+        // the shack is open at both ends: the café's door is on the far side from the stool and the sign
         sites.push({
-            id: 'contact', kind: 'chai', contentId: 'contact',
+            id: 'contact', kind: 'chai', contentId: 'contact', interior: 'cafe',
+            entrance: { x: pos.x + right.x * 3.3, z: pos.z + right.z * 3.3 },
             x: pos.x, z: pos.z, yaw, w: 4.6, d: 3.0, h: 4,
             stool: { ...stool, yaw },
             sign: { ...{ x: pos.x - outward.x * 2.2 - right.x * 2.8, z: pos.z - outward.z * 2.2 - right.z * 2.8 }, yaw: yaw - 0.4 }
@@ -394,7 +396,7 @@ export function buildLayout()
     paths.push(crossRoad(0.1, 0.36, 6), crossRoad(0.5, 0.76, 10))
 
     // the front door of each building you can walk into: a little in front of its front wall
-    for(const site of sites) if(site.interior) site.entrance = { x: site.x + Math.sin(site.yaw) * (site.d / 2 + 1.2), z: site.z + Math.cos(site.yaw) * (site.d / 2 + 1.2) }
+    for(const site of sites) if(site.interior && !site.entrance) site.entrance = { x: site.x + Math.sin(site.yaw) * (site.d / 2 + 1.2), z: site.z + Math.cos(site.yaw) * (site.d / 2 + 1.2) }
 
     // spawn: just outside the studio door
     const studio = sites[0]
