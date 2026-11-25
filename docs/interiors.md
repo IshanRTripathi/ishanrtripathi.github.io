@@ -17,11 +17,17 @@ The room scene is the cheapest that still lets you walk around. It also means th
 
 - `src/interior/rooms.js`: the rooms. Each one returns its scene pieces, its lights, its walls and furniture as colliders, the spawn point, the exit, and its **points** (things to use: a screen that opens a card, a counter that shows a line, a seat to sit on).
 - `src/interior/interior.js`: the controller. Entering and leaving (with a short fade), walking with the same camera-relative controls and collisions as outside, sitting and standing up, the room camera, and the prompts.
-- `src/world/layout.js`: which sites are enterable (`interior: 'cinema' | 'hospital'`) and where each front door is (`entrance`).
+- `src/world/layout.js`: which sites are enterable (`interior: 'cinema' | 'hospital' | 'cafe' | 'arcade' | 'studio'`) and where each front door is (`entrance`).
 - `src/world/buildings.js`: the outside of each enterable building (the cinema already had one; the hospital is new).
 - `scripts/check-world.mjs`: each door must open onto a road within 2.6 m, be on land, and have a room.
 
-Rooms in this round: **the movie hall** (the career site, screen opens the career card, seats to sit on) and **the hospital** (reception, waiting benches, beds, a vending machine, and a notice board that opens the contact card).
+Rooms built so far:
+
+- **The movie hall** (the career cinema): a pulsing screen that opens the career card, rows of seats to sit on, a ticket counter and a popcorn stand. Two people sit in the rows.
+- **The hospital** (a new building): reception, waiting benches, beds and a vending machine. A notice board opens the contact card. Someone waits at reception.
+- **The café** (the chai shack): a counter with tea urns, stools, tables by a window to the sea. "Order a chai" opens the contact card. Two people sit at a table.
+- **The Game Arcade**: three game cabinets, one per game, each opens the arcade hall. Benches to watch from. Someone plays nearby.
+- **Ishan's studio** (the start of the game): a sofa, a desk whose monitor opens the career card, a pin board that opens the contact card, a bookshelf and a window to the sea.
 
 ## Assets
 
@@ -32,7 +38,8 @@ Each room is built from code today, so no files are needed. The parts a room use
 - **Light**: a hemisphere light and one to three point lights per room. Warm-dark for the cinema, bright white for the hospital.
 - **Signs**: `neonSign` (already used on the streets), a red cross made of two glowing bars, a glowing screen.
 - **Characters**: Ishan (the existing model). The people on the road (`npc-female`, `npc-male`) can later sit in a room too; the model and its clips already exist.
-- **Sound**: nothing new yet. The door can reuse an existing sound effect.
+- **Sound**: generated in code (`src/core/audio.js`). Each room has a quiet bed on its own output (a hush, a hum with a monitor beep, a café murmur with cups, arcade bleeps, room tone). The city's sounds drop while you're inside, and a short door thud plays on entry and exit.
+- **People**: copies of the same rigged figures as the people on the road, seated or standing where the room says.
 
 For the next rooms, the candidates are a café (the chai shack needs a different front, because its stool is in front of it), the arcade (the cabinets and the existing game overlay), Ishan's studio (a living room), and a bank, a shop or a library. Any new third-party models must be CC0 or similar, with the credit added to `public/models/CREDITS.md`, and each pack's licence checked first (Kenney's packs are CC0, for example).
 
@@ -44,9 +51,6 @@ For the next rooms, the candidates are a café (the chai shack needs a different
 - While inside, the city, traffic, birds, weather and planet are not updated or drawn.
 - Rooms are cached once built, so going in again is instant.
 
-## Not in this round
+## Not built
 
 - **A strip club.** A portfolio site should not have one, so it is left out. A bar or lounge is fine if you want a night venue.
-- Ishan's studio interior, the café, the arcade's interior.
-- Sound inside the rooms.
-- NPCs inside the rooms.

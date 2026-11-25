@@ -35,6 +35,9 @@ export class Ambience
         this.shore = 0
         this.buffers = {}
         this.noises = {}
+        this.room = null // the building you are in, if any
+        this.roomOut = null
+        this.beds = {}
     }
 
     start()
@@ -95,10 +98,148 @@ export class Ambience
         if(on) this.start()
         if(!this.context) return
         if(on && this.context.state === 'suspended') this.context.resume()
+        this.setLevels()
+        this.music?.setOn(on)
+    }
+
+    // the city's sounds are quieter indoors; a room's own sounds are on a separate output
+    setLevels()
+    {
+        if(!this.context) return
         const t = this.context.currentTime
         this.master.gain.cancelScheduledValues(t)
-        this.master.gain.setTargetAtTime(on ? 0.55 : 0, t, 0.4)
-        this.music?.setOn(on)
+        this.master.gain.setTargetAtTime(this.enabled ? (this.room ? 0.12 : 0.55) : 0, t, 0.4)
+        if(this.roomOut) this.roomOut.gain.setTargetAtTime(this.enabled && this.room ? 1 : 0, t, 0.3)
+    }
+
+    // inside a building (kind) or back outside (null): the room's bed fades in, the others out
+    setRoom(kind)
+    {
+        this.room = kind || null
+        if(!this.context) return
+        const ctx = this.context
+        const t = ctx.currentTime
+        if(!this.roomOut)
+        {
+            this.roomOut = ctx.createGain()
+            this.roomOut.gain.value = 0
+            this.roomOut.connect(ctx.destination)
+        }
+        if(kind && !this.beds[kind]) this.beds[kind] = this.roomBed(kind)
+        for(const name of Object.keys(this.beds)) this.beds[name].out.gain.setTargetAtTime(name === kind ? this.beds[name].level : 0, t, 0.35)
+        this.setLevels()
+    }
+
+    // one room's own sounds, made the first time you go in: a looping bed, and small sounds now and then
+    // that only play while you are in that room
+    roomBed(kind)
+    {
+        const ctx = this.context
+        const out = ctx.createGain()
+        out.gain.value = 0
+        out.connect(this.roomOut)
+        const bed = { out, level: 1, timers: [] }
+        this.brown = this.brown || this.noiseBuffer(4, true)
+        const noise = (type, freq, q, gain) =>
+        {
+            const src = ctx.createBufferSource()
+            src.buffer = this.brown
+            src.loop = true
+            const f = ctx.createBiquadFilter()
+            f.type = type
+            f.frequency.value = freq
+            f.Q.value = q
+            const g = ctx.createGain()
+            g.gain.value = gain
+            src.connect(f).connect(g).connect(out)
+            src.start()
+        }
+        const tone = (freq, gain) =>
+        {
+            const o = ctx.createOscillator()
+            o.frequency.value = freq
+            const g = ctx.createGain()
+            g.gain.value = gain
+            o.connect(g).connect(out)
+            o.start()
+        }
+        const beep = (freq, dur, type, level) =>
+        {
+            const t = ctx.currentTime
+            const o = ctx.createOscillator()
+            o.type = type
+            o.frequency.value = freq
+            const g = ctx.createGain()
+            g.gain.setValueAtTime(0, t)
+            g.gain.linearRampToValueAtTime(level, t + 0.01)
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+            o.connect(g).connect(out)
+            o.start(t)
+            o.stop(t + dur + 0.05)
+        }
+        // a small sound every few seconds, only while this room is the one you are in
+        const blip = (every, play) =>
+        {
+            const tick = () =>
+            {
+                if(this.room === kind) play()
+                bed.timers.push(setTimeout(tick, every() * 1000))
+            }
+            bed.timers.push(setTimeout(tick, every() * 1000))
+        }
+        const wait = (a, b) => () => a + Math.random() * (b - a)
+        if(kind === 'cinema')
+        {
+            // a hush: the film is about to start
+            noise('lowpass', 240, 0.7, 0.5)
+        }
+        else if(kind === 'hospital')
+        {
+            // the lights hum, and a monitor beeps now and then
+            tone(120, 0.02)
+            tone(240, 0.007)
+            noise('lowpass', 500, 0.5, 0.12)
+            blip(wait(4, 8), () => beep(1046, 0.09, 'sine', 0.05))
+        }
+        else if(kind === 'cafe')
+        {
+            // the murmur of people, and a cup set down now and then
+            noise('bandpass', 800, 0.6, 0.35)
+            blip(wait(3, 7), () => beep(2600, 0.2, 'sine', 0.035))
+        }
+        else if(kind === 'arcade')
+        {
+            // the cabinets hum, and bleeps as the games are played
+            tone(55, 0.02)
+            const notes = [ 523, 659, 784, 880, 1046 ]
+            blip(wait(0.6, 1.6), () => beep(notes[Math.floor(Math.random() * notes.length)], 0.12, 'square', 0.02))
+        }
+        else if(kind === 'studio')
+        {
+            // quiet room tone
+            noise('lowpass', 160, 0.7, 0.3)
+        }
+        bed.level = 1
+        return bed
+    }
+
+    // a door shutting: a short thud of muffled noise
+    door()
+    {
+        if(!this.context || !this.enabled) return
+        const ctx = this.context
+        const t = ctx.currentTime
+        const src = ctx.createBufferSource()
+        src.buffer = this.cachedNoise('door', 0.4)
+        const f = ctx.createBiquadFilter()
+        f.type = 'lowpass'
+        f.frequency.value = 700
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.5, t)
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25)
+        src.connect(f).connect(g).connect(this.master)
+        src.start(t)
+        src.stop(t + 0.3)
     }
 
     // shore: 0 (inland) .. 1 (on the beach)

@@ -197,6 +197,7 @@ class App
         this.interior = new Interior({
             input: this.input, ui, player: this.player, camera: this.camera, rig: this.rig, renderer: this.renderer, world: this.world,
             figures: () => this.world.figures,
+            ambience: this.ambience,
             openContent: (id) => this.openStop({ career, contact, arcade }[id])
         })
         this.rig.titleShift = this.titleShift()
