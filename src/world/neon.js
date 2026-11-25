@@ -7,6 +7,9 @@ export const NEON_BOOST = 2.4
 export const neonMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
 neonMaterial.color.setScalar(NEON_BOOST)
 
+// lit windows and lantern glass: the brightness is baked into the vertex colours
+export const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
+
 const SCRIPT = '"Yellowtail", cursive'
 const DISPLAY = '"Anton", "Barlow Semi Condensed", sans-serif'
 const CONDENSED = '"Barlow Semi Condensed", sans-serif'

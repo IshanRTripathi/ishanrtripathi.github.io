@@ -76,6 +76,29 @@ check(scatter.lamps, 'street light', { pathClearance: 0.25, roadOnly: true })
 check(scatter.streetPalms, 'street palm', { pathClearance: 0.4, roadOnly: true, coast: 2 })
 check(scatter.umbrellas, 'beach umbrella', { pathClearance: 0.8, coast: 0.8 })
 check(scatter.towers, 'lifeguard tower', { pathClearance: 0.8, coast: 0.8 })
+check(scatter.lanterns, 'lantern', { pathClearance: 0.15, roadOnly: true, coast: 0.5 })
+check(scatter.stones, 'stepping stone', { pathClearance: 0.05, roadOnly: true, coast: 1.0 })
+check(scatter.borders, 'flower bed', { pathClearance: 0.35 })
+check(scatter.tufts, 'grass tuft', { pathClearance: 0.25 })
+
+// fences: posts beside the paths, never across a road or into the sea
+for(const fence of scatter.fences)
+{
+    check(fence.posts.filter((p) => !p.lantern), `${fence.kind} fence post`, { pathClearance: 0.05, coast: 0.4 })
+    for(let i = 0; i < fence.posts.length - 1; i++)
+    {
+        const a = fence.posts[i]
+        const b = fence.posts[i + 1]
+        const len = Math.hypot(b.x - a.x, b.z - a.z)
+        if(len > 2.6) fail(`${fence.kind} fence has a ${len.toFixed(1)} m gap between posts`)
+        for(const t of [ 0.25, 0.5, 0.75 ])
+        {
+            const x = a.x + (b.x - a.x) * t
+            const z = a.z + (b.z - a.z) * t
+            if(roadEdgeDistance(x, z) < 0.05) { fail(`${fence.kind} fence crosses a road or the boardwalk at (${x.toFixed(1)}, ${z.toFixed(1)})`); break }
+        }
+    }
+}
 
 // city blocks: off the roads, out of the sea, clear of each other and of every site
 for(const f of scatter.fillers)
@@ -107,7 +130,7 @@ for(const boat of scatter.boats)
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)
 if(spawnPath > 0) fail('spawn point is not on a path')
 
-const counts = Object.entries({ 'city blocks': scatter.fillers.length, 'street palms': scatter.streetPalms.length, trees: scatter.trees.length, bushes: scatter.bushes.length, flowers: scatter.flowers.length, rocks: scatter.rocks.length, lamps: scatter.lamps.length })
+const counts = Object.entries({ 'city blocks': scatter.fillers.length, 'street palms': scatter.streetPalms.length, trees: scatter.trees.length, bushes: scatter.bushes.length, flowers: scatter.flowers.length, rocks: scatter.rocks.length, lamps: scatter.lamps.length, lanterns: scatter.lanterns.length, fences: scatter.fences.length, 'stepping stones': scatter.stones.length, 'flower bed clumps': scatter.borders.length, 'grass tufts': scatter.tufts.length, fireflies: scatter.fireflies.length })
     .map(([ k, v ]) => `${v} ${k}`).join(', ')
 
 if(problems.length)

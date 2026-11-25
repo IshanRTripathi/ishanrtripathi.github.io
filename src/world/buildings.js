@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { Kit, shade, clayMaterial } from '../models/kit.js'
-import { neonMaterial, neonSign } from './neon.js'
+import { neonMaterial, neonSign, glowMaterial } from './neon.js'
+import { duskAt } from './layout.js'
 
 // Procedural stand-ins for every building: pastel Art Deco with neon trim.
 // Each builder returns a Group with its origin on the ground at the centre of
@@ -46,13 +47,29 @@ export const NEON = {
     green: '#6CFF8E'
 }
 
-// A building is two kits: matte clay and glowing neon
+// lit windows: warm, and brighter and more of them towards the sunset
+const WINDOW_LIGHTS = [ '#FFC46B', '#FFB25A', '#FFD592', '#FF9E5E', '#FFE2B0' ].map((c) => new THREE.Color(c))
+
+function hash(a, b, c)
+{
+    const x = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453
+    return x - Math.floor(x)
+}
+
+function windowLight(dusk, roll, boost = 0)
+{
+    const base = WINDOW_LIGHTS[Math.floor(roll * 97) % WINDOW_LIGHTS.length]
+    return base.clone().multiplyScalar((0.7 + 1.1 * dusk + boost) * (0.85 + 0.3 * roll))
+}
+
+// A building is three kits: matte clay, glowing neon and lit windows
 class Builder
 {
     constructor()
     {
         this.clay = new Kit()
         this.neon = new Kit()
+        this.glow = new Kit()
         this.extras = []
     }
 
@@ -80,6 +97,7 @@ class Builder
             neon.castShadow = false
             group.add(neon)
         }
+        if(this.glow.parts.length) group.add(new THREE.Mesh(this.glow.geometry(), glowMaterial))
         for(const e of this.extras) group.add(e)
         group.userData.clay = clay
         return group
@@ -135,7 +153,9 @@ function palmPot(kit, x, y, z)
 // windows, a central fin above a stepped parapet, neon on the edges.
 function decoBlock(b, o)
 {
-    const { w, d, wall, trim = C.white, floors = 2, neon = NEON.pink, neon2 = NEON.cyan } = o
+    const { w, d, wall, trim = C.white, floors = 2, neon = NEON.pink, neon2 = NEON.cyan, dusk = 0, seed = 0 } = o
+    // share of windows with the lights on
+    const lit = 0.12 + 0.6 * dusk
     const kit = b.clay
     const fh = 3.0
     const r = 0.75
@@ -155,6 +175,16 @@ function decoBlock(b, o)
         {
             kit.box(w * 0.86, 1.1, 0.12, C.glass, { y: y + 0.85, z: d / 2 + 0.01 })
             for(let i = 1; i < 5; i++) kit.box(0.08, 1.1, 0.16, trim, { x: -w * 0.43 + w * 0.86 * i / 5, y: y + 0.85, z: d / 2 + 0.02 })
+            if(b.glow)
+            {
+                const pane = w * 0.86 / 5
+                for(let i = 0; i < 5; i++)
+                {
+                    const roll = hash(seed, f, i)
+                    if(roll > lit) continue
+                    b.glow.box(pane - 0.13, 0.98, 0.04, windowLight(dusk, hash(seed + 3, f, i)), { x: -w * 0.43 + pane * (i + 0.5), y: y + 0.91, z: d / 2 + 0.075 })
+                }
+            }
         }
         kit.box(w + 0.35, 0.14, 0.75, trim, { y: y + fh - 0.35, z: d / 2 + 0.2 })
         for(const sx of [ -1, 1 ]) kit.cyl(r + 0.2, r + 0.2, 0.14, 12, trim, { x: sx * (w / 2 - r), y: y + fh - 0.35, z: d / 2 - r })
@@ -177,6 +207,8 @@ function decoBlock(b, o)
     // ground floor shop front
     kit.box(w * 0.42, 1.7, 0.14, trim, { x: -w * 0.18, y: 1.0, z: d / 2 })
     kit.box(w * 0.38, 1.5, 0.18, C.glassLight, { x: -w * 0.18, y: 1.1, z: d / 2 + 0.01 })
+    if(b.glow && hash(seed, 9, 9) < 0.25 + 0.7 * dusk)
+        b.glow.box(w * 0.38 - 0.14, 1.36, 0.03, windowLight(dusk, hash(seed, 7, 7), 0.05), { x: -w * 0.18, y: 1.17, z: d / 2 + 0.115 })
     door(kit, w * 0.27, d / 2 + 0.02, { frame: trim })
     return top
 }
@@ -314,10 +346,10 @@ function kulhad(kit, y)
 
 
 // ------------------------------------------------------------------ buildings
-function project(kind, { wall, neon, neon2, awningColors, sculpture, sculptureY = 0, sign, extra })
+function project(kind, { wall, neon, neon2, awningColors, sculpture, sculptureY = 0, sign, extra }, o = {})
 {
     const b = new Builder()
-    const top = decoBlock(b, { w: 8, d: 6.4, wall, neon, neon2 })
+    const top = decoBlock(b, { w: 8, d: 6.4, wall, neon, neon2, dusk: o.dusk || 0, seed: kind.length * 7.3 + kind.charCodeAt(0) })
     if(awningColors) awning(b.clay, 3.2, 3.05, 3.25, awningColors, { depth: 1.2 })
     if(extra) extra(b.clay, b)
     sculpture(b.clay, top + 0.25 + sculptureY)
@@ -341,7 +373,7 @@ const builders = {
             for(let i = 0; i < 3; i++) k.cyl(0.25, 0.25, 0.1, 10, C.red, { x: -3.2 + i * 0.9, y: 1.0, z: 4.0 })
             for(let i = 0; i < 3; i++) k.cyl(0.05, 0.05, 0.6, 5, C.steel, { x: -3.2 + i * 0.9, y: 0.4, z: 4.0 })
         }
-    }),
+    }, o),
     calculator: (o) => project('calculator', {
         wall: C.peach, neon: NEON.cyan, neon2: NEON.pink, awningColors: [ C.teal, C.cream ],
         sculpture: calculator, sign: o.sign,
@@ -349,17 +381,17 @@ const builders = {
         {
             for(let i = 0; i < 6; i++) k.box(2.4, 0.1, 1.2, i % 2 ? '#B9B6AE' : '#A8A59D', { x: 2.6, y: 0.5 + i * 0.11, z: 4.5, ry: 0.2 })
         }
-    }),
+    }, o),
     clock: (o) => project('clock', {
         wall: C.sky, neon: NEON.orange, neon2: NEON.pink,
         sculpture: alarmClock, sign: o.sign,
         extra: (k) => palmPot(k, -3.3, 0.5, 3.9)
-    }),
+    }, o),
     phone: (o) => project('phone', {
         wall: C.lavender, neon: NEON.cyan, neon2: NEON.yellow, awningColors: [ C.ink, C.white ],
         sculpture: phone, sign: o.sign,
         extra: (k) => { for(let i = 0; i < 3; i++) k.torus(0.35, 0.05, C.ink, { x: 2.3 + i * 0.5, y: 0.85, z: 4.4, ry: Math.PI / 2 }, 4, 10) }
-    }),
+    }, o),
     arcade: (o) => project('arcade', {
         wall: C.pink, neon: NEON.purple, neon2: NEON.cyan, awningColors: [ C.lemon, C.flamingo ],
         sculpture: ticTacToe, sculptureY: 0.4, sign: o.sign,
@@ -368,7 +400,7 @@ const builders = {
             k.box(0.9, 1.8, 0.8, '#3B6FB6', { x: -3.1, y: 0.5, z: 4.0 })
             b.neon.box(0.7, 0.5, 0.05, NEON.cyan, { x: -3.1, y: 1.6, z: 4.42 })
         }
-    }),
+    }, o),
 
     // Ishan's place: a white deco villa with a curved corner and a sun deck
     studio: () =>
@@ -552,28 +584,32 @@ export function createFillers(list, placeMatrix)
 {
     const clay = new Kit()
     const neon = new Kit()
-    const b = { clay, neon, extras: [], tube: Builder.prototype.tube }
+    const glow = new Kit()
+    const b = { clay, neon, glow, extras: [], tube: Builder.prototype.tube }
     list.forEach((f) =>
     {
         const m = placeMatrix(f)
         clay.stack.push(m)
         neon.stack.push(m)
+        glow.stack.push(m)
+        const evening = { dusk: duskAt(f.x, f.z), seed: f.variant * 3.7 + f.x }
         const wall = FILLER_WALLS[f.variant % FILLER_WALLS.length]
-        const glow = FILLER_NEON[f.variant % FILLER_NEON.length]
+        const tint = FILLER_NEON[f.variant % FILLER_NEON.length]
         if(f.floors >= 3)
         {
             // hotel: taller, with balconies stacked up the front
-            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: glow, neon2: FILLER_NEON[(f.variant + 1) % 4] })
+            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: tint, neon2: FILLER_NEON[(f.variant + 1) % 4], ...evening })
             for(let i = 1; i < f.floors; i++)
                 clay.box(f.w * 0.35, 0.12, 0.8, C.white, { x: f.w * 0.25, y: 0.5 + i * 3.0, z: f.d / 2 + 0.4 })
         }
         else
         {
-            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: glow, neon2: glow })
+            decoBlock(b, { w: f.w, d: f.d, wall, floors: f.floors, neon: tint, neon2: tint, ...evening })
             awning(clay, f.w * 0.5, 3.05, f.d / 2 + 0.05, [ wall === C.white ? C.teal : C.white, shade(wall, -0.12) ], { depth: 1.0 })
         }
         clay.stack.pop()
         neon.stack.pop()
+        glow.stack.pop()
     })
     const group = new THREE.Group()
     if(clay.parts.length) group.add(clay.mesh(clayMaterial))
@@ -582,5 +618,6 @@ export function createFillers(list, placeMatrix)
         const n = new THREE.Mesh(neon.geometry(), neonMaterial)
         group.add(n)
     }
+    if(glow.parts.length) group.add(new THREE.Mesh(glow.geometry(), glowMaterial))
     return group
 }

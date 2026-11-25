@@ -16,10 +16,11 @@ import { Car } from './car.js'
 import { Traffic } from './traffic.js'
 import { Markers } from './markers.js'
 import { Birds } from './birds.js'
+import { createDetails, updateDetails } from './details.js'
 import { projects, achievements, career, contact } from '../content.js'
 import { registry, sized } from '../models/registry.js'
 import { clayMaterial } from '../models/kit.js'
-import { BAY_ANGLE, coastRadius } from './layout.js'
+import { BAY_ANGLE, coastRadius, duskAt } from './layout.js'
 
 const contentById = Object.fromEntries([ ...projects, achievements, career, contact ].map((c) => [ c.id, c ]))
 
@@ -62,6 +63,10 @@ export class World
             this.colliders.push({ type: 'circle', x: t.x, z: t.z, r: (t.type === 'rain' ? 0.6 : 0.35) * t.scale, thin: true })
         for(const l of scatter.lamps) this.colliders.push({ type: 'circle', x: l.x, z: l.z, r: 0.2, thin: true })
         for(const r of scatter.rocks) if(r.scale > 0.6) this.colliders.push({ type: 'circle', x: r.x, z: r.z, r: 0.35 * r.scale, thin: true })
+
+        // lanterns, fences, stepping stones, flower beds, grass and fireflies
+        this.details = createDetails(scatter, this.colliders)
+        scene.add(this.details)
 
         scene.add(createBeach(scatter))
         for(const t of scatter.towers) this.colliders.push({ type: 'box', x: t.x, z: t.z, yaw: t.yaw, hw: 1.2, hd: 1.2 })
@@ -140,13 +145,13 @@ export class World
         let object
         if(site.kind === 'cinema')
         {
-            object = createBuilding('cinema', { marquee: 'Now showing: the career of Ishan R Tripathi' })
+            object = createBuilding('cinema', { marquee: 'Now showing: the career of Ishan R Tripathi', dusk: duskAt(site.x, site.z) })
             const poster = createCareerPoster(career.stops)
             const a = object.userData.posterAnchor
             poster.position.set(a.x, a.y, a.z)
             object.add(poster)
         }
-        else object = createBuilding(site.kind, { sign: content ? content.title : null })
+        else object = createBuilding(site.kind, { sign: content ? content.title : null, dusk: duskAt(site.x, site.z) })
 
         object.userData.siteId = site.id
         place(object, site.x, site.z, site.yaw, h)
@@ -265,6 +270,7 @@ export class World
 
         this.traffic.update(dt, obstacles)
         this.birds.update(time, dt)
+        updateDetails(this.details, time, camera, this.renderer)
         this.cull(camera)
     }
 

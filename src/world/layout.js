@@ -40,6 +40,17 @@ export function coastRadius(phi)
     return r
 }
 
+// How far into the evening a spot is: 0 on the afternoon side of the island,
+// 1 at the sunset beach. Lit windows, street lights, lanterns and fireflies
+// all get warmer and brighter with it.
+const DUSK_CENTRE = { x: Math.cos(BAY_ANGLE) * 50, z: Math.sin(BAY_ANGLE) * 50 }
+export function duskAt(x, z)
+{
+    const d = Math.hypot(x - DUSK_CENTRE.x, z - DUSK_CENTRE.z)
+    const t = Math.min(1, Math.max(0, (d - 10) / 40))
+    return 1 - t * t * (3 - 2 * t)
+}
+
 export function beachWidth(phi)
 {
     const c = Math.max(0, Math.cos(angleDelta(phi, BAY_ANGLE)))
