@@ -15,7 +15,7 @@ import { ISLANDS, islandSigned } from './world/islands.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
 import { UI } from './ui/ui.js'
-import { projects, career, contact } from './content.js'
+import { projects, career, contact, arcade } from './content.js'
 import { Interior } from './interior/interior.js'
 
 const params = new URLSearchParams(location.search)
@@ -48,7 +48,7 @@ const FOG = new THREE.Color('#F5AE93')
 const PLANET = new THREE.Sphere(new THREE.Vector3(), R)
 const _planetHit = new THREE.Vector3()
 // what a building's door leads into, for the prompt
-const PLACE = { cinema: 'the movie hall', hospital: 'the hospital', cafe: 'the chai shack' }
+const PLACE = { cinema: 'the movie hall', hospital: 'the hospital', cafe: 'the chai shack', arcade: 'the Game Arcade' }
 const MAIN_ISLAND = { name: 'The city', blurb: 'My projects, the trophies and the chai shack on the beach' }
 
 // the island at a point on the map (x, z), if it is on land: the main island, or one of the others
@@ -196,7 +196,7 @@ class App
         this.doors = layout.sites.filter((site) => site.entrance)
         this.interior = new Interior({
             input: this.input, ui, player: this.player, camera: this.camera, rig: this.rig, renderer: this.renderer, world: this.world,
-            openContent: (id) => this.openStop(id === 'career' ? career : contact)
+            openContent: (id) => this.openStop({ career, contact, arcade }[id])
         })
         this.rig.titleShift = this.titleShift()
         this.rig.viewShift = { ...this.rig.titleShift }
@@ -460,6 +460,8 @@ class App
     {
         const p = this.player
         if(p.mode !== 'walk' && !(p.mode === 'ride' && Math.abs(p.speed) < 3)) return
+        // at a front door the marker stays quiet: you are going in, not reading the stop
+        if(this.doorNear()) { this.inMarker = null; return }
         let inside = null
         for(const item of this.world.interactables)
         {

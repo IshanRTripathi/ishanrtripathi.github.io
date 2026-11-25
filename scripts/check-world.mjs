@@ -146,7 +146,7 @@ clearOfHouses('rock', scatter.rocks, 1.1)
 clearOfHouses('flower', scatter.flowers, 1.1)
 
 // the buildings you can walk into: the front door opens onto a road, is on land, and has a room behind it
-const ROOM_KINDS = [ 'cinema', 'hospital', 'cafe' ]
+const ROOM_KINDS = [ 'cinema', 'hospital', 'cafe', 'arcade' ]
 for(const site of layout.sites)
 {
     if(!site.entrance) continue
