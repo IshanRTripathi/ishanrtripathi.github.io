@@ -4,7 +4,7 @@ import { heightAt, coastDistance } from '../world/terrain.js'
 import { layout } from '../world/layout.js'
 import { Character } from './character.js'
 import { place } from '../world/world.js'
-import { buildParachute, openParachute } from '../world/parachute.js'
+import { buildParachute, updateParachute } from '../world/parachute.js'
 import { ISLANDS } from '../world/islands.js'
 
 const WALK = 2.7
@@ -31,6 +31,35 @@ function nearestLand(x, z)
     }
     return best
 }
+
+// the nearest dry land to a point out at sea: searched outward in rings, so you come
+// ashore where you are, not on whichever island's middle is closest
+function nearestShore(x, z)
+{
+    for(let r = 1; r <= 180; r++)
+        for(let k = 0; k < 24; k++)
+        {
+            const a = (k / 24) * Math.PI * 2
+            const dx = Math.cos(a)
+            const dz = Math.sin(a)
+            if(coastDistance(x + dx * r, z + dz * r) < 0.6) continue
+            // step back in from the far side, to the water's edge
+            let d = r
+            while(d > 0 && coastDistance(x + dx * d, z + dz * d) >= 0.6) d -= 0.1
+            return { x: x + dx * (d + 0.1), z: z + dz * (d + 0.1) }
+        }
+    return null
+}
+
+// how far along a ramp a value is, from a (0) to b (1), for a > b too
+function ramp(a, b, x)
+{
+    return Math.max(0, Math.min(1, (x - a) / (b - a)))
+}
+
+// the lean of the body while falling: a free-fall dive, and a tilt into a turn
+const _tiltEuler = new THREE.Euler()
+const _tiltQuat = new THREE.Quaternion()
 
 // Push a circle out of every collider it overlaps (map space)
 export function resolveCollisions(pos, radius, colliders)
@@ -121,6 +150,8 @@ export class Player
         this.character.root.add(this.parachute.root)
         this.chute = null // { h, open, yaw } while falling under the canopy
         this.ejected = null // the plane we bailed out of, flying on without us
+        this.landing = null // seconds since the canopy came down, while it folds up on the ground
+        this.canopyState = { open: 0, pitch: 0, bank: 0, collapse: 0 }
         this.sync()
     }
 
@@ -255,7 +286,9 @@ export class Player
         f.throttle = 0
         f.say('Bailed out. The plane glides on without you', 3)
         this.ejected = v
-        this.chute = { h: f.h, open: 0, yaw: this.yaw }
+        // the canopy starts on the plane's heading; it turns back toward land if it drifts out to sea
+        this.chute = { h: f.h, open: 0, yaw: this.yaw, sway: 0, swayVel: 0, pitch: 0, home: nearestLand(f.x, f.z) }
+        this.landing = null
         this.x = f.x
         this.z = f.z
         this.vehicle = null
@@ -270,47 +303,55 @@ export class Player
     {
         const c = this.chute
         const input = this.input
-        // the canopy fills over about a second; until then you fall fast
-        c.open = Math.min(1, c.open + dt / 1.1)
+        // the canopy fills over about a second and a half; until then you fall fast
+        c.open = Math.min(1, c.open + dt / 1.3)
         const brake = Math.max(0, input.move.y) // W slows the fall
         const dive = Math.max(0, -input.move.y) // S speeds it up
-        // steer with A and D: the canopy turns on the wind
-        c.yaw -= input.move.x * 0.6 * dt * c.open
-        const forward = 5.5 * c.open * (1 - 0.3 * brake)
-        const sink = (1 - c.open) * 9 + c.open * Math.max(1.6, 4.2 - 1.6 * brake + 1.6 * dive)
+        const turn = input.move.x
+        // steer with A and D: the canopy turns on the wind, slower while it is still filling
+        c.yaw -= turn * 0.6 * dt * c.open
+        // out over the sea, the canopy turns itself back toward the land it came from
+        if(coastDistance(this.x, this.z) < 0)
+        {
+            const want = Math.atan2(c.home.x - this.x, c.home.z - this.z)
+            c.yaw += angleDiff(want, c.yaw) * (1 - Math.exp(-dt * 0.9)) * c.open
+        }
+        // a slow wander on the wind, so the glide is never quite a straight line
+        c.time = (c.time || 0) + dt
+        c.yaw += Math.sin(c.time * 0.6) * 0.12 * c.open * dt
+        // the glide: forward, a little slower when you brake
+        const forward = 4.6 * c.open * (1 - 0.3 * brake)
+        // the sink: a fast fall until the canopy fills, then a slow glide that quickens in a dive
+        // and eases off in the last few metres (the flare)
+        let sink = (1 - c.open) * 9 + c.open * Math.max(1.6, 4.2 - 1.6 * brake + 1.6 * dive)
+        sink *= 1 - 0.5 * c.open * ramp(7, 1.5, c.h)
+        // the pendulum: steering swings the harness out, and the canopy follows on a spring
+        c.swayVel += (turn * 4 * c.open - 5 * c.sway - 2 * c.swayVel) * dt
+        c.sway += c.swayVel * dt
+        // the canopy tips forward when you brake and back when you dive
+        const pitch = (brake * 0.16 - dive * 0.12) * c.open
+        c.pitch += (pitch - c.pitch) * (1 - Math.exp(-dt * 3))
         c.h -= sink * dt
         this.yaw = c.yaw
         this.x += Math.sin(c.yaw) * forward * dt
         this.z += Math.cos(c.yaw) * forward * dt
-        // keep the drift over the island, not out to sea
-        if(coastDistance(this.x, this.z) < 4)
-        {
-            this.x *= 0.995
-            this.z *= 0.995
-        }
-        openParachute(this.parachute, c.open)
-        this.parachute.root.visible = true
         if(c.h <= 0) this.landChute()
     }
 
     landChute()
     {
-        // a landing in the sea brings you back to the nearest shore
-        let steps = 0
-        while(coastDistance(this.x, this.z) < 0.6 && steps++ < 400)
+        // a landing in the sea brings you ashore: to the nearest dry land, wherever it is
+        if(coastDistance(this.x, this.z) < 0.6)
         {
-            const ref = nearestLand(this.x, this.z)
-            const dx = ref.x - this.x
-            const dz = ref.z - this.z
-            const len = Math.hypot(dx, dz) || 1
-            this.x += (dx / len) * 0.6
-            this.z += (dz / len) * 0.6
+            const shore = nearestShore(this.x, this.z)
+            if(shore) { this.x = shore.x; this.z = shore.z }
+            this.emit('splash')
         }
-        if(steps > 0) this.emit('splash')
         this.chute = null
         this.mode = 'walk'
         this.speed = 0
-        this.parachute.root.visible = false
+        // the canopy folds up on the ground for a moment before it is put away
+        this.landing = 0
         this.emit('landed')
     }
 
@@ -385,6 +426,7 @@ export class Player
         if(!vehicle) return
         this.vehicle = vehicle
         vehicle.collider.disabled = true
+        vehicle.ridden = true
         this.mode = 'ride'
         this.x = vehicle.x
         this.z = vehicle.z
@@ -411,13 +453,34 @@ export class Player
         }
         v.x = this.x
         v.z = this.z
-        v.yaw = this.yaw
-        this.world.parkVehicle(v)
-        // step out on the driver's side (the vehicle's left)
+        // step out on the driver's side (the vehicle's left); a boat is left at the shore, on whichever
+        // side or end has land, and out on the open sea there is nowhere to step
+        const reach = v.box.hw + 0.6
         const lx = Math.cos(this.yaw)
         const lz = -Math.sin(this.yaw)
-        const out = v.box.hw + 0.6
-        const pos = resolveCollisions({ x: this.x + lx * out, z: this.z + lz * out }, 0.32, this.world.colliders)
+        let exit = { x: lx * reach, z: lz * reach }
+        if(v.kind === 'boat')
+        {
+            const ahead = v.box.hd + 0.6
+            const options = [
+                { x: lx * reach, z: lz * reach },
+                { x: -lx * reach, z: -lz * reach },
+                { x: Math.sin(this.yaw) * ahead, z: Math.cos(this.yaw) * ahead }
+            ]
+            const dry = options.find((o) => coastDistance(this.x + o.x, this.z + o.z) >= 0.4)
+            if(!dry)
+            {
+                this.emit('notice', 'Sail to the shore to get out')
+                return
+            }
+            exit = dry
+        }
+        v.ridden = false
+        v.x = this.x
+        v.z = this.z
+        v.yaw = this.yaw
+        this.world.parkVehicle(v)
+        const pos = resolveCollisions({ x: this.x + exit.x, z: this.z + exit.z }, 0.32, this.world.colliders)
         this.x = pos.x
         this.z = pos.z
         this.mode = 'walk'
@@ -482,14 +545,31 @@ export class Player
         this.yaw += yawRate * dt
         this.turn = yawRate
         const before = { x: this.x, z: this.z }
-        this.move(dt, v.radius)
+        // a boat sails the sea; everything else drives on land
+        if(v.kind === 'boat') this.sail(dt)
+        else this.move(dt, v.radius)
         // bumping into something at speed stops you
         const moved = Math.hypot(this.x - before.x, this.z - before.z)
         if(Math.abs(this.speed) > 3 && moved < Math.abs(this.speed) * dt * 0.3) this.speed *= 0.4
         // scooters lean into turns, cars roll a little the other way
         const amount = Math.min(1, Math.abs(this.speed) / 8)
-        const lean = v.kind === 'scooter' ? this.steer * amount * 0.38 : -this.steer * amount * 0.05
+        // scooters lean into turns, cars roll a little the other way, boats heel a little into them
+        const lean = v.kind === 'scooter' ? this.steer * amount * 0.38 : v.kind === 'boat' ? this.steer * amount * 0.08 : -this.steer * amount * 0.05
         v.model.update(dt, this.speed, -this.steer, lean)
+    }
+
+    // a boat sails the sea: it stops at the shore, and nothing else stops it
+    sail(dt)
+    {
+        const nx = this.x + Math.sin(this.yaw) * this.speed * dt
+        const nz = this.z + Math.cos(this.yaw) * this.speed * dt
+        if(coastDistance(nx, nz) > -1.2)
+        {
+            this.speed *= 0.3
+            return
+        }
+        this.x = nx
+        this.z = nz
     }
 
     standUp()
@@ -578,7 +658,10 @@ export class Player
         // in the plane the camera follows the aircraft, up in the air as well as on the ground
         const flying = this.mode === 'ride' && this.vehicle && this.vehicle.flight
         const chuting = this.mode === 'chute' && this.chute
-        const h = heightAt(this.x, this.z) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
+        this.bobTime = (this.bobTime || 0) + dt
+        // a boat floats on the sea: its height is the sea's, not the seabed's
+        const sailing = this.mode === 'ride' && this.vehicle && this.vehicle.kind === 'boat'
+        const h = (sailing ? 0 : heightAt(this.x, this.z)) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
         const root = this.character.root
         // the character is swapped for the real model when it loads, so the canopy follows the current one
         if(this.parachute.root.parent !== root) root.add(this.parachute.root)
@@ -599,7 +682,9 @@ export class Player
         else if(this.mode === 'ride' && this.vehicle)
         {
             const v = this.vehicle
-            place(v.model.root, this.x, this.z, this.yaw, h + 0.05)
+            place(v.model.root, this.x, this.z, this.yaw, h + 0.05 + (sailing ? Math.sin(this.bobTime * 1.4) * 0.07 : 0))
+            // the hull heels a little into a turn
+            if(sailing) v.model.root.rotateZ(v.model.lean.rotation.z)
             v.x = this.x
             v.z = this.z
             v.yaw = this.yaw
@@ -615,6 +700,23 @@ export class Player
             root.position.copy(this.position)
             root.quaternion.copy(frameQuaternion(this.x, this.z, yaw))
         }
+        // falling: the body tips forward in a free fall and comes upright as the canopy fills; it leans into a turn
+        if(chuting)
+        {
+            _tiltEuler.set(-1.0 * (1 - this.chute.open) ** 2, 0, this.chute.sway * 0.12)
+            root.quaternion.multiply(_tiltQuat.setFromEuler(_tiltEuler))
+        }
+        // the canopy: shown while you fall, and while it folds up on the ground after a landing
+        if(this.landing !== null) this.landing += dt
+        const folding = this.landing !== null && this.landing < 0.9
+        if(this.landing !== null && !folding) this.landing = null
+        if(chuting) this.canopyState = { open: this.chute.open, pitch: this.chute.pitch, bank: this.chute.sway * 0.3, collapse: 0 }
+        this.parachute.root.visible = !!chuting || folding
+        if(chuting || folding)
+        {
+            this.canopyState.collapse = folding && !chuting ? this.landing / 0.9 : 0
+            updateParachute(this.parachute, this.canopyState, dt)
+        }
         // inside a closed car you can't see the driver
         root.visible = !(this.mode === 'ride' && this.vehicle && this.vehicle.hideRider)
 
@@ -623,7 +725,8 @@ export class Player
             walkSpeed: WALK,
             runSpeed: RUN,
             turn: this.mode === 'ride' ? 0 : this.turn,
-            mode: this.mode === 'ride' ? 'ride' : this.mode === 'sit' ? 'sit' : this.speed > 0.05 ? 'move' : 'idle'
+            // hanging in the harness looks like sitting: the same pose
+            mode: this.mode === 'ride' ? 'ride' : this.mode === 'sit' || this.mode === 'chute' ? 'sit' : this.speed > 0.05 ? 'move' : 'idle'
         })
         this.character.update(dt)
     }

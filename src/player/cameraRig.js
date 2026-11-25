@@ -51,6 +51,10 @@ export class CameraRig
         if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'car') this.distance = Math.max(this.distance, 11)
         // the plane gets room to see the ground fall away
         if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'plane') this.distance = Math.max(this.distance, 17)
+        // a boat gets a wide view over the water
+        if(player.mode === 'ride' && player.vehicle && player.vehicle.kind === 'boat') this.distance = Math.max(this.distance, 12)
+        // under the canopy: far enough back to see the whole chute, and the ground coming up
+        if(player.mode === 'chute') this.distance = Math.max(this.distance, 13)
         const result = this.followPoseAt(player, out)
         this.distance = wanted
         return result
@@ -61,7 +65,8 @@ export class CameraRig
         const P = player.position
         const U = player.up
         const F = mapTangent(player.x, player.z, Math.sin(this.yaw), Math.cos(this.yaw), new THREE.Vector3())
-        const lift = player.mode === 'sit' ? 0.9 : 1.35
+        // the look-at point: the rider, or the canopy above him while he hangs under it
+        const lift = player.mode === 'sit' ? 0.9 : player.mode === 'chute' ? 3.1 : 1.35
         out.position.copy(P)
             .addScaledVector(U, lift + this.distance * Math.sin(this.pitch))
             .addScaledVector(F, -this.distance * Math.cos(this.pitch))
@@ -69,7 +74,7 @@ export class CameraRig
         out.up.copy(U)
 
         // pull in rather than end up inside a building
-        const minimum = player.mode === 'ride' && player.vehicle && (player.vehicle.kind === 'car' || player.vehicle.kind === 'plane') ? (player.vehicle.kind === 'plane' ? 8 : 6.5) : 3
+        const minimum = player.mode === 'chute' ? 9 : player.mode === 'ride' && player.vehicle && (player.vehicle.kind === 'car' || player.vehicle.kind === 'plane' || player.vehicle.kind === 'boat') ? (player.vehicle.kind === 'plane' ? 8 : 6.5) : 3
         const dist = Math.max(Math.min(minimum, this.distance), this.clearDistance(player, this.distance))
         if(dist < this.distance)
         {

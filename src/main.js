@@ -345,6 +345,7 @@ class App
             this.ambience.ui('drop')
             ui.showArea('Back on the ground', 'Your parachute got you down safely')
         })
+        events.addEventListener('notice', (e) => ui.showArea('Not here', e.detail))
         events.addEventListener('splash', () =>
         {
             this.ambience.splash()
@@ -397,7 +398,7 @@ class App
     {
         const p = this.player
         if(this.state !== 'play') return ui.setPrompt(null)
-        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? (p.vehicle.flight.onGround ? 'Get out of the plane' : 'Bail out with the parachute') : 'Get off the scooter')
+        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? (p.vehicle.flight.onGround ? 'Get out of the plane' : 'Bail out with the parachute') : p.vehicle.kind === 'boat' ? 'Get off the boat' : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
         if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
         if(p.nearby) return ui.setPrompt('Enter', `See ${p.nearby.content.title}`)

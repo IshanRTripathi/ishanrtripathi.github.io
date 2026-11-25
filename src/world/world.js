@@ -128,15 +128,8 @@ export class World
             return mesh
         })
 
-        for(const b of scatter.boats)
-        {
-            const boat = createBoat(b.kind)
-            place(boat, b.x, b.z, b.yaw, 0)
-            boat.userData.base = boat.position.clone()
-            boat.userData.baseQuaternion = boat.quaternion.clone()
-            scene.add(boat)
-            this.boats.push(boat)
-        }
+        // the boats out on the sea: you can sail any of them
+        for(const b of scatter.boats) this.addBoat(b.kind, b.x, b.z, b.yaw)
 
         for(const site of layout.sites) this.addSite(site)
 
@@ -211,6 +204,33 @@ export class World
         flight.apply(model.root)
     }
 
+    // a boat you can sail: it floats on the sea, and you drive it from its deck
+    addBoat(kind, x, z, yaw)
+    {
+        const id = `boat-${this.vehicles.length}`
+        const mesh = createBoat(kind)
+        const model = {
+            root: mesh,
+            seat: new THREE.Vector3(0, 0.5, -0.4),
+            lean: { rotation: { z: 0 } },
+            // the hull heels a little into a turn
+            update(dt, speed, steer, lean) { this.lean.rotation.z = lean }
+        }
+        const collider = { type: 'box', x, z, yaw, hw: 1.6, hd: 3.2, vehicle: id }
+        this.colliders.push(collider)
+        const v = {
+            id, kind: 'boat', model, x, z, yaw, collider, radius: 3, box: { hw: 1.6, hd: 3.2 }, seat: model.seat,
+            label: kind === 'yacht' ? 'Sail the yacht' : 'Ride the speedboat', hideRider: false,
+            maxSpeed: 9, reverse: 3, accel: 1.4, steer: 1.2, ridden: false
+        }
+        this.vehicles.push(v)
+        this.scene.add(mesh)
+        mesh.userData.vehicle = v
+        this.boats.push(mesh)
+        place(mesh, x, z, yaw, 0)
+        return v
+    }
+
     // two boats moored offshore of an island, on opposite sides, clear of its airstrip
     moorBoats(island)
     {
@@ -222,12 +242,7 @@ export class World
             const x = island.at.x + Math.cos(phi) * r
             const z = island.at.z + Math.sin(phi) * r
             if(clearDistance(x, z) < 12) continue
-            const boat = createBoat(kind)
-            place(boat, x, z, phi + Math.PI / 2, 0)
-            boat.userData.base = boat.position.clone()
-            boat.userData.baseQuaternion = boat.quaternion.clone()
-            this.scene.add(boat)
-            this.boats.push(boat)
+            this.addBoat(kind, x, z, phi + Math.PI / 2)
         }
     }
 
@@ -275,7 +290,8 @@ export class World
             return
         }
         Object.assign(v.collider, { x: v.x, z: v.z, yaw: v.yaw, disabled: false })
-        place(v.model.root, v.x, v.z, v.yaw, heightAt(v.x, v.z) + 0.05)
+        // a boat stays on the sea, not on the seabed under it
+        place(v.model.root, v.x, v.z, v.yaw, (v.kind === 'boat' ? 0 : heightAt(v.x, v.z)) + 0.05)
         v.model.lean.rotation.z = 0
     }
 
@@ -424,6 +440,16 @@ export class World
 
         for(const boat of this.boats)
         {
+            // a boat a visitor is sailing is placed by the player; the rest bob where they are
+            const v = boat.userData.vehicle
+            if(v)
+            {
+                if(v.ridden) continue
+                place(boat, v.x, v.z, v.yaw, Math.sin(time * 1.4 + v.x) * 0.07)
+                boat.rotateZ(Math.sin(time * 1.1 + v.z) * 0.05)
+                boat.rotateX(Math.sin(time * 0.9 + v.x) * 0.03)
+                continue
+            }
             const base = boat.userData.base
             const up = base.clone().normalize()
             const bob = Math.sin(time * 1.4 + base.x) * 0.07
