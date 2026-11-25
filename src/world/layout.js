@@ -351,7 +351,8 @@ export function buildLayout()
         const from = road
         const mid = { x: (from.x + door.x) / 2 + 2.5, z: (from.z + door.z) / 2 - 1.5 }
         paths.push(new Path([ from, mid, door ], 1.6, 'boardwalk'))
-        const site = { id: 'arcade', kind: 'arcade', contentId: 'arcade', x: pos.x, z: pos.z, yaw, w: 10, d: 8, h: 10, door }
+        // the hall's front door is the end of its boardwalk: you walk in from there
+        const site = { id: 'arcade', kind: 'arcade', contentId: 'arcade', interior: 'arcade', entrance: door, x: pos.x, z: pos.z, yaw, w: 10, d: 8, h: 10, door }
         sites.push(site)
         return site
     })()

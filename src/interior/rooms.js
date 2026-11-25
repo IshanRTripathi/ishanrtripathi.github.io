@@ -313,4 +313,85 @@ export function buildCafe()
     })
 }
 
-export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe }
+// ------------------------------------------------------------------ the game arcade
+export function buildArcade()
+{
+    const group = new THREE.Group()
+    const kit = new Kit()
+    const colliders = []
+    const hw = 6
+    const hd = 4
+    const walls = '#2A1F4D'
+
+    kit.box(hw * 2 + 0.4, 0.2, hd * 2 + 0.4, '#1B1535', { y: -0.1 })
+    kit.box(hw * 2 + 0.4, 5, 0.4, walls, { y: 2.5, z: -hd - 0.2 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: -hw - 0.2, y: 2.5 })
+    kit.box(0.4, 5, hd * 2 + 0.4, walls, { x: hw + 0.2, y: 2.5 })
+    // the front wall, with the door in the middle
+    kit.box(4.4, 5, 0.4, walls, { x: -3.8, y: 2.5, z: hd + 0.2 })
+    kit.box(4.4, 5, 0.4, walls, { x: 3.8, y: 2.5, z: hd + 0.2 })
+    kit.box(2.0, 0.8, 0.4, walls, { y: 4.6, z: hd + 0.2 })
+    solid(colliders, 0, -hd - 0.2, hw + 0.2, 0.2)
+    solid(colliders, -hw - 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, hw + 0.2, 0, 0.2, hd + 0.2)
+    solid(colliders, -3.8, hd + 0.2, 2.2, 0.2)
+    solid(colliders, 3.8, hd + 0.2, 2.2, 0.2)
+
+    // the game cabinets: three along the back wall, one on each side wall (each one is a game)
+    const cabinets = [
+        { x: -4.2, z: -3.2, face: 0, color: '#FF4FA3' },
+        { x: -2.4, z: -3.2, face: 0, color: '#2DE2E6' },
+        { x: -0.6, z: -3.2, face: 0, color: '#FFE45E' },
+        { x: hw - 0.7, z: -1.2, face: -Math.PI / 2, color: '#A855F7' },
+        { x: -hw + 0.7, z: -1.2, face: Math.PI / 2, color: '#FF8C42' }
+    ]
+    const cabinetKit = new Kit()
+    for(const c of cabinets)
+    {
+        // the body faces the room; its screen is a glowing panel on the front
+        cabinetKit.box(0.9, 1.8, 0.8, '#2B2450', { x: c.x, y: 0.9, z: c.z })
+        solid(colliders, c.x, c.z, 0.45, 0.4)
+    }
+    kit.box(3.2, 0.5, 0.9, '#5A3F8C', { x: -2.6, y: 0.25, z: 2.0 })
+    kit.box(3.2, 0.5, 0.9, '#5A3F8C', { x: 2.6, y: 0.25, z: 2.0 })
+    group.add(kit.mesh())
+    group.add(cabinetKit.mesh())
+    for(const c of cabinets)
+    {
+        const screen = glow(group, 0.7, 0.5, 0.05, c.color, c.x + Math.sin(c.face) * 0.45, 1.25, c.z + Math.cos(c.face) * 0.45)
+        screen.rotation.y = c.face
+    }
+
+    const sign = neonSign('Game Arcade', { color: NEON.pink, width: 3.6, height: 0.8, panel: true })
+    sign.position.set(0, 3.4, -hd + 0.4)
+    group.add(sign)
+
+    const lights = [
+        new THREE.HemisphereLight('#A89BFF', '#1B1535', 2.4),
+        pointLight('#FF4FA3', 2.6, 16, -3.4, 2.6, -2.0),
+        pointLight('#2DE2E6', 2.2, 16, 3.4, 2.6, -1.0),
+        pointLight('#FFFFFF', 1.4, 18, 0, 3.2, 2.0)
+    ]
+    lights.forEach((l) => group.add(l))
+
+    const points = [
+        { kind: 'content', content: 'arcade', label: 'Play Stack Tower', x: -4.2, z: -1.6, r: 1.6 },
+        { kind: 'content', content: 'arcade', label: 'Play Coin Catch', x: -2.4, z: -1.6, r: 1.6 },
+        { kind: 'content', content: 'arcade', label: 'Play Neon Bounce', x: -0.6, z: -1.6, r: 1.6 },
+        { kind: 'info', label: 'Prize counter', sub: 'Pick a game and play. Your best scores stay on this device.', x: 4.2, z: 3.0, r: 1.5 },
+        { kind: 'sit', label: 'Sit and watch', yaw: Math.PI, x: -2.6, z: 2.0, r: 0.9 },
+        { kind: 'sit', label: 'Sit and watch', yaw: Math.PI, x: 2.6, z: 2.0, r: 0.9 }
+    ]
+
+    return finish('arcade', group, {
+        background: '#0E0A22',
+        half: { x: hw, z: hd },
+        colliders,
+        spawn: { x: 0, z: 2.8, yaw: Math.PI },
+        exit: { x: 0, z: hd - 0.5, r: 0.8 },
+        points,
+        lights
+    })
+}
+
+export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe, arcade: buildArcade }
