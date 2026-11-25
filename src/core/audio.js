@@ -219,6 +219,26 @@ export class Ambience
             // quiet room tone
             noise('lowpass', 160, 0.7, 0.3)
         }
+        else if(kind === 'lounge')
+        {
+            // the bass under the room, the murmur of the crowd, and a kick drum on every beat
+            tone(55, 0.025)
+            noise('lowpass', 380, 0.6, 0.2)
+            const kick = () =>
+            {
+                const t = ctx.currentTime
+                const o = ctx.createOscillator()
+                o.frequency.setValueAtTime(110, t)
+                o.frequency.exponentialRampToValueAtTime(42, t + 0.16)
+                const g = ctx.createGain()
+                g.gain.setValueAtTime(0.09, t)
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.22)
+                o.connect(g).connect(out)
+                o.start(t)
+                o.stop(t + 0.25)
+            }
+            blip(() => 0.5, kick)
+        }
         bed.level = 1
         return bed
     }
