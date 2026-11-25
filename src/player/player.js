@@ -545,11 +545,18 @@ export class Player
         const throttle = input.move.y
         const steer = input.move.x
         const target = throttle > 0 ? throttle * v.maxSpeed * (input.run ? 1.15 : 1) : throttle < 0 ? throttle * v.reverse : 0
-        const accel = Math.abs(target) > Math.abs(this.speed) ? v.accel : 3.5
-        this.speed += (target - this.speed) * Math.min(1, dt * accel)
-        this.steer += (steer - this.steer) * Math.min(1, dt * 6)
-        const grip = Math.min(1, Math.abs(this.speed) / 3)
-        const yawRate = -this.steer * v.steer * grip * Math.sign(this.speed || 1)
+        // S while rolling forward brakes hard; once stopped it reverses. Otherwise the vehicle coasts down.
+        const braking = throttle < 0 && this.speed > 0.5
+        const rate = Math.abs(target) > Math.abs(this.speed) ? v.accel : braking ? 9 : 3.5
+        this.speed += (target - this.speed) * Math.min(1, dt * rate)
+        // the stick is followed quickly, so there is little lag between the key and the turn
+        this.steer += (steer - this.steer) * Math.min(1, dt * 11)
+        // steering is quick when slow and calmer at speed, so a car or boat doesn't spin out at full throttle
+        const speedFrac = Math.min(1, Math.abs(this.speed) / v.maxSpeed)
+        const steerScale = 1 - 0.5 * speedFrac
+        // no turning on the spot: a vehicle has to be moving to turn
+        const grip = Math.min(1, Math.abs(this.speed) / 2.5)
+        const yawRate = -this.steer * v.steer * steerScale * grip * Math.sign(this.speed || 1)
         this.yaw += yawRate * dt
         this.turn = yawRate
         const before = { x: this.x, z: this.z }
@@ -673,7 +680,9 @@ export class Player
         // sea you swim: floating at the water's level, and never lower than the ground under you
         const ground = groundAt(this.x, this.z)
         this.swimming = this.mode === 'walk' && ground < -0.5
-        const floor = this.swimming ? Math.max(ground, SWIM_FLOAT) : ground
+        // in the plane the sea is flat, the same as the plane's own ground, so the camera follows the aircraft
+        // rather than the sea floor under it
+        const floor = flying ? Math.max(0, ground) : this.swimming ? Math.max(ground, SWIM_FLOAT) : ground
         const h = (sailing ? 0 : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
         const root = this.character.root
         // the character is swapped for the real model when it loads, so the canopy follows the current one

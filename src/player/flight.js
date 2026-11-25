@@ -22,6 +22,12 @@ const MAX_BANK = 0.62
 const GROUND_PITCH_MAX = 0.2
 const SAFE_TOUCHDOWN = -4.5 // sink rate you can land at
 const CRASH_SINK = -9
+// how fast the wings roll, in radians a second: the stick is answered at once, not in a slow ease
+const BANK_RATE = 2.4
+// how sharply a bank turns the nose: the coordinated-turn rate, sped up so turns are quick enough to steer with
+const TURN_GAIN = 1.9
+// below this speed the turn rate stops growing (the formula would blow up as the speed goes to zero)
+const VTURN_MIN = 14
 
 export class Flight
 {
@@ -109,13 +115,17 @@ export class Flight
             // below stall speed the nose drops on its own
             if(this.v < VSTALL) this.pitch += (-0.25 - this.pitch) * Math.min(1, dt * 1.5)
             this.pitch = Math.max(-0.9, Math.min(0.9, this.pitch))
-            // bank into the turn; turn at a rate that depends on the bank and the speed
+            // the stick banks the wings: D rolls right (right wing down), A rolls left. The wings follow
+            // the stick at a steady rate, and roll back level when it is let go
             const bankWanted = -input.x * MAX_BANK
-            this.bank += (bankWanted - this.bank) * Math.min(1, dt * 2.6)
-            const turnRate = -(G * Math.tan(this.bank)) / Math.max(this.v, 8)
+            const step = BANK_RATE * dt
+            this.bank += Math.max(-step, Math.min(step, bankWanted - this.bank))
+            // a banked plane turns the way its wings lean: the coordinated turn rate for the bank and
+            // the speed, sped up so a turn is quick enough to steer with. A right bank turns right.
+            const turnRate = TURN_GAIN * G * Math.tan(this.bank) / Math.max(this.v, VTURN_MIN)
             this.yaw += turnRate * dt
-            // lift: how much of the weight the wings take depends on speed
-            const lift = Math.max(0, Math.min(1, (this.v - VSTALL) / (VCRUISE - VSTALL)))
+            // lift: how much of the weight the wings take depends on speed, and a bank takes some of it sideways
+            const lift = Math.max(0, Math.min(1, (this.v - VSTALL) / (VCRUISE - VSTALL))) * Math.cos(this.bank)
             const climbWanted = lift > 0 ? Math.max(-9, Math.min(9, this.v * Math.sin(this.pitch) * 0.75 + (1 - lift) * -6)) : -7
             this.vy += (climbWanted - this.vy) * Math.min(1, dt * 2.0)
             this.h += this.vy * dt

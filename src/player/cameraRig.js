@@ -66,7 +66,9 @@ export class CameraRig
         const U = player.up
         const F = mapTangent(player.x, player.z, Math.sin(this.yaw), Math.cos(this.yaw), new THREE.Vector3())
         // the look-at point: the rider, or the canopy above him while he hangs under it
-        const lift = player.mode === 'sit' ? 0.9 : player.mode === 'chute' ? 3.1 : 1.35
+        // in the plane the camera looks at the aircraft itself, so it stays in the middle of the frame
+        const inPlane = player.mode === 'ride' && player.vehicle && player.vehicle.flight
+        const lift = player.mode === 'sit' ? 0.9 : player.mode === 'chute' ? 3.1 : inPlane ? 0.2 : 1.35
         out.position.copy(P)
             .addScaledVector(U, lift + this.distance * Math.sin(this.pitch))
             .addScaledVector(F, -this.distance * Math.cos(this.pitch))
@@ -164,7 +166,7 @@ export class CameraRig
             const sinceDrag = time - this.lastDrag
             if(player.mode === 'ride')
             {
-                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * (player.vehicle && player.vehicle.kind === 'car' ? 4 : 2.6)))
+                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * (player.vehicle && player.vehicle.kind === 'plane' ? 7 : player.vehicle && player.vehicle.kind === 'car' ? 4 : 2.6)))
             }
             else if(player.mode === 'sit' && player.world.stool)
             {
@@ -213,8 +215,11 @@ export class CameraRig
         }
         else
         {
-            const k = 1 - Math.exp(-dt * 7)
-            const kt = 1 - Math.exp(-dt * 12)
+            // in the plane the camera has to keep up with it: a slow ease lets a climbing plane drift out
+            // of the top of the frame, so it locks on tight
+            const flying = player.mode === 'ride' && player.vehicle && player.vehicle.flight
+            const k = 1 - Math.exp(-dt * (flying ? 40 : 7))
+            const kt = 1 - Math.exp(-dt * (flying ? 60 : 12))
             this.smoothed.position.lerp(pose.position, k)
             this.smoothed.target.lerp(pose.target, kt)
             this.smoothed.up.lerp(pose.up, k).normalize()

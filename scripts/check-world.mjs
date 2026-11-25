@@ -121,6 +121,30 @@ for(const t of scatter.trees)
     for(const f of scatter.fillers)
         if(Math.hypot(t.x - f.x, t.z - f.z) < Math.hypot(f.w, f.d) / 2) { fail(`tree inside a city block at (${t.x.toFixed(1)}, ${t.z.toFixed(1)})`); break }
 
+// houses keep their distance from each other, and from the trees, bushes and rocks around them
+for(let i = 0; i < scatter.fillers.length; i++)
+    for(let j = i + 1; j < scatter.fillers.length; j++)
+    {
+        const a = scatter.fillers[i]
+        const b = scatter.fillers[j]
+        const gap = Math.hypot(a.x - b.x, a.z - b.z) - Math.hypot(a.w, a.d) / 2 - Math.hypot(b.w, b.d) / 2
+        if(gap < 1.8) { fail(`two houses are only ${gap.toFixed(1)} m apart at (${a.x.toFixed(1)}, ${a.z.toFixed(1)})`); break }
+    }
+const clearOfHouses = (name, list, margin) =>
+{
+    for(const item of list)
+        for(const f of scatter.fillers)
+            if(Math.hypot(item.x - f.x, item.z - f.z) - Math.hypot(f.w, f.d) / 2 < margin)
+            {
+                fail(`${name} is ${(Math.hypot(item.x - f.x, item.z - f.z) - Math.hypot(f.w, f.d) / 2).toFixed(1)} m from a house at (${item.x.toFixed(1)}, ${item.z.toFixed(1)}), less than ${margin} m`)
+                return
+            }
+}
+clearOfHouses('tree', scatter.trees, 2.5)
+clearOfHouses('bush', scatter.bushes, 1.1)
+clearOfHouses('rock', scatter.rocks, 1.1)
+clearOfHouses('flower', scatter.flowers, 1.1)
+
 // the traffic loop is one unbroken circuit (a jump would send cars piling up at the join)
 for(let i = 1; i < scatter.loop.length; i++)
 {
