@@ -24,8 +24,9 @@ function angleDiff(a, b)
 
 export class Interior
 {
-    constructor({ input, ui, player, camera, rig, renderer, world, openContent, figures })
+    constructor({ input, ui, player, camera, rig, renderer, world, openContent, figures, ambience })
     {
+        this.ambience = ambience
         this.figures = figures // a function that gives the loaded figures (they load after the city)
         this.input = input
         this.ui = ui
@@ -75,6 +76,7 @@ export class Interior
         if(this.busy || this.active) return
         this.busy = true
         this.ui.fade(true)
+        this.ambience?.door()
         setTimeout(() =>
         {
             const room = this.roomFor(site.interior)
@@ -123,6 +125,7 @@ export class Interior
         this.speed = 0
         this.sitting = null
         this.active = true
+        this.ambience?.setRoom(room.name)
     }
 
     // out through the door: back on the planet, facing away from the building
@@ -131,6 +134,7 @@ export class Interior
         if(!this.active || this.busy) return
         this.busy = true
         this.ui.fade(true)
+        this.ambience?.door()
         setTimeout(() =>
         {
             const { site } = this.current
@@ -149,6 +153,7 @@ export class Interior
             this.scene = null
             this.active = false
             this.ui.setInside(false)
+            this.ambience?.setRoom(null)
             this.sitting = null
             this.ui.fade(false)
             setTimeout(() => { this.busy = false }, FADE_MS)
