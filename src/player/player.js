@@ -268,6 +268,9 @@ export class Player
     // ---------------------------------------------------------------- vehicles
     mount(vehicle)
     {
+        // a car from the traffic: it stops and is yours
+        if(vehicle.traffic) vehicle = this.world.takeTrafficCar(vehicle.traffic)
+        if(!vehicle) return
         this.vehicle = vehicle
         vehicle.collider.disabled = true
         this.mode = 'ride'
@@ -386,8 +389,17 @@ export class Player
         }
         let vehicle = null
         if(this.mode === 'walk')
+        {
             for(const v of this.world.vehicles)
                 if(Math.hypot(v.x - this.x, v.z - this.z) < v.box.hd + 1.4) vehicle = v
+            // or any car in the traffic that has stopped next to you
+            const car = vehicle ? null : this.world.trafficCarNear?.(this.x, this.z)
+            if(car)
+            {
+                car.offer = car.offer || { traffic: car, label: 'Drive this car', box: { hd: 2.15 } }
+                vehicle = car.offer
+            }
+        }
         if(vehicle !== this.nearVehicle)
         {
             this.nearVehicle = vehicle

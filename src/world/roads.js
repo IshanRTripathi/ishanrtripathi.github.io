@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { makeSeasonal } from './seasonal.js'
 import { surfacePoint, mapToDir } from '../core/geo.js'
 import { layout, SIDEWALK } from './layout.js'
 import { heightAt, roadEdgeDistance } from './terrain.js'
@@ -88,14 +89,15 @@ const textures = {
 
 function material(map)
 {
-    return new THREE.MeshStandardMaterial({
+    // snow settles on the paving too, a bit thinner where people walk and drive
+    return makeSeasonal(new THREE.MeshStandardMaterial({
         map,
         roughness: 0.9,
         metalness: 0,
         polygonOffset: true,
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2
-    })
+    }), { key: 'paving', snow: 0.7 })
 }
 
 // A strip alongside a polyline between two signed offsets (left normal positive)

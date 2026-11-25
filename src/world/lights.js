@@ -32,13 +32,15 @@ export function createLights(scene, { shadowSize = 2048 } = {})
     return {
         hemi,
         sun,
+        // where the light comes from; the environment moves it through the day
+        direction: SUN_DIRECTION.clone(),
         // keep the shadow box centred on what the camera is looking at
         update(focus)
         {
             _up.copy(focus).normalize()
             hemi.position.copy(_up)
             sun.target.position.copy(focus)
-            sun.position.copy(focus).addScaledVector(SUN_DIRECTION, 110)
+            sun.position.copy(focus).addScaledVector(this.direction, 110)
             sun.target.updateMatrixWorld()
         }
     }

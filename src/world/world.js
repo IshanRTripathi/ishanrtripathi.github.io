@@ -24,6 +24,28 @@ import { BAY_ANGLE, coastRadius, duskAt } from './layout.js'
 
 const contentById = Object.fromEntries([ ...projects, achievements, career, contact ].map((c) => [ c.id, c ]))
 
+// Any car body you can get into and drive: no moving parts, just a slight roll
+class ShellCar
+{
+    constructor(mesh)
+    {
+        this.root = new THREE.Group()
+        this.lean = new THREE.Group()
+        this.root.add(this.lean)
+        mesh.position.set(0, 0, 0)
+        mesh.quaternion.identity()
+        this.lean.add(mesh)
+        this.seat = new THREE.Vector3(0.42, 0.2, -0.45)
+    }
+
+    update(dt, speed, steer, lean)
+    {
+        this.lean.rotation.z += (lean - this.lean.rotation.z) * Math.min(1, dt * 6)
+    }
+}
+
+const CAR_HANDLING = { kind: 'car', radius: 1.0, maxSpeed: 15, reverse: 5, accel: 1.4, steer: 1.2, label: 'Drive this car', box: { hw: 0.95, hd: 2.15 }, hideRider: true }
+
 // Place an object at map (x, z), standing on the ground, facing yaw
 export function place(object, x, z, yaw, height = heightAt(x, z))
 {
@@ -41,6 +63,7 @@ export class World
         this.interactables = [] // { id, content, x, z, radius, face }
         this.cullables = [] // objects hidden when behind the planet's curve
         this.boats = []
+        this.vehicles = [] // everything you can get into
 
         this.sky = createSky()
         scene.add(this.sky)
@@ -71,12 +94,12 @@ export class World
         scene.add(createBeach(scatter))
         for(const t of scatter.towers) this.colliders.push({ type: 'box', x: t.x, z: t.z, yaw: t.yaw, hw: 1.2, hd: 1.2 })
         for(const u of scatter.umbrellas) this.colliders.push({ type: 'circle', x: u.x, z: u.z, r: 0.25, thin: true })
-        this.parked = scatter.parkedCars.map((c) =>
+        // the cars parked by the beach can be driven too
+        this.parked = scatter.parkedCars.map((c, i) =>
         {
             const mesh = createCarMesh(c.paint + 2)
-            place(mesh, c.x, c.z, c.yaw, heightAt(c.x, c.z) + 0.06)
-            scene.add(mesh)
-            this.colliders.push({ type: 'box', x: c.x, z: c.z, yaw: c.yaw, hw: 0.95, hd: 2.1 })
+            const model = new ShellCar(mesh)
+            this.addVehicle({ ...CAR_HANDLING, id: `parked-${i}`, model, spot: c, seat: model.seat, box: { hw: 0.95, hd: 2.1 } })
             return mesh
         })
 
@@ -92,8 +115,7 @@ export class World
 
         for(const site of layout.sites) this.addSite(site)
 
-        // vehicles you can take: the convertible and the scooter
-        this.vehicles = []
+        // the convertible and the scooter
         const carSpot = layout.props.find((p) => p.id === 'car')
         const car = new Car()
         this.addVehicle({ id: 'car', kind: 'car', model: car, spot: carSpot, radius: 1.0, maxSpeed: 17, reverse: 5, accel: 1.5, steer: 1.25, seat: car.seat, label: 'Drive the car', box: { hw: 0.95, hd: 2.15 } })
@@ -129,6 +151,35 @@ export class World
         place(v.model.root, v.x, v.z, v.yaw, heightAt(v.x, v.z) + 0.05)
         this.scene.add(v.model.root)
         this.vehicles.push(v)
+    }
+
+    // a traffic car close enough to get into (it stops for you if you stand in its way)
+    trafficCarNear(x, z, reach = 3.4)
+    {
+        let best = null
+        let bestD = reach
+        for(const car of this.traffic.cars)
+        {
+            const d = Math.hypot(car.x - x, car.z - z)
+            if(d < bestD && car.speed < 4) { best = car; bestD = d }
+        }
+        return best
+    }
+
+    // take a car out of the traffic and make it yours to drive
+    takeTrafficCar(car)
+    {
+        const i = this.traffic.cars.indexOf(car)
+        if(i < 0) return null
+        this.traffic.cars.splice(i, 1)
+        const model = new ShellCar(car.mesh)
+        car.collider.dynamic = false
+        this.takenCount = (this.takenCount || 0) + 1
+        const v = { ...CAR_HANDLING, id: `taken-${this.takenCount}`, model, seat: model.seat, x: car.x, z: car.z, yaw: car.yaw, collider: car.collider }
+        place(model.root, v.x, v.z, v.yaw, heightAt(v.x, v.z) + 0.05)
+        this.scene.add(model.root)
+        this.vehicles.push(v)
+        return v
     }
 
     parkVehicle(v)
@@ -268,7 +319,8 @@ export class World
             boat.rotateX(Math.sin(time * 0.9 + base.x) * 0.03)
         }
 
-        this.traffic.update(dt, obstacles)
+        // traffic also stops for any car left on the road
+        this.traffic.update(dt, [ ...obstacles, ...this.vehicles.filter((v) => !v.collider.disabled) ])
         this.birds.update(time, dt)
         updateDetails(this.details, time, camera, this.renderer)
         this.cull(camera)

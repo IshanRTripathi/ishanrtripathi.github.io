@@ -238,8 +238,9 @@ export class UI
         this.closeCard()
         this.phoneLayer.hidden = false
         this.phoneScreen(screen)
+        // the phone shows the time in the city
         const now = new Date()
-        this.$('.phone-clock').textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+        this.$('.phone-clock').textContent = this.sky ? this.sky.state().clock : `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
         this.prompt.hidden = true
         this.$('.phone').focus({ preventScroll: true })
     }
@@ -266,6 +267,7 @@ export class UI
             html += app('Contact', '#FF3EA5', 'data-phone="contact"', 'I')
             html += app('Career', '#A855F7', 'data-phone="career"', 'C')
             html += app('Trophies', '#F2B705', 'data-phone="trophies"', 'T')
+            if(this.sky) html += app('Sky', '#3C7AD4', 'data-phone="sky"', 'S')
             for(const l of links)
                 html += app(l.label, APP_COLORS[l.label] || '#2FA4A0', `href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}`, l.label[0])
             html += '</ul>'
@@ -276,7 +278,44 @@ export class UI
             html += `${back}<h2 id="phone-title" class="phone-heading">Career</h2><div class="phone-contact">${this.careerList()}</div>`
         else if(name === 'trophies')
             html += `${back}<h2 id="phone-title" class="phone-heading">Trophies</h2><div class="phone-contact"><ul class="card-list">${achievements.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="note">${escape(i.detail)}</span></li>`).join('')}</ul></div>`
+        else if(name === 'sky' && this.sky)
+            html += `${back}<h2 id="phone-title" class="phone-heading">Sky</h2>${this.skyControls()}`
         this.phoneView.innerHTML = html
+    }
+
+    // ---------------------------------------------------------------- time, seasons, weather
+    bindSky(sky)
+    {
+        this.sky = sky
+        this.phoneView.addEventListener('click', (e) =>
+        {
+            const chip = e.target.closest('[data-sky]')
+            if(!chip) return
+            sky.set(chip.dataset.sky, chip.dataset.value)
+            this.phoneScreen('sky')
+            this.setSky(sky.state().label)
+            this.$(`[data-sky="${chip.dataset.sky}"][data-value="${chip.dataset.value}"]`)?.focus()
+        })
+    }
+
+    setSky(text)
+    {
+        const el = this.$('.hud-sky')
+        if(el && el.textContent !== text) el.textContent = text
+    }
+
+    skyControls()
+    {
+        const state = this.sky.state()
+        const group = (kind, title, options) => `<fieldset class="sky-group"><legend>${title}</legend><div class="sky-chips">${options.map(([ value, label ]) =>
+            `<button type="button" class="sky-chip" data-sky="${kind}" data-value="${value}" aria-pressed="${state[kind] === value}">${label}</button>`).join('')}</div></fieldset>`
+        return `<div class="phone-contact sky">
+            <p class="sky-now">${escape(state.label)}</p>
+            ${group('time', 'Time of day', [ [ 'auto', 'Auto' ], [ 'dawn', 'Dawn' ], [ 'day', 'Day' ], [ 'dusk', 'Dusk' ], [ 'night', 'Night' ] ])}
+            ${group('season', 'Season', [ [ 'auto', 'Auto' ], [ 'spring', 'Spring' ], [ 'summer', 'Summer' ], [ 'autumn', 'Autumn' ], [ 'winter', 'Winter' ] ])}
+            ${group('weather', 'Weather', [ [ 'auto', 'Auto' ], [ 'clear', 'Clear' ], [ 'cloudy', 'Cloudy' ], [ 'rain', 'Rain' ], [ 'storm', 'Storm' ], [ 'snow', 'Snow' ], [ 'fog', 'Fog' ] ])}
+            <p class="note">Auto lets the day, the seasons and the weather change on their own.</p>
+        </div>`
     }
 
     // ---------------------------------------------------------------- page view

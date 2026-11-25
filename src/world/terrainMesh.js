@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { R, surfacePoint } from '../core/geo.js'
 import { createNoise2D, mulberry32 } from '../core/noise.js'
 import { heightAt, surfaceAt, coastDistance, SURFACE } from './terrain.js'
+import { makeSeasonal } from './seasonal.js'
 
 // Flat-shaded low-poly island: a jittered triangle grid in map space, wrapped onto
 // the planet. Every triangle gets one colour from the surface under its centre.
@@ -96,7 +97,7 @@ export function createTerrainMesh({ radius = 82, spacing = 1.0 } = {})
     geometry.computeVertexNormals()
     geometry.computeBoundingSphere()
 
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 })
+    const material = makeSeasonal(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 }), { key: 'terrain', foliage: 1, ground: true })
     const mesh = new THREE.Mesh(geometry, material)
     mesh.receiveShadow = true
     mesh.name = 'terrain'
