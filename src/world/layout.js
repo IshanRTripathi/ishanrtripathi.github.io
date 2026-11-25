@@ -211,7 +211,7 @@ export function buildLayout()
         const back = { x: p.x - p.tx * 8.0, z: p.z - p.tz * 8.0 }
         sites.push({
             id: 'studio', kind: 'studio', x: back.x, z: back.z,
-            yaw: yawTowards(back, p), w: 7, d: 6, h: 6,
+            yaw: yawTowards(back, p), w: 7, d: 6, h: 7,
             // just outside the front door, and just inside it
             door: { x: p.x - p.tx * 4.5, z: p.z - p.tz * 4.5 },
             inside: { x: p.x - p.tx * 5.4, z: p.z - p.tz * 5.4 }

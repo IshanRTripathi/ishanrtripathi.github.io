@@ -210,10 +210,12 @@ class App
         ui.setPlaying(true)
         this.canvas.focus({ preventScroll: true })
         const door = this.doorPoints()
-        // the camera ends up in front of Ishan, looking back at his place
-        this.rig.yaw = door.outYaw + Math.PI
-        this.rig.distance = 8.5
-        this.rig.pitch = 0.3
+        // the camera ends up in front of Ishan, looking back at his place with
+        // the name sign over the door in shot (a little to one side, so the
+        // parked car doesn't pull the camera in)
+        this.rig.yaw = door.outYaw + Math.PI + 0.42
+        this.rig.distance = 7.2
+        this.rig.pitch = 0.15
         this.rig.startFly(skip ? 0.01 : 3.8)
 
         this.player.runScript([
