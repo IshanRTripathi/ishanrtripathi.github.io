@@ -55,6 +55,49 @@ function disposeTree(obj)
     obj.traverse((o) => { if(o.geometry) o.geometry.dispose() })
 }
 
+// A copy of a rigged figure, with its own materials (so its skin, hair and clothes can differ) and its
+// own clips. Shared by the people on the road and the people inside the rooms.
+export function cloneFigure(figure, gender, rng)
+{
+    const model = clone(figure.object)
+    model.traverse((o) =>
+    {
+        if(!o.isMesh) return
+        o.castShadow = true
+        o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone()
+    })
+    const pick = (list) => list[Math.floor(rng() * list.length)]
+    model.scale.setScalar(0.94 + rng() * 0.12)
+    let shirt = null
+    let pants = null
+    model.traverse((o) =>
+    {
+        if(!o.isMesh) return
+        for(const m of [].concat(o.material))
+        {
+            if(m.name === 'Shirt') shirt = m
+            if(m.name === 'Pants') pants = m
+            if(m.name === 'Skin') m.color.set(pick(SKINS))
+            if(m.name === 'Hair') m.color.set(pick(HAIRS[gender]))
+        }
+    })
+    const mixer = new THREE.AnimationMixer(model)
+    const actions = {}
+    for(const name of CLIPS)
+    {
+        const clip = figure.animations.find((a) => a.name === name)
+        if(!clip) continue
+        const action = mixer.clipAction(clip)
+        if(name === 'SitDown' || name === 'StandUp')
+        {
+            action.setLoop(THREE.LoopOnce, 1)
+            action.clampWhenFinished = true
+        }
+        actions[name] = action
+    }
+    return { model, mixer, actions, shirt, pants, stride: figure.entry.walkStride || 1.9 }
+}
+
 function buildBench()
 {
     const k = new Kit()
@@ -106,50 +149,17 @@ export class People
         })
     }
 
-    // a copy of the figure for one person: its own materials (so its clothes can change) and its own clips
+    // a copy of the figure for one person: its own materials, its own colours and its own clips
     attachFigure(person, figure)
     {
-        const model = clone(figure.object)
-        model.traverse((o) =>
-        {
-            if(!o.isMesh) return
-            o.castShadow = true
-            o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone()
-        })
-        person.model = model
-        person.group.add(model)
-        person.shirt = null
-        person.pants = null
-        const pick = (list) => list[Math.floor(this.rng() * list.length)]
-        model.scale.setScalar(0.94 + this.rng() * 0.12)
-        model.traverse((o) =>
-        {
-            if(!o.isMesh) return
-            for(const m of [].concat(o.material))
-            {
-                if(m.name === 'Shirt') person.shirt = m
-                if(m.name === 'Pants') person.pants = m
-                if(m.name === 'Skin') m.color.set(pick(SKINS))
-                if(m.name === 'Hair') m.color.set(pick(HAIRS[person.gender]))
-            }
-        })
-
-        const mixer = new THREE.AnimationMixer(model)
-        const stride = figure.entry.walkStride || 1.9
-        for(const name of CLIPS)
-        {
-            const clip = figure.animations.find((a) => a.name === name)
-            if(!clip) continue
-            const action = mixer.clipAction(clip)
-            if(name === 'SitDown' || name === 'StandUp')
-            {
-                action.setLoop(THREE.LoopOnce, 1)
-                action.clampWhenFinished = true
-            }
-            person.actions[name] = action
-        }
-        person.mixer = mixer
-        person.stride = stride
+        const f = cloneFigure(figure, person.gender, this.rng)
+        person.model = f.model
+        person.group.add(f.model)
+        person.shirt = f.shirt
+        person.pants = f.pants
+        person.mixer = f.mixer
+        person.actions = f.actions
+        person.stride = f.stride
     }
 
     // the clothes for a season: the shirt and the trousers take that season's colours

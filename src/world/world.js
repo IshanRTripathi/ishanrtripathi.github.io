@@ -364,7 +364,8 @@ export class World
     {
         // the people on the road, once their figures have loaded (they are not in the list below)
         const [ female, male ] = await Promise.all([ registry.figure('npc-female'), registry.figure('npc-male') ])
-        this.people.populate({ female, male })
+        this.figures = { female, male }
+        this.people.populate(this.figures)
 
         const loaded = await registry.loadAvailable()
         const CAR_FIT = { fit: [ 1.9, 1.6, 4.3 ] }
