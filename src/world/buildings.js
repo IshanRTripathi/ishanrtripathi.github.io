@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { Kit, shade, clayMaterial } from '../models/kit.js'
-import { neonMaterial, neonSign, glowMaterial } from './neon.js'
+import { neonMaterial, neonSign, hangingNeon, glowMaterial } from './neon.js'
 import { duskAt } from './layout.js'
 
 // Procedural stand-ins for every building: pastel Art Deco with neon trim.
@@ -402,25 +402,28 @@ const builders = {
         }
     }, o),
 
-    // Ishan's place: a white deco villa with a curved corner and a sun deck
+    // Ishan's place: a white deco villa with a curved corner and a sun deck,
+    // and his name in neon hanging over the door
     studio: () =>
     {
         const b = new Builder()
         const k = b.clay
         const w = 7
         const d = 6
+        const H = 4.2 // ground floor, tall enough for the sign over the door
+        const top = 0.5 + H
         plinth(k, w, d)
-        k.box(w - 1.4, 3.4, d, C.white, { y: 0.5 })
-        k.box(w, 3.4, d - 1.4, C.white, { y: 0.5, z: -0.7 })
-        k.cyl(1.4, 1.4, 3.4, 16, C.white, { x: w / 2 - 1.4, y: 0.5, z: d / 2 - 1.4 })
-        k.box(1.4, 3.4, 1.4, C.white, { x: -w / 2 + 0.7, y: 0.5, z: d / 2 - 0.7 })
+        k.box(w - 1.4, H, d, C.white, { y: 0.5 })
+        k.box(w, H, d - 1.4, C.white, { y: 0.5, z: -0.7 })
+        k.cyl(1.4, 1.4, H, 16, C.white, { x: w / 2 - 1.4, y: 0.5, z: d / 2 - 1.4 })
+        k.box(1.4, H, 1.4, C.white, { x: -w / 2 + 0.7, y: 0.5, z: d / 2 - 0.7 })
         // teal band, flat roof with a deck and rail
-        k.box(w + 0.1, 0.35, d + 0.1, C.teal, { y: 3.7 })
-        k.cyl(1.47, 1.47, 0.35, 16, C.teal, { x: w / 2 - 1.4, y: 3.7, z: d / 2 - 1.4 })
-        k.box(w * 0.55, 2.2, d * 0.55, C.white, { x: -w * 0.18, y: 4.05, z: -d * 0.18 })
-        k.box(w * 0.6, 0.18, d * 0.6, C.teal, { x: -w * 0.18, y: 6.25, z: -d * 0.18 })
-        for(let i = 0; i <= 8; i++) k.box(0.05, 0.6, 0.05, C.white, { x: 0.3 + i * 0.35, y: 4.05, z: d / 2 - 0.05 })
-        k.box(3.0, 0.06, 0.06, C.white, { x: 1.7, y: 4.65, z: d / 2 - 0.05 })
+        k.box(w + 0.1, 0.35, d + 0.1, C.teal, { y: top - 0.2 })
+        k.cyl(1.47, 1.47, 0.35, 16, C.teal, { x: w / 2 - 1.4, y: top - 0.2, z: d / 2 - 1.4 })
+        k.box(w * 0.55, 2.2, d * 0.55, C.white, { x: -w * 0.18, y: top + 0.15, z: -d * 0.18 })
+        k.box(w * 0.6, 0.18, d * 0.6, C.teal, { x: -w * 0.18, y: top + 2.35, z: -d * 0.18 })
+        for(let i = 0; i <= 8; i++) k.box(0.05, 0.6, 0.05, C.white, { x: 0.3 + i * 0.35, y: top + 0.15, z: d / 2 - 0.05 })
+        k.box(3.0, 0.06, 0.06, C.white, { x: 1.7, y: top + 0.75, z: d / 2 - 0.05 })
         // glass block window on the curve, door, portholes
         k.box(0.12, 2.4, 1.2, C.glassLight, { x: w / 2 + 0.01, y: 1.0, z: -0.8 })
         door(k, -0.6, d / 2 + 0.02, { color: C.teal, frame: C.white })
@@ -428,10 +431,17 @@ const builders = {
         porthole(k, -w / 2 - 0.02, 2.2, -0.5, -Math.PI / 2)
         palmPot(k, -2.4, 0.5, d / 2 + 0.7)
         palmPot(k, 1.3, 0.5, d / 2 + 0.9)
-        b.tube([ -w / 2, 3.9, d / 2 + 0.07 ], [ w / 2 - 1.4, 3.9, d / 2 + 0.07 ], NEON.cyan, 0.07)
-        const s = neonSign('Ishan', { color: NEON.pink, width: 2.2, height: 0.8, script: true })
-        s.position.set(-1.6, 3.0, d / 2 + 0.09)
-        b.extras.push(s)
+        b.tube([ -w / 2, top + 0.1, d / 2 + 0.07 ], [ w / 2 - 1.4, top + 0.1, d / 2 + 0.07 ], NEON.cyan, 0.06)
+
+        // the name sign hangs from two hooks under the band, centred on the front wall
+        const gap = 0.16
+        const sign = hangingNeon('Ishan R Tripathi', { color: '#FF4FB0', accent: '#4E63FF', width: 4.0, height: 0.95, chain: 0.42, wallGap: gap })
+        const signX = -0.7
+        const hookY = top - 0.2
+        sign.position.set(signX, hookY - sign.userData.hookY, d / 2 + gap)
+        b.extras.push(sign)
+        for(const x of [ signX - sign.userData.chainX, signX + sign.userData.chainX ])
+            k.box(0.04, 0.04, gap + 0.02, C.steelDark, { x, y: hookY - 0.04, z: d / 2 + gap / 2 })
         return b.build()
     },
 
