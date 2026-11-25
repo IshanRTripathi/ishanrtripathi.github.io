@@ -16,6 +16,7 @@ import { Car } from './car.js'
 import { Traffic } from './traffic.js'
 import { Markers } from './markers.js'
 import { Birds } from './birds.js'
+import { People } from './people.js'
 import { createDetails, updateDetails } from './details.js'
 import { buildAirstrip, animateAirstrip, airstripUniforms } from './airstrip.js'
 import { ISLANDS, islandCoastRadius } from './islands.js'
@@ -169,6 +170,11 @@ export class World
 
         this.birds = new Birds()
         scene.add(this.birds.mesh)
+
+        // the few people on the road, and the benches they sit on
+        this.people = new People(scatter.seats)
+        scene.add(this.people.group)
+        this.season = 0
 
         this.loadModels()
     }
@@ -417,6 +423,7 @@ export class World
 
     update(time, dt, camera, obstacles = [])
     {
+        this.people.update(dt, this.season)
         this.water.userData.uniforms.uTime.value = time
         // the airstrips: the lights run on the shared clock, the windsocks turn with the wind
         airstripUniforms.uTime.value = time

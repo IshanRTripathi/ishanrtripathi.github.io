@@ -145,6 +145,16 @@ clearOfHouses('bush', scatter.bushes, 1.1)
 clearOfHouses('rock', scatter.rocks, 1.1)
 clearOfHouses('flower', scatter.flowers, 1.1)
 
+// benches and beach seats: on land, off the paths and the airstrips, clear of the houses and the trees
+clearOfHouses('bench', scatter.seats, 1.1)
+for(const seat of scatter.seats)
+{
+    if(pathEdgeDistance(seat.x, seat.z) < 0.3) fail(`${seat.id} stands on a path at (${seat.x.toFixed(1)}, ${seat.z.toFixed(1)})`)
+    if(coastDistance(seat.x, seat.z) < 2.5) fail(`${seat.id} is at the water's edge at (${seat.x.toFixed(1)}, ${seat.z.toFixed(1)})`)
+    if(clearDistance(seat.x, seat.z) < 0) fail(`${seat.id} stands in front of an airstrip`)
+    if(scatter.trees.some((t) => Math.hypot(t.x - seat.x, t.z - seat.z) < 1.6)) fail(`${seat.id} has a tree too close to it`)
+}
+
 // the traffic loop is one unbroken circuit (a jump would send cars piling up at the join)
 for(let i = 1; i < scatter.loop.length; i++)
 {
