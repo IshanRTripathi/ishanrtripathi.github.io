@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { frameQuaternion, surfacePoint } from '../core/geo.js'
-import { heightAt } from '../world/terrain.js'
+import { groundAt as renderedGround } from '../world/terrain.js'
 
-// the sea is flat: a plane over the water comes down on the surface, like a seaplane
-const groundAt = (x, z) => Math.max(0, heightAt(x, z))
+// the sea is flat: a plane over the water comes down on the surface, like a seaplane.
+// Land is the ground as it is drawn, so the wheels sit on it.
+const groundAt = (x, z) => Math.max(0, renderedGround(x, z))
 
 // An arcade flight model for the little plane. Everything is in the same
 // units as the city (metres and seconds). It is not a real aerodynamic model:

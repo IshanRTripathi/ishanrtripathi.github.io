@@ -202,6 +202,59 @@ export function heightAt(x, z)
     return h
 }
 
+// The ground as it is drawn. The terrain mesh is built from heights sampled at its corners
+// and drawn as flat triangles between them, so between corners it is not quite heightAt.
+// Every triangle is recorded here, and groundAt reads the one under a point, so a character
+// stands on the ground the eye sees, not on the smooth field it was sampled from.
+const GROUND_CELL = 4
+const groundTris = [] // nine numbers per triangle: map x, z and height of each corner
+const groundCells = new Map()
+
+export function addGroundTriangle(a, b, c)
+{
+    const index = groundTris.length / 9
+    groundTris.push(a.x, a.z, a.h, b.x, b.z, b.h, c.x, c.z, c.h)
+    const x0 = Math.floor(Math.min(a.x, b.x, c.x) / GROUND_CELL)
+    const x1 = Math.floor(Math.max(a.x, b.x, c.x) / GROUND_CELL)
+    const z0 = Math.floor(Math.min(a.z, b.z, c.z) / GROUND_CELL)
+    const z1 = Math.floor(Math.max(a.z, b.z, c.z) / GROUND_CELL)
+    for(let cx = x0; cx <= x1; cx++)
+        for(let cz = z0; cz <= z1; cz++)
+        {
+            const key = cx * 10007 + cz
+            let list = groundCells.get(key)
+            if(!list) groundCells.set(key, list = [])
+            list.push(index)
+        }
+}
+
+export function groundAt(x, z)
+{
+    const list = groundCells.get(Math.floor(x / GROUND_CELL) * 10007 + Math.floor(z / GROUND_CELL))
+    if(list)
+        for(const index of list)
+        {
+            const k = index * 9
+            const ax = groundTris[k]
+            const az = groundTris[k + 1]
+            const bx = groundTris[k + 3]
+            const bz = groundTris[k + 4]
+            const cx = groundTris[k + 6]
+            const cz = groundTris[k + 7]
+            // barycentric coordinates of the point in the triangle, in map space
+            const den = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz)
+            if(Math.abs(den) < 1e-9) continue
+            const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / den
+            const v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / den
+            const w = 1 - u - v
+            const eps = -1e-6
+            if(u >= eps && v >= eps && w >= eps)
+                return u * groundTris[k + 2] + v * groundTris[k + 5] + w * groundTris[k + 8]
+        }
+    // off the mesh (before it is built, or past its edge): the smooth field
+    return heightAt(x, z)
+}
+
 export function padHeight(siteId)
 {
     const i = layout.sites.findIndex((s) => s.id === siteId)

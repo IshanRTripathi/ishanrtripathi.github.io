@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { R, surfacePoint } from '../core/geo.js'
 import { createNoise2D, mulberry32 } from '../core/noise.js'
-import { heightAt, surfaceAt, coastDistance, SURFACE } from './terrain.js'
+import { heightAt, surfaceAt, coastDistance, SURFACE, addGroundTriangle } from './terrain.js'
 import { ISLANDS } from './islands.js'
 import { makeSeasonal } from './seasonal.js'
 
@@ -66,6 +66,8 @@ function buildRegion(region, spacing, material)
     const pushTri = (a, b, c) =>
     {
         if(!a || !b || !c) return
+        // the ground the character stands on is this same triangle (see groundAt)
+        addGroundTriangle(a, b, c)
         const cx = (a.x + b.x + c.x) / 3
         const cz = (a.z + b.z + c.z) / 3
         const key = Math.floor((cx - region.cx) / TILE) + ',' + Math.floor((cz - region.cz) / TILE)
