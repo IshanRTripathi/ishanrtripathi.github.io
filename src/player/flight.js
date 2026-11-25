@@ -2,6 +2,9 @@ import * as THREE from 'three'
 import { frameQuaternion, surfacePoint } from '../core/geo.js'
 import { heightAt } from '../world/terrain.js'
 
+// the sea is flat: a plane over the water comes down on the surface, like a seaplane
+const groundAt = (x, z) => Math.max(0, heightAt(x, z))
+
 // An arcade flight model for the little plane. Everything is in the same
 // units as the city (metres and seconds). It is not a real aerodynamic model:
 // speed decides whether the wings have lift, the nose decides how fast you
@@ -64,7 +67,7 @@ export class Flight
             return
         }
         if(this.hintTime > 0) this.hintTime -= dt
-        const ground = heightAt(this.x, this.z)
+        const ground = groundAt(this.x, this.z)
 
         // throttle: the keys step it, the stick does nothing to it
         this.spin += this.v * dt / 0.24
@@ -163,7 +166,7 @@ export class Flight
         // never fly under the ground
         this.h = Math.max(this.h, 0)
         if(this.onGround) this.h = 0
-        this.ground = heightAt(this.x, this.z)
+        this.ground = groundAt(this.x, this.z)
         this.hintTime = Math.max(0, this.hintTime)
     }
 
@@ -179,7 +182,7 @@ export class Flight
     // where the plane, and so the rider's camera, sits in the world
     apply(root, dt = 0)
     {
-        const ground = heightAt(this.x, this.z)
+        const ground = groundAt(this.x, this.z)
         const h = ground + this.h
         surfacePoint(this.x, this.z, h, root.position)
         const q = frameQuaternion(this.x, this.z, this.yaw, new THREE.Quaternion())

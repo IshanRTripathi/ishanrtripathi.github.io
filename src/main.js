@@ -10,6 +10,7 @@ import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
 import { ArcadeHall } from './ui/arcade.js'
 import { FullMap } from './ui/fullmap.js'
+import { ISLANDS } from './world/islands.js'
 import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
@@ -80,6 +81,17 @@ class App
         ui.bindFullscreen()
         ui.bindRotateHint()
         this.ambience = new Ambience()
+        // every button clicks; closing a card and starting a game have their own sounds
+        document.addEventListener('click', (e) =>
+        {
+            const button = e.target.closest?.('button')
+            if(!button) return
+            const kind = button.matches('[data-action*="close"], [data-fullmap="close"]') ? 'close'
+                : button.matches('[data-action="play"]') ? 'confirm'
+                : button.matches('[data-action="phone"]') ? 'switch'
+                : 'click'
+            this.ambience.ui(kind)
+        })
         // the Game Arcade hall, opened from its door
         this.arcade = new ArcadeHall({ onClose: () => this.canvas.focus({ preventScroll: true }) })
         ui.bindThrottle(this.input)
@@ -270,7 +282,11 @@ class App
     bindPlayerEvents()
     {
         const events = this.player.events
-        events.addEventListener('read', (e) => this.openStop(e.detail))
+        events.addEventListener('read', (e) =>
+        {
+            this.ambience.ui('open')
+            this.openStop(e.detail)
+        })
         events.addEventListener('nearby', (e) =>
         {
             const item = e.detail
@@ -280,8 +296,21 @@ class App
                 ui.showArea(item.content.place, item.content.title !== item.content.place ? item.content.title : '')
             }
         })
-        events.addEventListener('eject', () => ui.showArea('Bailed out', 'Steer with A and D, W slows the fall'))
-        events.addEventListener('landed', () => ui.showArea('Back on the ground', 'Your parachute got you down safely'))
+        events.addEventListener('eject', () =>
+        {
+            this.ambience.whoosh()
+            ui.showArea('Bailed out', 'Steer with A and D, W slows the fall')
+        })
+        events.addEventListener('landed', () =>
+        {
+            this.ambience.ui('drop')
+            ui.showArea('Back on the ground', 'Your parachute got you down safely')
+        })
+        events.addEventListener('splash', () =>
+        {
+            this.ambience.splash()
+            ui.showArea('Splash!', 'The sea brought you back to the nearest shore')
+        })
         events.addEventListener('waved', () =>
         {
             if(!this.sawContact)
@@ -471,6 +500,12 @@ class App
             const shore = smoothstep(14, 0, coastDistance(this.player.x, this.player.z))
             this.ambience.update(time, shore)
             const flying = this.player.mode === 'ride' && this.player.vehicle && this.player.vehicle.flight
+            // the engines: a car while you drive it, the drone while the plane is in the air
+            const vehicle = this.player.mode === 'ride' ? this.player.vehicle : null
+            this.ambience.setVehicle({
+                car: vehicle && vehicle.kind === 'car' ? Math.min(1, Math.abs(this.player.speed) / (vehicle.maxSpeed || 10)) : null,
+                plane: flying ? vehicle.flight.throttle : null
+            })
             ui.setFlight(flying ? this.player.vehicle.flight : null)
             if(this.player.mode === 'chute') ui.setChute(this.player.chute)
             // the how-to card opens when you climb in, and closes when you climb out
@@ -513,6 +548,7 @@ class App
             player: { x: p.x, z: p.z, yaw: p.yaw },
             stops: this.mapStops,
             vehicles: this.world.vehicles.map((v) => ({ kind: v.kind, x: v.x, z: v.z, yaw: v.yaw })),
+            islands: ISLANDS.map((i) => ({ x: i.at.x, z: i.at.z, label: i.name })),
             runway: layout.runway.points,
             route: this.mapRoute || [],
             visited: this.visited

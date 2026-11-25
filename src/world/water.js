@@ -1,13 +1,15 @@
 import * as THREE from 'three'
 import { R } from '../core/geo.js'
 import { coastGLSL } from './layout.js'
+import { islandsGLSL } from './islands.js'
 
 // Faceted sea around the whole planet: low waves, shallow turquoise near the
 // island, and bands of foam rolling onto the beach.
 
 export function createWater()
 {
-    const geometry = new THREE.IcosahedronGeometry(R, 54)
+    // 40 divisions: the waves are small, so this is plenty and costs about half of 54
+const geometry = new THREE.IcosahedronGeometry(R, 40)
     const uniforms = {
         uTime: { value: 0 },
         uDeep: { value: new THREE.Color('#13719A') },
@@ -50,12 +52,15 @@ export function createWater()
                 uniform vec3 uShore;
                 uniform vec3 uFoam;
                 varying vec3 vSeaPos;
-                ${coastGLSL()}`)
+                ${coastGLSL()}
+                ${islandsGLSL()}`)
             .replace('#include <color_fragment>', `#include <color_fragment>
                 vec3 dir = normalize(vSeaPos);
                 float theta = acos(clamp(dir.y, -1.0, 1.0));
                 float phi = atan(dir.z, dir.x);
-                float s = coastRadius(phi) - theta * ${R.toFixed(1)};
+                // distance to the nearest shore: the main island, or any of the islands
+                float rr = theta * ${R.toFixed(1)};
+                float s = max(coastRadius(phi) - rr, islandSigned(vec2(rr * cos(phi), rr * sin(phi))));
                 float depth = clamp(-s / 12.0, 0.0, 1.0);
                 vec3 water = mix(uShore, uShallow, smoothstep(0.0, 0.22, depth));
                 water = mix(water, uDeep, smoothstep(0.18, 1.0, depth));
@@ -71,10 +76,32 @@ export function createWater()
                 diffuseColor.a = mix(mix(0.62, 0.94, smoothstep(0.02, 0.4, depth)), 1.0, foam);`)
     }
 
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.name = 'water'
-    mesh.renderOrder = 2
-    mesh.receiveShadow = true
-    mesh.userData.uniforms = uniforms
-    return mesh
+    // eight patches, one per octant of the sphere, so the camera can skip the far side of the planet
+    const flat = geometry.index ? geometry.toNonIndexed() : geometry
+    const pos = flat.attributes.position.array
+    const buckets = Array.from({ length: 8 }, () => [])
+    for(let i = 0; i < pos.length; i += 9)
+    {
+        const cx = pos[i] + pos[i + 3] + pos[i + 6]
+        const cy = pos[i + 1] + pos[i + 4] + pos[i + 7]
+        const cz = pos[i + 2] + pos[i + 5] + pos[i + 8]
+        const k = (cx > 0 ? 1 : 0) | (cy > 0 ? 2 : 0) | (cz > 0 ? 4 : 0)
+        for(let j = 0; j < 9; j++) buckets[k].push(pos[i + j])
+    }
+    const group = new THREE.Group()
+    group.name = 'water'
+    group.renderOrder = 2
+    group.userData.uniforms = uniforms
+    for(const arr of buckets)
+    {
+        if(!arr.length) continue
+        const g = new THREE.BufferGeometry()
+        g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3))
+        g.computeBoundingSphere()
+        const mesh = new THREE.Mesh(g, material)
+        mesh.renderOrder = 2
+        mesh.receiveShadow = true
+        group.add(mesh)
+    }
+    return group
 }

@@ -5,6 +5,7 @@ import { layout } from '../world/layout.js'
 import { Character } from './character.js'
 import { place } from '../world/world.js'
 import { buildParachute, openParachute } from '../world/parachute.js'
+import { ISLANDS } from '../world/islands.js'
 
 const WALK = 2.7
 const RUN = 6.2
@@ -16,6 +17,19 @@ function angleDiff(a, b)
     while(d > Math.PI) d -= Math.PI * 2
     while(d < -Math.PI) d += Math.PI * 2
     return d
+}
+
+// the middle of the nearest land: the main island, or the island you are closest to
+function nearestLand(x, z)
+{
+    let best = { x: 0, z: 0, d: Infinity }
+    const candidates = [ { x: 0, z: 0 }, ...ISLANDS.map((i) => i.at) ]
+    for(const c of candidates)
+    {
+        const d = Math.hypot(c.x - x, c.z - z)
+        if(d < best.d) best = { x: c.x, z: c.z, d }
+    }
+    return best
 }
 
 // Push a circle out of every collider it overlaps (map space)
@@ -281,6 +295,18 @@ export class Player
 
     landChute()
     {
+        // a landing in the sea brings you back to the nearest shore
+        let steps = 0
+        while(coastDistance(this.x, this.z) < 0.6 && steps++ < 400)
+        {
+            const ref = nearestLand(this.x, this.z)
+            const dx = ref.x - this.x
+            const dz = ref.z - this.z
+            const len = Math.hypot(dx, dz) || 1
+            this.x += (dx / len) * 0.6
+            this.z += (dz / len) * 0.6
+        }
+        if(steps > 0) this.emit('splash')
         this.chute = null
         this.mode = 'walk'
         this.speed = 0

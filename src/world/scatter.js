@@ -3,12 +3,13 @@
 
 import { mulberry32, createNoise2D } from '../core/noise.js'
 import { layout, ROAD_HALF, SIDEWALK, BAY_ANGLE, coastRadius, beachWidth, duskAt } from './layout.js'
-import { pathEdgeDistance, roadEdgeDistance, coastDistance } from './terrain.js'
+import { pathEdgeDistance, roadEdgeDistance, mainCoastDistance } from './terrain.js'
+import { ISLANDS, islandSigned, structureSpots } from './islands.js'
 
 const noise = createNoise2D(77)
 
 // how far from the middle the land is scattered with trees, bushes and blocks
-const WORLD_EXTENT = 112
+const WORLD_EXTENT = 128
 
 // clearance around each site (circle approximation of its footprint)
 export const siteRadius = (site) => Math.hypot(site.w, site.d) / 2
@@ -91,13 +92,13 @@ function placeFillers()
                 const f = { x, z, w, d, yaw: Math.atan2(p.x - x, p.z - z), floors: 2 + row + Math.floor(random() * 2.6), variant: Math.floor(random() * 64) }
                 const r = Math.hypot(w, d) / 2
                 const phi = Math.atan2(z, x)
-                if(coastDistance(x, z) < beachWidth(phi) + r) continue
+                if(mainCoastDistance(x, z) < beachWidth(phi) + r) continue
                 if(layout.sites.some((site) => Math.hypot(x - site.x, z - site.z) < siteRadius(site) + r + 0.8)) continue
                 if(layout.sites.some((site) => site.sign && Math.hypot(x - site.sign.x, z - site.sign.z) < r + 2)) continue
                 if(layout.studioDoor && Math.hypot(x - layout.studioDoor.x, z - layout.studioDoor.z) < r + 6) continue
                 if(layout.props.some((prop) => Math.hypot(x - prop.x, z - prop.z) < r + 3)) continue
                 if(fillers.some((o) => Math.hypot(x - o.x, z - o.z) < r + Math.hypot(o.w, o.d) / 2 + 0.6)) continue
-                if(fillerCorners(f).some((c) => pathEdgeDistance(c.x, c.z) < 0.5 || coastDistance(c.x, c.z) < 3)) continue
+                if(fillerCorners(f).some((c) => pathEdgeDistance(c.x, c.z) < 0.5 || mainCoastDistance(c.x, c.z) < 3)) continue
                 fillers.push(f)
             }
     }
@@ -111,7 +112,7 @@ function placeFillers()
         const d = 5.5 + random() * 2
         const r = Math.hypot(w, d) / 2
         const phi = Math.atan2(z, x)
-        if(coastDistance(x, z) < beachWidth(phi) + r + 1) continue
+        if(mainCoastDistance(x, z) < beachWidth(phi) + r + 1) continue
         if(pathEdgeDistance(x, z) < r + 2) continue
         if(layout.sites.some((site) => Math.hypot(x - site.x, z - site.z) < siteRadius(site) + r + 1.5)) continue
         if(layout.sites.some((site) => site.sign && Math.hypot(x - site.sign.x, z - site.sign.z) < r + 3)) continue
@@ -125,7 +126,7 @@ function placeFillers()
         }
         const q = best.path.points[best.index]
         const f = { x, z, w, d, yaw: Math.atan2(q.x - x, q.z - z), floors: 2 + Math.floor(random() * 3.6), variant: Math.floor(random() * 64) }
-        if(fillerCorners(f).some((c) => pathEdgeDistance(c.x, c.z) < 1 || coastDistance(c.x, c.z) < 3)) continue
+        if(fillerCorners(f).some((c) => pathEdgeDistance(c.x, c.z) < 1 || mainCoastDistance(c.x, c.z) < 3)) continue
         fillers.push(f)
     }
     return fillers
@@ -155,7 +156,7 @@ function placeStreetPalms(lamps, fillers)
                 if(layout.sites.some((site) => site.sign && Math.hypot(x - site.sign.x, z - site.sign.z) < 4)) continue
                 if(lamps.some((l) => Math.hypot(l.x - x, l.z - z) < 2.5)) continue
                 if(palms.some((t) => Math.hypot(t.x - x, t.z - z) < 4.5)) continue
-                if(coastDistance(x, z) < 2) continue
+                if(mainCoastDistance(x, z) < 2) continue
                 palms.push({ type: 'royal', x, z, yaw: i * 1.7, scale: 0.95 + ((i * 7) % 5) * 0.05, street: true })
             }
     }
@@ -182,7 +183,7 @@ function placeTrees(lamps, fillers)
         const z = Math.sin(phi) * r
         const bay = Math.cos(phi - BAY_ANGLE)
         if(random() > 0.55 + bay * 0.4) continue
-        if(coastDistance(x, z) < 1.6) continue
+        if(mainCoastDistance(x, z) < 1.6) continue
         if(pathEdgeDistance(x, z) < 1.3) continue
         if(blockedBySite(x, z, 1.6)) continue
         if(nearFiller(fillers, x, z, 1.5)) continue
@@ -196,7 +197,7 @@ function placeTrees(lamps, fillers)
     {
         const x = (random() * 2 - 1) * WORLD_EXTENT
         const z = (random() * 2 - 1) * WORLD_EXTENT
-        const s = coastDistance(x, z)
+        const s = mainCoastDistance(x, z)
         const phi = Math.atan2(z, x)
         if(s < beachWidth(phi) + 1.5) continue
         const density = noise(x * 0.045, z * 0.045) * 0.5 + 0.5
@@ -222,7 +223,7 @@ function placeDecor(trees, fillers)
     {
         const x = (random() * 2 - 1) * WORLD_EXTENT
         const z = (random() * 2 - 1) * WORLD_EXTENT
-        const s = coastDistance(x, z)
+        const s = mainCoastDistance(x, z)
         if(s < 0.5) continue
         const pd = pathEdgeDistance(x, z)
         if(pd < 0.6) continue
@@ -323,7 +324,7 @@ function placeParkedCars()
 function trafficLoop()
 {
     const main = layout.main
-    const cut = layout.paths[2]
+    const cut = layout.paths.find((p) => p.cut)
     const n = main.points.length - 1
     const i0 = Math.round(0.06 * n)
     const i1 = Math.round(0.765 * n)
@@ -357,8 +358,8 @@ function inFiller(fillers, x, z, margin)
 // which side of a road (+1 left, -1 right) faces the sea at this point
 function seaSide(p, offset)
 {
-    const left = coastDistance(p.x - p.tz * offset, p.z + p.tx * offset)
-    const right = coastDistance(p.x + p.tz * offset, p.z - p.tx * offset)
+    const left = mainCoastDistance(p.x - p.tz * offset, p.z + p.tx * offset)
+    const right = mainCoastDistance(p.x + p.tz * offset, p.z - p.tx * offset)
     return left < right ? 1 : -1
 }
 
@@ -413,8 +414,8 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
     const beachBlocked = (p, extra = 0) =>
     {
         const phi = Math.atan2(p.z, p.x)
-        return coastDistance(p.x, p.z) > beachWidth(phi) + 5 ||
-            coastDistance(p.x, p.z) < 1 ||
+        return mainCoastDistance(p.x, p.z) > beachWidth(phi) + 5 ||
+            mainCoastDistance(p.x, p.z) < 1 ||
             pathEdgeDistance(p.x, p.z) < 0.12 ||
             blockedBySite(p.x, p.z, 0.3) ||
             clearOf(lamps, p.x, p.z, 0.9) || clearOf(streetPalms, p.x, p.z, 0.6 + extra) || clearOf(trees, p.x, p.z, 0.7 + extra) ||
@@ -469,7 +470,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
             const trail = []
             stoneTrail(trail, end.x + dx * (edge + 0.9), end.z + dz * (edge + 0.9), dx, dz, {
                 seed: 41, max: 12,
-                stop: (x, z) => coastDistance(x, z) < 1.6 || clearOf(umbrellas, x, z, 1.3) || clearOf(towers, x, z, 2) || clearOf(trees, x, z, 0.7) || clearOf(lanterns, x, z, 0.5) ||
+                stop: (x, z) => mainCoastDistance(x, z) < 1.6 || clearOf(umbrellas, x, z, 1.3) || clearOf(towers, x, z, 2) || clearOf(trees, x, z, 0.7) || clearOf(lanterns, x, z, 0.5) ||
                     blockedBySite(x, z, 0.2) || pathEdgeDistance(x, z) < 0.25
             })
             if(trail.length > best.length) best = trail
@@ -488,7 +489,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
             const z = chai.z - fx * u + fz * v
             if(Math.hypot(x - chai.stool.x, z - chai.stool.z) < 1.3) continue
             if(Math.hypot(x - chai.sign.x, z - chai.sign.z) < 1.6) continue
-            if(coastDistance(x, z) < 0.8 || roadEdgeDistance(x, z) < 0.4) continue
+            if(mainCoastDistance(x, z) < 0.8 || roadEdgeDistance(x, z) < 0.4) continue
             if(clearOf(umbrellas, x, z, 1.2) || clearOf(trees, x, z, 0.8)) continue
             lanterns.push({ x, z, yaw: chai.yaw, kind: 'short' })
         }
@@ -513,7 +514,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
         for(let s = 3.2; s < boardwalk.length - 0.6; s += 1.9)
         {
             const p = along(boardwalk, s, side * (bwHalf + 0.3))
-            const bad = coastDistance(p.x, p.z) < 0.5 || clearOf(lanterns, p.x, p.z, 0.7) || clearOf(stones, p.x, p.z, 0.6) ||
+            const bad = mainCoastDistance(p.x, p.z) < 0.5 || clearOf(lanterns, p.x, p.z, 0.7) || clearOf(stones, p.x, p.z, 0.6) ||
                 layout.sites.some((site) => Math.hypot(p.x - site.x, p.z - site.z) < siteRadius(site) + 0.8) ||
                 roadEdgeDistance(p.x, p.z) < 0.15 || layout.paths.some((o) => o !== boardwalk && o.nearest(p.x, p.z).distance < o.edge + 0.2)
             if(bad) { if(r.length > 1) fences.push({ kind: 'rope', posts: r }); r = []; continue }
@@ -556,7 +557,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
                 const u = a + (b - a) * i / n
                 const x = f.x + fz * u + fx * v
                 const z = f.z - fx * u + fz * v
-                const bad = pathEdgeDistance(x, z) < 0.1 || coastDistance(x, z) < 1 || blockedBySite(x, z, 0.2) ||
+                const bad = pathEdgeDistance(x, z) < 0.1 || mainCoastDistance(x, z) < 1 || blockedBySite(x, z, 0.2) ||
                     clearOf(lamps, x, z, 0.5) || clearOf(streetPalms, x, z, 0.6) || clearOf(trees, x, z, 0.6) ||
                     inFiller(fillers.filter((o) => o !== f), x, z, 0.3)
                 if(bad) { if(r.length > 1) fences.push({ kind: 'picket', posts: r }); r = []; continue }
@@ -584,7 +585,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
                     if(!on) { bed++; continue }
                     const p = along(path, s, side * (edge + 0.5 + (random() - 0.5) * 0.14))
                     const phi = Math.atan2(p.z, p.x)
-                    if(coastDistance(p.x, p.z) < beachWidth(phi) + 0.6) continue
+                    if(mainCoastDistance(p.x, p.z) < beachWidth(phi) + 0.6) continue
                     if(pathEdgeDistance(p.x, p.z) < 0.4) continue
                     if(blockedBySite(p.x, p.z, 0.2)) continue
                     if(inFiller(fillers, p.x, p.z, 0.25)) continue
@@ -606,7 +607,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
             const x = (random() * 2 - 1) * WORLD_EXTENT
             const z = (random() * 2 - 1) * WORLD_EXTENT
             const phi = Math.atan2(z, x)
-            if(coastDistance(x, z) < beachWidth(phi) + 0.4) continue
+            if(mainCoastDistance(x, z) < beachWidth(phi) + 0.4) continue
             const pd = pathEdgeDistance(x, z)
             if(pd < 0.3) continue
             if(random() > (pd < 5 ? 0.9 : 0.35)) continue
@@ -629,7 +630,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
                 const r = spread * Math.sqrt(random())
                 const px = x + Math.cos(a) * r
                 const pz = z + Math.sin(a) * r
-                if(coastDistance(px, pz) < 0) continue
+                if(mainCoastDistance(px, pz) < 0) continue
                 fireflies.push({ x: px, z: pz, h: 0.5 + random() * 1.9, phase: random() * 100, glow: 0.45 + 0.55 * duskAt(px, pz) })
             }
         }
@@ -640,6 +641,44 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
     }
 
     return { lanterns, fences, stones, borders, tufts, fireflies }
+}
+
+// The wildlife of each island, by its theme: trees, bushes, flowers and rocks
+function placeIslands()
+{
+    const out = { trees: [], bushes: [], flowers: [], rocks: [] }
+    for(const island of ISLANDS)
+    {
+        const random = mulberry32(island.seed * 7 + 3)
+        const life = island.life
+        const spots = structureSpots(island)
+        const near = (x, z, d) => spots.some((s) => Math.hypot(x - s.x, z - s.z) < d)
+        const trees = []
+        for(let i = 0; i < 800; i++)
+        {
+            const a = random() * Math.PI * 2
+            const d = Math.sqrt(random()) * (island.radius - 2.5)
+            const x = island.at.x + Math.cos(a) * d
+            const z = island.at.z + Math.sin(a) * d
+            if(islandSigned(island, x, z) < 2.5 || near(x, z, 4.5)) continue
+            const roll = random()
+            const c1 = life.tree
+            const c2 = c1 + life.bush
+            const c3 = c2 + life.flower
+            const c4 = c3 + life.rock
+            if(roll < c1)
+            {
+                if(trees.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < 3.4 * 3.4)) continue
+                const type = life.trees[Math.floor(random() * life.trees.length)]
+                trees.push({ type, x, z, yaw: random() * Math.PI * 2, scale: 0.85 + random() * 0.4, lean: random() })
+            }
+            else if(roll < c2) out.bushes.push({ x, z, yaw: random() * Math.PI * 2, scale: 0.6 + random() * 0.7 })
+            else if(roll < c3) out.flowers.push({ x, z, yaw: random() * Math.PI * 2, scale: 0.7 + random() * 0.6, color: Math.floor(random() * 4) })
+            else if(roll < c4) out.rocks.push({ x, z, yaw: random() * Math.PI * 2, scale: 0.3 + random() * 0.6 })
+        }
+        out.trees.push(...trees)
+    }
+    return out
 }
 
 export function buildScatter()
@@ -653,7 +692,15 @@ export function buildScatter()
     const beach = placeBeach(trees)
     const parkedCars = placeParkedCars()
     const details = placeDetails({ lamps, fillers, streetPalms, trees, ...decor, ...beach })
-    return { lamps, fillers, streetPalms, trees, boats, ...decor, ...beach, parkedCars, ...details, loop: trafficLoop() }
+    const island = placeIslands()
+    return {
+        lamps, fillers, streetPalms, boats, ...beach, parkedCars, ...details, loop: trafficLoop(),
+        // the islands' life is merged in, so the forest, the collisions and the checks all see it
+        trees: [ ...trees, ...island.trees ],
+        bushes: [ ...decor.bushes, ...island.bushes ],
+        flowers: [ ...decor.flowers, ...island.flowers ],
+        rocks: [ ...decor.rocks, ...island.rocks ]
+    }
 }
 
 export const scatter = buildScatter()

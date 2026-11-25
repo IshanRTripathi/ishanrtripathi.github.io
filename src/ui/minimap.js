@@ -17,7 +17,8 @@ export function drawCity(extent = EXTENT, image = IMAGE)
     const px = image / (extent * 2)
     const colors = {
         [SURFACE.SEABED]: '#1C6E93', [SURFACE.WET_SAND]: '#E8D3AE', [SURFACE.SAND]: '#F4E2C4',
-        [SURFACE.GRASS]: '#6FAF55', [SURFACE.PATH]: '#E6D8C6', [SURFACE.ROAD]: '#3E414D', [SURFACE.ROCK]: '#A99D90'
+        [SURFACE.GRASS]: '#6FAF55', [SURFACE.PATH]: '#E6D8C6', [SURFACE.ROAD]: '#3E414D', [SURFACE.ROCK]: '#A99D90',
+        [SURFACE.JUNGLE]: '#3F8A3A', [SURFACE.SNOW]: '#F4F8FC', [SURFACE.DUNE]: '#F2C77E'
     }
     const step = 1
     for(let i = 0; i < image; i += step * 2)

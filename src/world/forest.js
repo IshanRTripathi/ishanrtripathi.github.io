@@ -217,19 +217,64 @@ function bulbGeometry()
 // ------------------------------------------------------------------ build
 const _m = new THREE.Matrix4()
 
-function instanced(geometry, material, items, place)
+// A cactus for the desert island: a stout trunk with two arms
+function cactusGeometry()
+{
+    const kit = new Kit()
+    kit.cyl(0.26, 0.3, 2.2, 8, '#5E9B55', {})
+    kit.cyl(0.15, 0.15, 0.9, 7, '#5E9B55', { x: -0.42, y: 0.7, rz: 0.9 })
+    kit.cyl(0.15, 0.15, 0.7, 7, '#5E9B55', { x: -0.82, y: 1.25, rz: 0 })
+    kit.cyl(0.15, 0.15, 0.9, 7, '#5E9B55', { x: 0.42, y: 0.9, rz: -0.9 })
+    kit.cyl(0.15, 0.15, 0.6, 7, '#5E9B55', { x: 0.78, y: 1.35, rz: 0 })
+    kit.sphere(0.07, '#F2E7C8', { y: 2.2, sy: 1.6 }, 0)
+    return kit.geometry()
+}
+
+// Cells are CELL metres square. Each cell's items form their own instanced mesh with its
+// own bounding sphere, so the camera can skip every cell it cannot see.
+const CELL = 48
+
+function byCell(items)
+{
+    const cells = new Map()
+    for(const it of items)
+    {
+        const key = Math.floor(it.x / CELL) + ',' + Math.floor(it.z / CELL)
+        if(!cells.has(key)) cells.set(key, [])
+        cells.get(key).push(it)
+    }
+    return [ ...cells.values() ]
+}
+
+function instanced(geometry, material, items, place, colorOf)
 {
     const mesh = new THREE.InstancedMesh(geometry, material, items.length)
     items.forEach((item, i) =>
     {
         place(item, _m)
         mesh.setMatrixAt(i, _m)
+        if(colorOf) mesh.setColorAt(i, colorOf(item))
     })
     mesh.instanceMatrix.needsUpdate = true
+    if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.computeBoundingSphere()
     mesh.castShadow = true
     mesh.receiveShadow = true
     return mesh
+}
+
+// one instanced mesh per cell, all sharing the same geometry and material
+function instancedCells(group, geometry, material, items, place, options = {})
+{
+    const meshes = byCell(items).map((cell) =>
+    {
+        const mesh = instanced(geometry, material, cell, place, options.color)
+        mesh.castShadow = options.castShadow ?? true
+        mesh.receiveShadow = options.receiveShadow ?? true
+        group.add(mesh)
+        return mesh
+    })
+    return meshes
 }
 
 export function createForest(scatter)
@@ -238,35 +283,29 @@ export function createForest(scatter)
     group.name = 'forest'
     const treeMaterial = windMaterial(1, 1)
     const palmMaterial = windMaterial(0.8, 0.25)
-    const geometries = { palm: palmGeometry(), royal: royalGeometry(), rain: rainGeometry(), slender: slenderGeometry() }
+    const geometries = { palm: palmGeometry(), royal: royalGeometry(), rain: rainGeometry(), slender: slenderGeometry(), cactus: cactusGeometry() }
     const all = [ ...scatter.trees, ...scatter.streetPalms ]
 
+    // the byType lists keep every cell's mesh, so a model swap can reach all of them
+    group.userData.byType = {}
     for(const type of Object.keys(geometries))
     {
         const items = all.filter((t) => t.type === type)
         if(!items.length) continue
-        const mesh = instanced(geometries[type], type === 'palm' || type === 'royal' ? palmMaterial : treeMaterial, items, (t, m) =>
+        const material = type === 'palm' || type === 'royal' ? palmMaterial : treeMaterial
+        group.userData.byType[type] = instancedCells(group, geometries[type], material, items, (t, m) =>
         {
             frameMatrix(t.x, t.z, t.yaw, heightAt(t.x, t.z) - 0.1, t.scale, m)
         })
-        group.userData.byType = group.userData.byType || {}
-        group.userData.byType[type] = mesh
-        group.add(mesh)
     }
 
     const bushMaterial = windMaterial(2.5, 1)
-    const bushes = instanced(bushGeometry(), bushMaterial, scatter.bushes, (b, m) => frameMatrix(b.x, b.z, b.yaw, heightAt(b.x, b.z) - 0.05, b.scale, m))
-    bushes.castShadow = false
-    group.add(bushes)
+    instancedCells(group, bushGeometry(), bushMaterial, scatter.bushes, (b, m) => frameMatrix(b.x, b.z, b.yaw, heightAt(b.x, b.z) - 0.05, b.scale, m), { castShadow: false })
 
-    const flowers = instanced(flowerGeometry(), windMaterial(6), scatter.flowers, (f, m) => frameMatrix(f.x, f.z, f.yaw, heightAt(f.x, f.z) - 0.02, f.scale, m))
     const palette = [ '#F4C65A', '#EE7A6A', '#FFF6EA', '#D58BE0' ].map((c) => new THREE.Color(c))
-    scatter.flowers.forEach((f, i) => flowers.setColorAt(i, palette[f.color]))
-    flowers.castShadow = false
-    group.add(flowers)
+    instancedCells(group, flowerGeometry(), windMaterial(6), scatter.flowers, (f, m) => frameMatrix(f.x, f.z, f.yaw, heightAt(f.x, f.z) - 0.02, f.scale, m), { castShadow: false, color: (f) => palette[f.color] })
 
-    const rocks = instanced(rockGeometry(), clayMaterial, scatter.rocks, (r, m) => frameMatrix(r.x, r.z, r.yaw, heightAt(r.x, r.z) - 0.1, r.scale, m))
-    group.add(rocks)
+    instancedCells(group, rockGeometry(), clayMaterial, scatter.rocks, (r, m) => frameMatrix(r.x, r.z, r.yaw, heightAt(r.x, r.z) - 0.1, r.scale, m))
 
     const placeLamp = (l, m) => frameMatrix(l.x, l.z, l.yaw, heightAt(l.x, l.z) + 0.15, 1, m)
     group.add(instanced(lampGeometry(), clayMaterial, scatter.lamps, placeLamp))
@@ -283,4 +322,3 @@ export function createForest(scatter)
 
     return group
 }
-

@@ -1,6 +1,30 @@
+import { Music } from './music.js'
+
 // Ambient sound made on the fly: the sea (filtered noise that swells like
 // waves, louder near the shore), rain, wind, thunder, birdsong in the morning
-// and crickets at night. No audio files to download.
+// and crickets at night. The music and the short sounds are CC0 files from
+// public/audio (see public/audio/CREDITS.md); the plane's drone is made here.
+
+// the short sounds, by file, and how loud each one plays
+const CLIPS = {
+    'sfx/ui-click.mp3': 0.8,
+    'sfx/ui-switch.mp3': 0.8,
+    'sfx/ui-open.mp3': 0.7,
+    'sfx/ui-confirm.mp3': 0.8,
+    'sfx/ui-close.mp3': 0.7,
+    'sfx/ui-drop.mp3': 0.7,
+    'sfx/car-engine.wav': 0.2
+}
+
+// the button sounds, by name
+const UI = {
+    click: 'sfx/ui-click.mp3',
+    switch: 'sfx/ui-switch.mp3',
+    open: 'sfx/ui-open.mp3',
+    confirm: 'sfx/ui-confirm.mp3',
+    close: 'sfx/ui-close.mp3',
+    drop: 'sfx/ui-drop.mp3'
+}
 
 export class Ambience
 {
@@ -9,6 +33,8 @@ export class Ambience
         this.context = null
         this.enabled = false
         this.shore = 0
+        this.buffers = {}
+        this.noises = {}
     }
 
     start()
@@ -42,6 +68,25 @@ export class Ambience
         this.master.gain.value = 0
         source.connect(this.filter).connect(this.swell).connect(this.master).connect(ctx.destination)
         source.start()
+
+        // the short sounds load in the background; the music streams
+        for(const file of Object.keys(CLIPS)) this.fetchClip(file)
+        this.music = new Music(ctx, this.master)
+        this.drone = this.makeDrone()
+    }
+
+    async fetchClip(file)
+    {
+        try
+        {
+            const response = await fetch(`./audio/${file}`)
+            this.buffers[file] = await this.context.decodeAudioData(await response.arrayBuffer())
+        }
+        catch(err)
+        {
+            // a sound that will not load stays silent; everything else still plays
+            console.warn('sound not loaded', file, err)
+        }
     }
 
     setEnabled(on)
@@ -53,6 +98,7 @@ export class Ambience
         const t = this.context.currentTime
         this.master.gain.cancelScheduledValues(t)
         this.master.gain.setTargetAtTime(on ? 0.55 : 0, t, 0.4)
+        this.music?.setOn(on)
     }
 
     // shore: 0 (inland) .. 1 (on the beach)
@@ -64,6 +110,12 @@ export class Ambience
         this.swell.gain.setTargetAtTime(0.12 + shore * (0.35 + wave * 0.5), t, 0.3)
         this.filter.frequency.setTargetAtTime(380 + shore * 500 + wave * 500 * shore, t, 0.3)
         this.updateNature(t)
+    }
+
+    // night: 0 (day) .. 1 (night); the music cross-fades to the night theme
+    setNight(night)
+    {
+        this.music?.setNight(night)
     }
 
     noiseBuffer(seconds, brown = false)
@@ -84,6 +136,12 @@ export class Ambience
             else data[i] = white
         }
         return buffer
+    }
+
+    // a noise buffer made once and kept, for the effects that reuse it
+    cachedNoise(key, seconds)
+    {
+        return this.noises[key] || (this.noises[key] = this.noiseBuffer(seconds))
     }
 
     // rain hiss and a low wind, both looping, faded in and out
@@ -124,7 +182,7 @@ export class Ambience
         if(!this.context || !this.enabled) return
         this.weatherBed()
         const t = this.context.currentTime
-        this.rainGain.gain.setTargetAtTime(rain * 0.32, t, 0.8)
+        this.rainGain.gain.setTargetAtTime(rain * 0.12, t, 0.8)
         this.windGain.gain.setTargetAtTime(wind * 0.35, t, 1.2)
         this.windFilter.frequency.setTargetAtTime(300 + 250 * Math.sin(t * 0.3), t, 1)
     }
@@ -217,5 +275,128 @@ export class Ambience
         osc.connect(gain).connect(this.master)
         osc.start(t)
         osc.stop(t + 0.26)
+    }
+
+    // a plane's drone: two detuned saw waves through a low filter, pitched up by the throttle
+    makeDrone()
+    {
+        const ctx = this.context
+        const filter = ctx.createBiquadFilter()
+        filter.type = 'lowpass'
+        filter.frequency.value = 260
+        filter.Q.value = 2
+        const gain = ctx.createGain()
+        gain.gain.value = 0
+        const oscs = [ 0, 9 ].map((detune) =>
+        {
+            const osc = ctx.createOscillator()
+            osc.type = 'sawtooth'
+            osc.frequency.value = 58
+            osc.detune.value = detune
+            osc.connect(filter)
+            osc.start()
+            return osc
+        })
+        filter.connect(gain).connect(this.master)
+        return { oscs, filter, gain }
+    }
+
+    // the engines. car: 0..1 how fast the car you drive is going, null when you are not in one.
+    // plane: 0..1 the throttle of the plane you fly, null when it is not in the air.
+    setVehicle({ car = null, plane = null } = {})
+    {
+        if(!this.context || !this.enabled) return
+        const t = this.context.currentTime
+        this.ensureCarEngine()
+        if(this.carGain)
+        {
+            const speed = car ?? 0
+            this.carGain.gain.setTargetAtTime(car === null ? 0 : CLIPS['sfx/car-engine.wav'] * (0.4 + 0.6 * speed), t, 0.15)
+            this.carSource.playbackRate.setTargetAtTime(0.7 + 0.9 * speed, t, 0.2)
+        }
+        const throttle = plane ?? 0
+        const drone = this.drone
+        drone.gain.gain.setTargetAtTime(plane === null ? 0 : 0.03 + 0.1 * throttle, t, 0.3)
+        for(const osc of drone.oscs) osc.frequency.setTargetAtTime(58 + 110 * throttle, t, 0.3)
+        drone.filter.frequency.setTargetAtTime(260 + 900 * throttle, t, 0.3)
+    }
+
+    // the car's engine: the race-engine loop, looping for as long as the page is open
+    ensureCarEngine()
+    {
+        const buffer = this.buffers['sfx/car-engine.wav']
+        if(this.carGain || !buffer) return
+        const ctx = this.context
+        this.carSource = ctx.createBufferSource()
+        this.carSource.buffer = buffer
+        this.carSource.loop = true
+        this.carGain = ctx.createGain()
+        this.carGain.gain.value = 0
+        this.carSource.connect(this.carGain).connect(this.master)
+        this.carSource.start()
+    }
+
+    // a short sound, played once, through the same master as everything else
+    play(file, rate = 1)
+    {
+        const buffer = this.buffers[file]
+        if(!buffer || !this.enabled) return
+        const ctx = this.context
+        const source = ctx.createBufferSource()
+        source.buffer = buffer
+        source.playbackRate.value = rate
+        const gain = ctx.createGain()
+        gain.gain.value = CLIPS[file]
+        source.connect(gain).connect(this.master)
+        source.start()
+    }
+
+    // a button press, a menu opening, a close: kind is a key of UI
+    ui(kind)
+    {
+        if(UI[kind]) this.play(UI[kind])
+    }
+
+    // a rush of air as you bail out of the plane or the car
+    whoosh()
+    {
+        if(!this.context || !this.enabled) return
+        const ctx = this.context
+        const t = ctx.currentTime
+        const source = ctx.createBufferSource()
+        source.buffer = this.cachedNoise('whoosh', 1.5)
+        const band = ctx.createBiquadFilter()
+        band.type = 'bandpass'
+        band.Q.value = 1.2
+        band.frequency.setValueAtTime(400, t)
+        band.frequency.exponentialRampToValueAtTime(2200, t + 1.1)
+        const gain = ctx.createGain()
+        gain.gain.setValueAtTime(0.0001, t)
+        gain.gain.exponentialRampToValueAtTime(0.5, t + 0.25)
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.3)
+        source.connect(band).connect(gain).connect(this.master)
+        source.start(t)
+        source.stop(t + 1.4)
+    }
+
+    // the sea closing over you: a burst of noise that falls away
+    splash()
+    {
+        if(!this.context || !this.enabled) return
+        const ctx = this.context
+        const t = ctx.currentTime
+        const source = ctx.createBufferSource()
+        source.buffer = this.cachedNoise('splash', 2)
+        const low = ctx.createBiquadFilter()
+        low.type = 'lowpass'
+        low.frequency.setValueAtTime(3000, t)
+        low.frequency.exponentialRampToValueAtTime(350, t + 1.4)
+        const gain = ctx.createGain()
+        gain.gain.setValueAtTime(0.0001, t)
+        gain.gain.exponentialRampToValueAtTime(0.7, t + 0.03)
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
+        source.connect(low).connect(gain).connect(this.master)
+        source.start(t)
+        source.stop(t + 1.7)
     }
 }
