@@ -27,6 +27,10 @@ export class UI
         this.minimapEl = this.$('.minimap')
         this.minimapCanvas = this.$('.minimap-canvas')
         this.nextEl = this.$('.minimap-next')
+        // the minimap is a way into the city map: tap it, or press Enter when it has focus
+        this.minimapEl.setAttribute('role', 'button')
+        this.minimapEl.setAttribute('tabindex', '0')
+        this.minimapEl.setAttribute('aria-label', 'Open the city map')
         this.prompt = this.$('.prompt')
         this.promptKey = this.$('.prompt-key')
         this.promptLabel = this.$('.prompt-label')
@@ -57,6 +61,8 @@ export class UI
 
         // the map, the plane's tips and how-to-fly
         this.$('[data-action="map"]').addEventListener('click', () => this.onMap?.())
+        this.minimapEl.addEventListener('click', () => this.onMap?.())
+        this.minimapEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') this.onMap?.() })
         document.querySelectorAll('[data-flight-tips]').forEach((b) => b.addEventListener('click', () => this.showFlightTips(b.dataset.flightTips === 'show')))
 
         // phone

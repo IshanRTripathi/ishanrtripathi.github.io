@@ -6,7 +6,9 @@ The city lives on its own clock. A day takes about eight minutes, with long, slo
 
 Past the city there is an airstrip. Walk up to the little plane at the near end, press E to climb in, and fly: hold R to add throttle, F to ease off, W and S to point the nose up and down, and A and D to bank and turn. Take off down the strip, climb, and come back to land on it. Landing short or too fast bounces you back up (or, if it's bad enough, back to the runway). The Game Arcade hall is past the far end of the strip: walk in through its door and pick a game from the list. Three original games are there so far (a stacking tower, a coin catcher and a bouncing paddle), and your best scores stay on this device.
 
-Around the planet are three smaller islands, each with its own theme: a jungle cove with a stilt hut, palms and tall rainforest trees; a snowy peak with a log cabin and a warm window, and pines; and a dune oasis with a pool, a tent and cacti. Each has its own coast, hills and sea. The plane can land on the sea, and a parachute that lands in it floats you back to the nearest shore.
+Around the planet are three smaller islands, each with its own theme: a jungle cove with a stilt hut, palms and tall rainforest trees; a snowy peak with a log cabin and a warm window, and pines; and a dune oasis with a pool, a tent and cacti. Each has its own coast, hills and sea, and its own airstrip, with a plane parked at its near end. The plane can land on the sea, and a parachute that lands in it floats you back to the nearest shore. Boats are moored offshore, and flocks of birds circle over each island.
+
+Press M (or tap the minimap) for the city map. Every airstrip is a place to fly to: tap it on the map, or use the buttons under the map, and you land beside its plane. A jump is instant and free, so you can go from the city to any island in a moment, and the camera turns to face the strip as you arrive.
 
 The phone (P) has my contacts, career, trophies and a Sky app to pick the time of day, season or weather by hand. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
 
@@ -22,7 +24,7 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
-Controls: WASD or arrow keys to walk (or drive), Shift to run, M for the city map (north up, with the route to the next stop), E to get in or out of a car, the scooter or the plane (in the air, E bails out under a parachute that you steer with A and D), Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E). In the plane: W and S for the nose, A and D to bank, R and F for throttle. On a phone, the left thumb steers the plane and two throttle buttons appear at the top. In the arcade: arrows or A and D, Space to drop or launch, Escape to go back, or tap and drag on a phone.
+Controls: WASD or arrow keys to walk (or drive), Shift to run, M (or a tap on the minimap) for the city map (north up, with the route to the next stop, and every airstrip to fly to), E to get in or out of a car, the scooter or the plane (in the air, E bails out under a parachute that you steer with A and D), Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E). In the plane: W and S for the nose, A and D to bank, R and F for throttle. On a phone, the left thumb steers the plane and two throttle buttons appear at the top. In the arcade: arrows or A and D, Space to drop or launch, Escape to go back, or tap and drag on a phone.
 
 Sound is off until you press the Sound button in the HUD. Then you hear the sea, the weather, the birds and crickets, the car engine and the plane's drone, plus two music tracks: a day theme that cross-fades into a night theme as the sun goes down. The music and short sounds are free (CC0) files, credited in [`public/audio/CREDITS.md`](public/audio/CREDITS.md).
 
@@ -34,7 +36,7 @@ On phones it plays best sideways: the left thumb anywhere on the left half is a 
 
 Everything people read is in [`src/content.js`](src/content.js): intro, projects, career stops, achievements and links. Add a project there and it gets a building, a sign, a marker and a spot on the GPS. The giant object on its roof comes from its `building` field (`tiffin`, `calculator`, `clock`, `phone`, `arcade`).
 
-If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light, lantern, fence or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
+If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light, lantern, fence or city block ends up on a road or in the sea, or if traffic would leave the asphalt. It also fails if anything stands in front of an airstrip, or if an airstrip is not flat or runs into the sea. It runs before every build.
 
 ## Models
 
@@ -94,7 +96,8 @@ Three.js and Vite, no framework.
 - `src/world/details.js`: the evening. Lanterns with pools of light along the boardwalk, the beach road and round the chai shack, fences, stepping stones, flower beds along the sidewalks, grass and fireflies. `duskAt()` in `layout.js` says how far into the evening each spot is, so windows light up and street lights get warmer the closer you get to the sunset beach.
 - `src/player/`: the character, walking and driving, the follow camera, and `flight.js`, the plane's arcade flight model (speed sets the lift, the nose sets the climb, the bank sets the turn).
 - `src/world/plane.js` and `airstrip.js`: the plane and the runway, built from the same clay parts as the city. The runway is a straight strip on a ring round the island, flattened into the ground by the terrain pads.
-- `src/world/islands.js`: the three islands, each with its own coast, hills, theme and landmarks. `terrain.js`, `terrainMesh.js`, `water.js`, `scatter.js` and `islandBuildings.js` build them all from that one description.
+- `src/world/runways.js` and `src/world/airstrip.js`: every runway, the city's and the islands': the strip, its clear airspace (which nothing may grow or stand in), the runway lights that run in a chase (brighter at night), and the windsock that turns with the wind.
+- `src/world/islands.js`: the three islands, each with its own coast, hills, theme, landmarks and airstrip (the strip is found by a search when the game loads). `terrain.js`, `terrainMesh.js`, `water.js`, `scatter.js` and `islandBuildings.js` build them all from that one description.
 - `src/arcade/games.js` and `src/ui/arcade.js`: the arcade's games and the game-select hall.
 - `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.
 

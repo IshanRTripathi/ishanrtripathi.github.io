@@ -426,6 +426,27 @@ export class Player
         this.emit('dismount', v)
     }
 
+    // the map's fast travel: stand on the ground at a spot, facing a way. A car or a
+    // grounded plane is left first; nothing happens in the air, or while falling or sitting
+    jumpTo(x, z, yaw)
+    {
+        if(this.mode === 'chute' || this.mode === 'script' || this.mode === 'sit' || this.ejected) return false
+        if(this.mode === 'ride')
+        {
+            if(this.vehicle.flight && !this.vehicle.flight.onGround) return false
+            this.dismount()
+            if(this.mode === 'ride') return false
+        }
+        this.x = x
+        this.z = z
+        this.yaw = yaw
+        this.speed = 0
+        this.steer = 0
+        this.sync()
+        this.emit('jump', { x, z })
+        return true
+    }
+
     // the plane: the keys and stick fly it, and its own model moves it
     updateFlight(dt)
     {

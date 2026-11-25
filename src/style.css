@@ -315,8 +315,12 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     left: max(18px, env(safe-area-inset-left));
     bottom: max(18px, env(safe-area-inset-bottom));
     width: 200px;
-    pointer-events: none;
+    /* a tap on the minimap opens the full city map */
+    pointer-events: auto;
+    cursor: pointer;
+    border-radius: 14px;
 }
+.minimap:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 
 .minimap-canvas
 {
@@ -1083,6 +1087,22 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 .fullmap-sw-plane { background: #FFFFFF; border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 50% 70%, 0 100%); }
 .fullmap-sw-route { width: 22px; height: 0; border-radius: 0; background: none; border-top: 4px dashed #FF3EA5; box-shadow: none; vertical-align: 3px; }
 .fullmap-tip { margin-top: 6px; font-size: 0.82rem; opacity: 0.7; }
+/* the places to fly to, under the map */
+.fullmap-jumps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; grid-column: 1; }
+.fullmap-jumps:empty { display: none; }
+.fullmap-jump
+{
+    font: inherit;
+    font-size: 0.88rem;
+    padding: 0.42rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--cyan);
+    background: rgba(45, 226, 230, 0.08);
+    color: var(--cream, #FFF6EC);
+    cursor: pointer;
+}
+.fullmap-jump:hover { background: rgba(45, 226, 230, 0.22); }
+.fullmap-jump:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
 @media (orientation: landscape) and (max-height: 540px)
 {

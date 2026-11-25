@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { R, mapToDir, mapTangent } from '../core/geo.js'
 import { BAY_ANGLE, coastRadius } from './layout.js'
+import { ISLANDS } from './islands.js'
 import { mulberry32 } from '../core/noise.js'
 
 // Flocks over the island and seagulls circling the bay. One instanced mesh;
@@ -53,6 +54,14 @@ export class Birds
             this.birds.push({ kind: 'gull', cx: Math.cos(a) * r, cz: Math.sin(a) * r, radius: 4 + random() * 6, speed: (0.35 + random() * 0.25) * (i % 2 ? 1 : -1), alt: 7 + random() * 6, phase: random() * 10, flap: 4.5 + random() * 2 })
         }
 
+        // a flock circling each island, over its middle, above the airstrip
+        for(const island of ISLANDS)
+        {
+            const center = { cx: island.at.x, cz: island.at.z, r: island.radius * 0.4, a: random() * Math.PI * 2, speed: (0.07 + random() * 0.03) * (random() < 0.5 ? 1 : -1), alt: 16 + random() * 5 }
+            for(let i = 0; i < 6; i++)
+                this.birds.push({ kind: 'flock', center, ox: (random() - 0.5) * 6, oz: (random() - 0.5) * 6, oy: (random() - 0.5) * 2, phase: random() * 10, flap: 9 + random() * 3 })
+        }
+
         const material = new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, side: THREE.DoubleSide, roughness: 0.9 })
         material.onBeforeCompile = (shader) =>
         {
@@ -88,7 +97,8 @@ export class Birds
             const c = b.center
             const a = c.a + t * c.speed
             const wob = Math.sin(t * 0.7 + b.phase) * 1.2
-            return { x: Math.cos(a) * c.r + b.ox + wob, z: Math.sin(a) * c.r + b.oz + Math.cos(t * 0.5 + b.phase), y: c.alt + b.oy + Math.sin(t + b.phase) * 0.6 }
+            // a flock circles its centre: the middle of the map, or an island's middle
+            return { x: (c.cx || 0) + Math.cos(a) * c.r + b.ox + wob, z: (c.cz || 0) + Math.sin(a) * c.r + b.oz + Math.cos(t * 0.5 + b.phase), y: c.alt + b.oy + Math.sin(t + b.phase) * 0.6 }
         }
         const a = t * b.speed + b.phase
         return { x: b.cx + Math.cos(a) * b.radius, z: b.cz + Math.sin(a) * b.radius, y: b.alt + Math.sin(t * 0.8 + b.phase) * 1.2 }

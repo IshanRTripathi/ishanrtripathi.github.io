@@ -429,7 +429,8 @@ export class Environment
             birds: smooth(-0.02, 0.2, s) * (1 - smooth(0.5, 0.8, s) * 0.5) * (1 - o) * (1 - winter) * near,
             crickets: smooth(-0.05, -0.2, s) * (1 - winter) * (1 - sky.rain) * near
         })
-        // the music turns to the night theme as the sun goes down
-        this.ambience?.setNight?.(smooth(-0.05, -0.2, s))
+        // how dark it is, 0 (day) .. 1 (night): the music turns to the night theme, and the runway lights brighten
+        this.nightness = smooth(-0.05, -0.2, s)
+        this.ambience?.setNight?.(this.nightness)
     }
 }
