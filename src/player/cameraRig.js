@@ -139,8 +139,10 @@ export class CameraRig
         {
             if(input.drag.dx || input.drag.dy)
             {
-                this.yaw -= input.drag.dx * 0.0055
-                this.pitch = clamp(this.pitch + input.drag.dy * 0.004, 0.06, 1.15)
+                // thumbs on small screens need more turn per pixel than a mouse
+                const k = input.drag.touch ? 1.6 : 1
+                this.yaw -= input.drag.dx * 0.0055 * k
+                this.pitch = clamp(this.pitch + input.drag.dy * 0.004 * k, 0.06, 1.15)
                 this.lastDrag = time
             }
             if(input.zoom) this.distance = clamp(this.distance * Math.pow(1.12, input.zoom), 3.5, 18)

@@ -57,7 +57,8 @@ class App
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1400)
         this.fog = new THREE.Fog(FOG.clone(), 60, 210)
         this.scene.fog = this.fog
-        this.lights = createLights(this.scene)
+        // phones get a smaller shadow map and resolution cap
+        this.lights = createLights(this.scene, { shadowSize: isTouch ? 1024 : 2048 })
 
         // neon glow
         this.composer = new EffectComposer(this.renderer)
@@ -67,6 +68,7 @@ class App
         this.composer.addPass(new OutputPass())
         this.bloomOn = !params.has('nobloom')
         this.quality = new Quality(this.renderer, {
+            maxRatio: isTouch ? 1.5 : 2,
             onRatio: (ratio) => { this.composer.setPixelRatio(ratio); this.composer.setSize(window.innerWidth, window.innerHeight) },
             onLowest: () => this.setBloom(false)
         })
@@ -74,6 +76,8 @@ class App
 
         this.input = new Input(this.canvas)
         ui.bindStick(this.input)
+        ui.bindFullscreen()
+        ui.bindRotateHint()
         this.ambience = new Ambience()
         this.timer = new THREE.Timer()
         this.timer.connect(document)
@@ -84,6 +88,9 @@ class App
         this.inMarker = null
 
         window.addEventListener('resize', () => this.resize())
+        // mobile browsers resize the visible area when their toolbars slide away
+        window.visualViewport?.addEventListener('resize', () => this.resize())
+        window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250))
         window.addEventListener('keydown', (e) =>
         {
             if(this.state === 'play' && e.code === 'KeyP' && !(e.target instanceof HTMLInputElement)) ui.togglePhone()
@@ -170,6 +177,8 @@ class App
     {
         const w = window.innerWidth
         const h = window.innerHeight
+        // phones sideways: planet on the right half, beside the text
+        if(w > h && h < 540) return { x: w * 0.24, y: h * 0.06 }
         if(w > 900) return { x: w * 0.2, y: 0 }
         // portrait: the planet rises from the bottom, under the text
         if(h > w) return { x: 0, y: h * 0.3 }
@@ -194,7 +203,10 @@ class App
     {
         if(this.state !== 'title') return
         this.state = 'intro'
+        // on phones: go fullscreen and sideways where the browser allows it (needs this tap)
+        if(isTouch && !skip) ui.enterFullscreen()
         ui.enterWorld()
+        ui.setPlaying(true)
         this.canvas.focus({ preventScroll: true })
         const door = this.doorPoints()
         // the camera ends up in front of Ishan, looking back at his place

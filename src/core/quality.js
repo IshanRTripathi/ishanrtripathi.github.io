@@ -4,12 +4,12 @@
 
 export class Quality
 {
-    constructor(renderer, { onRatio, onLowest } = {})
+    constructor(renderer, { onRatio, onLowest, maxRatio = 2 } = {})
     {
         this.renderer = renderer
         this.onRatio = onRatio
         this.onLowest = onLowest
-        this.max = Math.min(window.devicePixelRatio || 1, 2)
+        this.max = Math.min(window.devicePixelRatio || 1, maxRatio)
         this.min = Math.min(0.6, this.max)
         this.ratio = this.max
         this.frames = 0

@@ -24,6 +24,9 @@ export class Input
             if(this.enabled && [ 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space' ].includes(code) && document.activeElement === document.body) e.preventDefault()
         })
         window.addEventListener('keyup', (e) => this.keys.delete(e.code))
+        // iOS Safari pinch-zooms the page even with touch-action set; stop that while playing
+        for(const type of [ 'gesturestart', 'gesturechange' ])
+            document.addEventListener(type, (e) => { if(!e.target.closest?.('.card, .page, .phone-screen')) e.preventDefault() }, { passive: false })
         window.addEventListener('blur', () => this.keys.clear())
 
         // camera drag with mouse or a finger outside the joystick
@@ -37,6 +40,7 @@ export class Input
             last = { x: e.clientX, y: e.clientY, t: performance.now(), sx: e.clientX, sy: e.clientY }
             this.drag.active = true
             this.drag.moved = 0
+            this.drag.touch = e.pointerType === 'touch'
         })
         window.addEventListener('pointermove', (e) =>
         {

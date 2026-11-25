@@ -16,7 +16,9 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/main.yml`).
 
-Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around. On phones, a joystick appears bottom left.
+Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around.
+
+On phones it plays best sideways: the left thumb anywhere on the left half is a joystick (push all the way to run, or to drive), the right thumb drags to look, and a big button bottom right does whatever is nearby (get in the car, open a project, stand up). Tapping Explore goes fullscreen and locks to landscape where the browser allows it (Android Chrome; iPhone Safari has no fullscreen for pages, so it just plays in the browser). Held upright, a hint suggests turning the phone, and can be dismissed. Phones also get a lower resolution cap and a smaller shadow map.
 
 ## Change the content
 

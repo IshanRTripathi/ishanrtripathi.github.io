@@ -338,33 +338,53 @@ export class UI
     }
 
     // ---------------------------------------------------------------- touch stick
+    // A floating joystick: it appears wherever the left thumb lands in the zone.
     bindStick(input)
     {
+        const zone = this.$('.touch-zone')
         const stick = this.$('.stick')
         const knob = this.$('.stick-knob')
         let id = null
-        const radius = 50
+        let center = null
+        const radius = () => stick.offsetWidth * 0.42
+        const home = () =>
+        {
+            stick.style.left = ''
+            stick.style.top = ''
+            stick.style.bottom = ''
+        }
         const set = (e) =>
         {
-            const r = stick.getBoundingClientRect()
-            let dx = e.clientX - (r.left + r.width / 2)
-            let dy = e.clientY - (r.top + r.height / 2)
+            let dx = e.clientX - center.x
+            let dy = e.clientY - center.y
+            const r = radius()
             const len = Math.hypot(dx, dy)
-            if(len > radius) { dx = dx / len * radius; dy = dy / len * radius }
+            if(len > r) { dx = dx / len * r; dy = dy / len * r }
             knob.style.transform = `translate(${dx}px, ${dy}px)`
-            input.stick.x = dx / radius
-            input.stick.y = -dy / radius
+            input.stick.x = dx / r
+            input.stick.y = -dy / r
+            stick.classList.toggle('is-running', Math.hypot(dx, dy) / r > 0.92)
         }
-        stick.addEventListener('pointerdown', (e) =>
+        zone.addEventListener('pointerdown', (e) =>
         {
+            if(id !== null) return
             id = e.pointerId
+            zone.setPointerCapture(id)
+            // centre the stick under the thumb, kept fully on screen
+            const size = stick.offsetWidth
+            const x = Math.min(Math.max(e.clientX, size / 2 + 8), window.innerWidth - size / 2 - 8)
+            const y = Math.min(Math.max(e.clientY, size / 2 + 8), window.innerHeight - size / 2 - 8)
+            stick.style.left = `${x - size / 2}px`
+            stick.style.top = `${y - size / 2}px`
+            stick.style.bottom = 'auto'
+            stick.classList.add('is-active')
+            center = { x, y }
             input.stick.active = true
             input.stick.pointerId = id
-            stick.setPointerCapture(id)
             set(e)
-            e.stopPropagation()
+            e.preventDefault()
         })
-        stick.addEventListener('pointermove', (e) => { if(e.pointerId === id) set(e) })
+        zone.addEventListener('pointermove', (e) => { if(e.pointerId === id) set(e) })
         const end = (e) =>
         {
             if(e.pointerId !== id) return
@@ -373,8 +393,67 @@ export class UI
             input.stick.x = 0
             input.stick.y = 0
             knob.style.transform = ''
+            stick.classList.remove('is-active', 'is-running')
+            home()
         }
-        stick.addEventListener('pointerup', end)
-        stick.addEventListener('pointercancel', end)
+        zone.addEventListener('pointerup', end)
+        zone.addEventListener('pointercancel', end)
+        zone.addEventListener('lostpointercapture', end)
+    }
+
+    // ---------------------------------------------------------------- fullscreen and orientation
+    bindFullscreen()
+    {
+        const button = this.$('[data-action="fullscreen"]')
+        const supported = !!(document.fullscreenEnabled && document.documentElement.requestFullscreen)
+        button.hidden = !supported || !this.isTouch
+        button.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : this.enterFullscreen()))
+        document.addEventListener('fullscreenchange', () =>
+        {
+            button.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'
+        })
+    }
+
+    // fullscreen, then lock to landscape where the browser allows it (Android Chrome does,
+    // iPhone Safari has neither and simply keeps going)
+    async enterFullscreen()
+    {
+        try
+        {
+            if(!document.fullscreenElement && document.documentElement.requestFullscreen)
+                await document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+            if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape')
+        }
+        catch {}
+    }
+
+    // the rotate hint shows on phones held upright while playing, until dismissed
+    bindRotateHint()
+    {
+        this.rotateHint = this.$('.rotate-hint')
+        this.rotateDismissed = false
+        this.$('[data-action="dismiss-rotate"]').addEventListener('click', () =>
+        {
+            this.rotateDismissed = true
+            this.updateRotateHint()
+        })
+        const query = window.matchMedia('(orientation: portrait)')
+        query.addEventListener?.('change', () => this.updateRotateHint())
+        window.addEventListener('resize', () => this.updateRotateHint())
+    }
+
+    setPlaying(playing)
+    {
+        this.playing = playing
+        this.body.classList.toggle('is-playing', playing)
+        this.updateRotateHint()
+    }
+
+    updateRotateHint()
+    {
+        if(!this.rotateHint) return
+        const portrait = window.innerHeight > window.innerWidth
+        const phone = Math.min(window.innerWidth, window.innerHeight) < 600
+        this.rotateHint.hidden = !(this.isTouch && this.playing && portrait && phone && !this.rotateDismissed)
     }
 }

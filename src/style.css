@@ -177,6 +177,9 @@ kbd
     gap: 1.1rem 1.6rem;
 }
 
+.is-touch .title-keys-desktop,
+body:not(.is-touch) .title-keys-touch { display: none; }
+
 .title-keys
 {
     margin: 1.4rem 0 0;
@@ -368,17 +371,38 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 
 .prompt kbd { background: var(--cyan); color: var(--night); border-color: var(--cyan); }
 .is-touch .prompt kbd { display: none; }
-.is-touch .prompt { bottom: auto; top: calc(100% - 200px); left: auto; right: max(16px, env(safe-area-inset-right)); transform: none; padding: 0.75em 1.2em 0.7em; }
+.is-touch .prompt
+{
+    top: auto;
+    left: auto;
+    right: max(20px, calc(env(safe-area-inset-right) + 12px));
+    bottom: max(24px, calc(env(safe-area-inset-bottom) + 14px));
+    transform: none;
+    min-height: 60px;
+    padding: 0.8em 1.4em 0.75em;
+    font-size: 1.1rem;
+    box-shadow: 0 0 0 3px var(--cyan), 0 0 24px rgba(45, 226, 230, 0.7);
+}
+.is-touch .prompt:active { transform: scale(0.96); }
 
 /* ------------------------------------------------------------ touch */
+/* The left thumb zone: the joystick appears wherever it lands. */
 .touch
 {
     position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+.touch-zone
+{
+    position: absolute;
     left: 0;
     bottom: 0;
-    width: 50%;
-    height: 45%;
-    pointer-events: none;
+    width: 42%;
+    height: 72%;
+    pointer-events: auto;
+    touch-action: none;
 }
 
 .stick
@@ -386,27 +410,75 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     position: absolute;
     left: max(28px, env(safe-area-inset-left));
     bottom: max(28px, env(safe-area-inset-bottom));
-    width: 128px;
-    height: 128px;
+    width: 124px;
+    height: 124px;
+    margin: 0;
     border-radius: 50%;
     border: 2px solid rgba(255, 246, 236, 0.7);
     background: rgba(27, 21, 53, 0.35);
-    pointer-events: auto;
-    touch-action: none;
+    pointer-events: none;
+    opacity: 0.55;
+    transition: opacity 200ms ease;
 }
+
+.stick.is-active { opacity: 1; transition: none; }
 
 .stick-knob
 {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 56px;
-    height: 56px;
-    margin: -28px 0 0 -28px;
+    width: 54px;
+    height: 54px;
+    margin: -27px 0 0 -27px;
     border-radius: 50%;
     background: var(--pink);
     box-shadow: 0 0 18px rgba(255, 62, 165, 0.8);
 }
+
+.stick.is-running .stick-knob { background: var(--yellow); box-shadow: 0 0 18px rgba(255, 228, 94, 0.9); }
+
+/* No page zoom, selection or callouts while playing; scrolling stays inside panels */
+.is-touch,
+.is-touch .world { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.is-touch .card,
+.is-touch .page,
+.is-touch .phone-screen { touch-action: pan-y; -webkit-user-select: text; user-select: text; }
+
+/* ------------------------------------------------------------ rotate hint */
+.rotate-hint
+{
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(27, 21, 53, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.rotate-hint-card { max-width: 18rem; text-align: center; }
+
+.rotate-hint-icon
+{
+    width: 46px;
+    height: 78px;
+    margin: 0 auto 1.1rem;
+    border: 3px solid var(--cream);
+    border-radius: 10px;
+    box-shadow: 0 0 18px rgba(255, 62, 165, 0.6);
+    animation: rotate-phone 2.4s ease-in-out infinite;
+}
+
+@keyframes rotate-phone
+{
+    0%, 25% { transform: rotate(0deg); }
+    55%, 100% { transform: rotate(-90deg); }
+}
+
+.rotate-hint-title { margin: 0 0 0.4rem; font-family: var(--display); font-size: 1.8rem; line-height: 1; text-transform: uppercase; }
+.rotate-hint-text { margin: 0 0 1.2rem; color: var(--muted); }
 
 /* ------------------------------------------------------------ cards */
 .card-layer,
@@ -732,12 +804,97 @@ body:not(.is-touch) .hud-help-touch { display: none; }
     html, body { font-size: 16px; }
     .title { align-items: flex-start; padding-top: max(28px, env(safe-area-inset-top)); }
     .title-intro { font-size: 1.05rem; margin-bottom: 1.2rem; }
-    .title-keys { display: none; }
+    .title-keys-desktop { display: none; }
     .hud-name { font-size: 1.15rem; }
     .hud-button { font-size: 0.82rem; padding: 0.3em 0.65em 0.25em; }
     .hud-tools { max-width: 60%; }
     .area { top: 230px; }
     .phone-layer { place-items: center; padding: 16px; }
+}
+
+/* ------------------------------------------------------------ short landscape screens (phones sideways) */
+@media (orientation: landscape) and (max-height: 540px)
+{
+    html, body { font-size: 15px; }
+
+    /* title: text on the left half, planet on the right */
+    .title
+    {
+        align-items: center;
+        padding: max(14px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(24px, calc(env(safe-area-inset-left) + 8px));
+    }
+    .title-inner { max-width: min(30rem, 52%); }
+    .title-name { font-size: clamp(2rem, 13vh, 3.6rem); }
+    .title-role { font-size: clamp(1.4rem, 8vh, 2.2rem); }
+    .title-intro { margin: 0.5rem 0 0.9rem; font-size: 0.95rem; line-height: 1.4; }
+    .title-actions { gap: 0.6rem 1.2rem; }
+    .button { font-size: 1rem; padding: 0.5em 1.1em 0.45em; }
+    .title-keys { margin-top: 0.7rem; font-size: 0.85rem; }
+
+    /* hud */
+    .hud-top { padding-top: max(10px, env(safe-area-inset-top)); padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+    .hud-name { font-size: 1.1rem; }
+    .hud-progress { font-size: 0.8rem; margin-top: 0.1rem; }
+    .hud-button { font-size: 0.8rem; padding: 0.3em 0.75em 0.25em; }
+
+    .hud-help,
+    .is-touch .hud-help
+    {
+        left: 50%;
+        right: auto;
+        top: auto;
+        bottom: max(14px, env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        max-width: min(24rem, 40%);
+        font-size: 0.78rem;
+        padding: 0.45rem 0.7rem 0.3rem;
+    }
+    .hud-help p { margin-bottom: 0.15rem; }
+
+    .area { top: 72px; }
+    .area-name { font-size: clamp(1.6rem, 9vh, 2.4rem); }
+    .area-sub { font-size: 0.85rem; }
+
+    .prompt { bottom: 18px; }
+
+    /* cards fit the short screen; the buttons stay visible at the bottom */
+    .card-layer { padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
+    .card { width: min(100%, 44rem); max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); padding: 1rem 1.4rem 0; }
+    .card-title { font-size: clamp(1.8rem, 11vh, 2.6rem); }
+    .card-line { margin: 0.2rem 0 0.6rem; font-size: 1.25rem; }
+    .card-content { font-size: 0.95rem; }
+    .card-content p { margin-bottom: 0.5rem; }
+    .card-facts { margin-top: 0.5rem; padding-top: 0.5rem; }
+    .card-list li { padding: 0.4rem 0; }
+    .card-actions
+    {
+        position: sticky;
+        bottom: 0;
+        margin: 0.8rem -1.4rem 0;
+        padding: 0.7rem 1.4rem 0.8rem;
+        background: linear-gradient(rgba(27, 21, 53, 0), rgba(27, 21, 53, 0.96) 30%);
+    }
+
+    /* the phone turns sideways too */
+    .phone-layer { place-items: center; padding: 8px; }
+    .phone { width: min(600px, 100%); height: calc(100vh - 16px); height: calc(100dvh - 16px); border-radius: 30px; padding: 10px; }
+    .phone-screen { border-radius: 22px; }
+    .phone-view { padding: 4px 18px 16px; }
+    .phone-heading { font-size: 1.5rem; margin: 0.1rem 0 0.7rem; }
+    .phone-apps { grid-template-columns: repeat(4, 1fr); gap: 12px 8px; }
+    .phone-app-icon { width: 50px; height: 50px; border-radius: 14px; }
+
+    .page-content h1 { font-size: 2.6rem; }
+}
+
+/* phones sideways with touch: map top-left, joystick bottom-left, action bottom-right */
+@media (orientation: landscape) and (max-height: 540px)
+{
+    .is-touch .minimap { left: max(14px, env(safe-area-inset-left)); right: auto; top: 58px; width: 104px; }
+    .is-touch .minimap-canvas { width: 104px; height: 104px; box-shadow: 0 0 0 2px var(--cream), 0 0 0 4px var(--pink), 0 0 16px rgba(255, 62, 165, 0.6); }
+    .is-touch .minimap-next { margin-top: 0.45rem; font-size: 0.72rem; padding: 0.2rem 0.5rem 0.15rem; }
+    .is-touch .stick { width: 112px; height: 112px; bottom: max(18px, env(safe-area-inset-bottom)); left: max(22px, calc(env(safe-area-inset-left) + 8px)); }
+    .is-touch .touch-zone { width: 45%; height: 62%; }
 }
 
 @media (prefers-reduced-motion: reduce)

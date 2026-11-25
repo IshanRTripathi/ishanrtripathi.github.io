@@ -9,14 +9,14 @@ export const SUN_DIRECTION = new THREE.Vector3(
     Math.sin(BAY_ANGLE) * Math.cos(SUN_ELEVATION)
 ).normalize()
 
-export function createLights(scene)
+export function createLights(scene, { shadowSize = 2048 } = {})
 {
     const hemi = new THREE.HemisphereLight('#CDB8F2', '#F2B08A', 1.6)
     scene.add(hemi)
 
     const sun = new THREE.DirectionalLight('#FFC9A0', 2.5)
     sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.mapSize.set(shadowSize, shadowSize)
     sun.shadow.camera.left = -34
     sun.shadow.camera.right = 34
     sun.shadow.camera.top = 34
