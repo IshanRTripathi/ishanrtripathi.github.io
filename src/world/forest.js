@@ -239,10 +239,13 @@ export function createForest(scatter)
     {
         const items = all.filter((t) => t.type === type)
         if(!items.length) continue
-        group.add(instanced(geometries[type], type === 'palm' || type === 'royal' ? palmMaterial : treeMaterial, items, (t, m) =>
+        const mesh = instanced(geometries[type], type === 'palm' || type === 'royal' ? palmMaterial : treeMaterial, items, (t, m) =>
         {
             frameMatrix(t.x, t.z, t.yaw, heightAt(t.x, t.z) - 0.1, t.scale, m)
-        }))
+        })
+        group.userData.byType = group.userData.byType || {}
+        group.userData.byType[type] = mesh
+        group.add(mesh)
     }
 
     const bushMaterial = windMaterial(2.5)

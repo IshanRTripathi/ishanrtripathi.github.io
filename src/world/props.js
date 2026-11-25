@@ -122,13 +122,6 @@ export function createBeach(scatter)
         umbrella(kit, u.color)
         kit.stack.pop()
     }
-    for(const c of scatter.parkedCars)
-    {
-        frameMatrix(c.x, c.z, c.yaw, heightAt(c.x, c.z) + 0.06, 1, _m)
-        kit.stack.push(_m.clone())
-        simpleCar(kit, CAR_PAINTS[(c.paint + 2) % CAR_PAINTS.length])
-        kit.stack.pop()
-    }
     const group = new THREE.Group()
     group.add(kit.mesh(clayMaterial))
     return group

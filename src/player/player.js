@@ -425,6 +425,8 @@ export class Player
             root.position.copy(this.position)
             root.quaternion.copy(frameQuaternion(this.x, this.z, yaw))
         }
+        // inside a closed car you can't see the driver
+        root.visible = !(this.mode === 'ride' && this.vehicle && this.vehicle.hideRider)
 
         this.character.setState({
             speed: this.mode === 'ride' ? 0 : this.speed,

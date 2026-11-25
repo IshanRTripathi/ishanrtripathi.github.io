@@ -263,7 +263,11 @@ function publish(job)
 {
     const s = jobState(job.id)
     const manifest = loadJSON(MANIFEST, { models: [] })
-    const entry = manifest.models.find((m) => m.id === job.id) || { id: job.id, yaw: 0 }
+    const old = manifest.models.find((m) => m.id === job.id)
+    // a Tripo model replaces whatever filled that slot before (procedural or a CC0 pack model)
+    const entry = { id: job.id, yaw: old?.yaw ?? 0 }
+    entry.kind = job.id === 'character' ? 'character' : job.id === 'car' || job.id === 'scooter' ? 'vehicle' : 'site'
+    if(job.id === 'car') entry.hideRider = true
     entry.fit = job.fit
     fs.mkdirSync(MODELS_DIR, { recursive: true })
 

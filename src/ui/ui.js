@@ -1,4 +1,4 @@
-import { person, links, projects, achievements, career, contact } from '../content.js'
+import { person, links, projects, achievements, career, contact, credits } from '../content.js'
 
 // Everything outside the canvas: title, HUD, briefing cards, the phone, the
 // page view and touch controls.
@@ -298,6 +298,7 @@ export class UI
             html += `<div class="page-entry"><h3>${escape(a.title)}</h3><p class="meta">${escape(a.detail)}</p></div>`
         html += `<h2>Say hi</h2><p>${escape(contact.body)}</p>`
         html += '<div class="page-entry">' + links.map((l) => `<p><strong>${escape(l.label)}</strong>: <a href="${escape(l.href)}" target="_blank" rel="noopener">${escape(l.text)}</a></p>`).join('') + '</div>'
+        html += '<h2>Credits</h2><div class="page-entry">' + credits.map((c) => `<p>${escape(c.what)} by <a href="${escape(c.href)}" target="_blank" rel="noopener">${escape(c.who)}</a>, free under CC0.</p>`).join('') + '</div>'
         p.innerHTML = html
     }
 

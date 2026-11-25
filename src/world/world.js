@@ -10,14 +10,16 @@ import { createRoads } from './roads.js'
 import { createForest, updateWind } from './forest.js'
 import { createBuilding, createFillers } from './buildings.js'
 import { createSignBoard, createCareerPoster } from './signs.js'
-import { createBeach, createBoat } from './props.js'
+import { createBeach, createBoat, createCarMesh } from './props.js'
 import { Scooter } from './scooter.js'
 import { Car } from './car.js'
 import { Traffic } from './traffic.js'
 import { Markers } from './markers.js'
 import { Birds } from './birds.js'
 import { projects, achievements, career, contact } from '../content.js'
-import { registry } from '../models/registry.js'
+import { registry, sized } from '../models/registry.js'
+import { clayMaterial } from '../models/kit.js'
+import { BAY_ANGLE, coastRadius } from './layout.js'
 
 const contentById = Object.fromEntries([ ...projects, achievements, career, contact ].map((c) => [ c.id, c ]))
 
@@ -64,7 +66,14 @@ export class World
         scene.add(createBeach(scatter))
         for(const t of scatter.towers) this.colliders.push({ type: 'box', x: t.x, z: t.z, yaw: t.yaw, hw: 1.2, hd: 1.2 })
         for(const u of scatter.umbrellas) this.colliders.push({ type: 'circle', x: u.x, z: u.z, r: 0.25, thin: true })
-        for(const c of scatter.parkedCars) this.colliders.push({ type: 'box', x: c.x, z: c.z, yaw: c.yaw, hw: 0.95, hd: 2.1 })
+        this.parked = scatter.parkedCars.map((c) =>
+        {
+            const mesh = createCarMesh(c.paint + 2)
+            place(mesh, c.x, c.z, c.yaw, heightAt(c.x, c.z) + 0.06)
+            scene.add(mesh)
+            this.colliders.push({ type: 'box', x: c.x, z: c.z, yaw: c.yaw, hw: 0.95, hd: 2.1 })
+            return mesh
+        })
 
         for(const b of scatter.boats)
         {
@@ -82,7 +91,7 @@ export class World
         this.vehicles = []
         const carSpot = layout.props.find((p) => p.id === 'car')
         const car = new Car()
-        this.addVehicle({ id: 'car', kind: 'car', model: car, spot: carSpot, radius: 1.0, maxSpeed: 17, reverse: 5, accel: 1.5, steer: 1.25, seat: car.seat, label: 'Drive the convertible', box: { hw: 0.95, hd: 2.15 } })
+        this.addVehicle({ id: 'car', kind: 'car', model: car, spot: carSpot, radius: 1.0, maxSpeed: 17, reverse: 5, accel: 1.5, steer: 1.25, seat: car.seat, label: 'Drive the car', box: { hw: 0.95, hd: 2.15 } })
         const scooterSpot = layout.props.find((p) => p.id === 'scooter')
         const scooter = new Scooter()
         this.addVehicle({ id: 'scooter', kind: 'scooter', model: scooter, spot: scooterSpot, radius: 0.7, maxSpeed: 11, reverse: 3, accel: 2.2, steer: 1.7, seat: new THREE.Vector3(0, 0.2, -0.32), label: 'Ride the scooter', box: { hw: 0.4, hd: 1.0 } })
@@ -180,28 +189,59 @@ export class World
         }
     }
 
-    // Swap procedural stand-ins for generated models when they exist
+    // Swap procedural stand-ins for real models when they exist
     async loadModels()
     {
         const loaded = await registry.loadAvailable()
-        for(const { id, object } of loaded)
+        const CAR_FIT = { fit: [ 1.9, 1.6, 4.3 ] }
+        const traffic = loaded.filter((m) => m.kind === 'traffic' && m.geometry).map((m) => sized(m.geometry, m.entry.fit ? m.entry : CAR_FIT))
+        const parked = loaded.filter((m) => m.kind === 'parked' && m.geometry).map((m) => sized(m.geometry, m.entry.fit ? m.entry : CAR_FIT))
+        if(traffic.length) this.traffic.cars.forEach((car, i) => { car.mesh.geometry = traffic[i % traffic.length] })
+        if(parked.length) this.parked.forEach((mesh, i) => { mesh.geometry = parked[i % parked.length] })
+
+        for(const m of loaded)
         {
-            const site = layout.sites.find((s) => s.kind === id || s.id === id)
-            if(site && site.object)
+            const { id, kind, entry, object } = m
+            if(kind === 'instanced' && m.geometry)
             {
-                const parent = site.object
-                // keep the stand-in's signs (neon names, posters), hide its building
-                if(parent.userData.clay) parent.userData.clay.visible = false
-                parent.children.forEach((c) => { if(c.material === parent.userData.clay?.material) c.visible = false })
-                parent.add(object)
+                const target = this.forest.userData.byType?.[entry.target]
+                if(target)
+                {
+                    target.geometry = sized(m.geometry, { height: entry.height || 7 })
+                    target.computeBoundingSphere()
+                }
             }
-            const vehicle = this.vehicles.find((v) => v.id === id)
-            if(vehicle)
+            else if(kind === 'scenery' && id === 'cruise' && m.geometry)
             {
+                // a cruise ship anchored out beyond the bay
+                const ship = new THREE.Mesh(sized(m.geometry, { length: entry.length || 40 }), clayMaterial)
+                ship.castShadow = true
+                const phi = BAY_ANGLE + 0.32
+                const r = coastRadius(phi) + 42
+                place(ship, Math.cos(phi) * r, Math.sin(phi) * r, phi + Math.PI / 2, -0.6)
+                ship.userData.base = ship.position.clone()
+                ship.userData.baseQuaternion = ship.quaternion.clone()
+                this.scene.add(ship)
+                this.boats.push(ship)
+            }
+            else if(kind === 'vehicle')
+            {
+                const vehicle = this.vehicles.find((v) => v.id === id)
+                if(!vehicle) continue
                 vehicle.model.lean.children.forEach((c) => { c.visible = false })
                 if(vehicle.model.wheels) vehicle.model.wheels.forEach((w) => { w.visible = false })
                 if(vehicle.model.steer) vehicle.model.steer.visible = false
                 vehicle.model.lean.add(object)
+                vehicle.hideRider = !!entry.hideRider
+            }
+            else if(kind === 'site')
+            {
+                const site = layout.sites.find((s) => s.kind === id || s.id === id)
+                if(!site || !site.object) continue
+                const parent = site.object
+                // keep the stand-in's signs (neon names, posters), hide its building
+                if(parent.userData.clay) parent.userData.clay.visible = false
+                parent.add(object)
             }
         }
     }

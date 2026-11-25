@@ -6,6 +6,7 @@
 //   npm run models:optimize              all models
 //   npm run models:optimize -- tiffin    just one
 //   --ratio 0.5                          keep this share of triangles (default 0.5, 0.8 for the character)
+//   --error 0.002                        how far simplification may move the surface (fraction of size)
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -36,7 +37,9 @@ catch
 const args = process.argv.slice(2)
 const ratioArg = args.indexOf('--ratio')
 const ratio = ratioArg >= 0 ? Number(args[ratioArg + 1]) : null
-const only = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--ratio')
+const errorArg = args.indexOf('--error')
+const maxError = errorArg >= 0 ? Number(args[errorArg + 1]) : 0.002
+const only = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--ratio' && args[i - 1] !== '--error')
 
 const { NodeIO, ALL_EXTENSIONS, MeshoptEncoder, MeshoptSimplifier, MeshoptDecoder } = tools
 await Promise.all([ MeshoptEncoder.ready, MeshoptSimplifier.ready, MeshoptDecoder.ready ])
@@ -62,7 +65,7 @@ for(const file of files)
         tools.dedup(),
         tools.prune(),
         tools.weld(),
-        tools.simplify({ simplifier: MeshoptSimplifier, ratio: keep, error: 0.002, lockBorder: false }),
+        tools.simplify({ simplifier: MeshoptSimplifier, ratio: keep, error: maxError, lockBorder: false }),
         tools.textureCompress({ encoder: tools.sharp, targetFormat: 'webp', resize: [ 1024, 1024 ] }),
         ...(animated ? [ tools.resample() ] : []),
         tools.prune(),

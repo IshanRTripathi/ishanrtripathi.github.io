@@ -339,10 +339,12 @@ class App
     {
         this.timer.update()
         const dt = Math.min(this.timer.getDelta(), 1 / 20)
+        // resize before drawing: resizing clears the canvas, so doing it after
+        // the frame would show one blank frame each time the resolution changes
+        this.quality.update(dt)
         this.step(dt)
         if(this.bloomOn) this.composer.render(dt)
         else this.renderer.render(this.scene, this.camera)
-        this.quality.update(dt)
         this.input.endFrame()
     }
 

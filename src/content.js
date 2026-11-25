@@ -112,6 +112,12 @@ export const career = {
     stamp: '#2F6B3B'
 }
 
+// Models from free CC0 packs (see public/models/CREDITS.md)
+export const credits = [
+    { what: 'Character, palm trees and cruise ship', who: 'Quaternius', href: 'https://quaternius.com' },
+    { what: 'Cars', who: 'Kenney', href: 'https://kenney.nl' }
+]
+
 export const contact = {
     id: 'contact',
     title: 'Chai?',

@@ -6,3 +6,4 @@ dist
 tripo/out/
 tripo/photos/
 tripo/originals/
+tools/asset-baker/.cache/

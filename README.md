@@ -24,9 +24,22 @@ Everything people read is in [`src/content.js`](src/content.js): intro, projects
 
 If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
 
-## Make real 3D models with Tripo
+## Models
 
-The world ships with low-poly models built in code. The Tripo pipeline swaps them for generated models, including a rigged and animated character made from your photos.
+The character, cars, palm trees and the cruise ship are free CC0 models from [Quaternius](https://quaternius.com) and [Kenney](https://kenney.nl), restyled to match the city: each static model is baked into one flat-coloured mesh, some cars are repainted in the city's pastels, and the character is recoloured and merged into a single skinned mesh. Everything in `public/models` is about 570 KB. Credits are in [`public/models/CREDITS.md`](public/models/CREDITS.md) and on the page view.
+
+To rebuild them, or swap a model or a colour, edit the recipe in [`tools/asset-baker/bake.mjs`](tools/asset-baker/bake.mjs) and run:
+
+```bash
+npm install --no-save playwright && npx playwright install chromium
+node tools/asset-baker/bake.mjs
+```
+
+If a model is missing, the world falls back to the procedural stand-in, so the site always works.
+
+## Make your own 3D models with Tripo
+
+The buildings are built in code. The Tripo pipeline swaps any of them, or the character and car, for generated models, including a rigged and animated character made from your photos.
 
 1. Get an API key at [developers.tripo3d.ai](https://developers.tripo3d.ai/) and put it in `.env.local` (git ignores it):
    ```
