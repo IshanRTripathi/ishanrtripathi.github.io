@@ -130,7 +130,11 @@ export function buildCinema()
         points,
         screen,
         screenColor: new THREE.Color('#2FB3BB'),
-        lights
+        lights,
+        npcs: [
+            { gender: 'm', x: -1.4, z: -2.4, yaw: Math.PI, pose: 'sit' },
+            { gender: 'f', x: 3.4, z: -0.6, yaw: Math.PI, pose: 'sit' }
+        ]
     })
 }
 
@@ -220,7 +224,11 @@ export function buildHospital()
         spawn: { x: 0, z: 3.4, yaw: Math.PI },
         exit: { x: 0, z: hd - 0.4, r: 0.9 },
         points,
-        lights
+        lights,
+        npcs: [
+            { gender: 'f', x: -2.4, z: -2.85, yaw: 0, pose: 'idle' },
+            { gender: 'm', x: 1.8, z: -2.4, yaw: Math.PI, pose: 'idle' }
+        ]
     })
 }
 
@@ -309,7 +317,11 @@ export function buildCafe()
         spawn: { x: 0, z: 2.0, yaw: Math.PI },
         exit: { x: 0, z: hd - 0.5, r: 0.8 },
         points,
-        lights
+        lights,
+        npcs: [
+            { gender: 'm', x: 1.6, z: 2.8, yaw: Math.PI / 2, pose: 'sit' },
+            { gender: 'f', x: 3.4, z: 2.8, yaw: -Math.PI / 2, pose: 'sit' }
+        ]
     })
 }
 
@@ -390,7 +402,10 @@ export function buildArcade()
         spawn: { x: 0, z: 2.8, yaw: Math.PI },
         exit: { x: 0, z: hd - 0.5, r: 0.8 },
         points,
-        lights
+        lights,
+        npcs: [
+            { gender: 'f', x: 1.6, z: -1.2, yaw: Math.PI, pose: 'idle' }
+        ]
     })
 }
 
@@ -473,7 +488,8 @@ export function buildStudio()
         spawn: { x: 0, z: 2.6, yaw: Math.PI },
         exit: { x: 0, z: hd - 0.5, r: 0.8 },
         points,
-        lights
+        lights,
+        npcs: []
     })
 }
 

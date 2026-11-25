@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { resolveCollisions } from '../player/player.js'
 import { ROOMS } from './rooms.js'
+import { cloneFigure } from '../world/people.js'
+import { mulberry32 } from '../core/noise.js'
 
 // Going in and out of buildings. While you are inside, the planet is not drawn at all: only the room
 // is (its own small scene, its own lights, built once). The character is moved into the room and back.
@@ -22,8 +24,9 @@ function angleDiff(a, b)
 
 export class Interior
 {
-    constructor({ input, ui, player, camera, rig, renderer, world, openContent })
+    constructor({ input, ui, player, camera, rig, renderer, world, openContent, figures })
     {
+        this.figures = figures // a function that gives the loaded figures (they load after the city)
         this.input = input
         this.ui = ui
         this.player = player
@@ -81,9 +84,32 @@ export class Interior
         }, FADE_MS)
     }
 
+    // the people inside a room: copies of the figures, seated or standing where the room says
+    spawnPeople(room)
+    {
+        const figures = this.figures && this.figures()
+        if(!figures || room.spawned) return
+        room.spawned = true
+        room.people = []
+        const rng = mulberry32(room.name.length * 7919)
+        for(const n of room.npcs || [])
+        {
+            const figure = figures[n.gender === 'f' ? 'female' : 'male']
+            if(!figure) continue
+            const f = cloneFigure(figure, n.gender, rng)
+            f.model.position.set(n.x, 0, n.z)
+            f.model.rotation.y = n.yaw
+            room.group.add(f.model)
+            const action = n.pose === 'sit' ? f.actions.SitDown : f.actions.Idle
+            if(action) action.reset().play()
+            room.people.push(f)
+        }
+    }
+
     start(room, site)
     {
         const p = this.player
+        this.spawnPeople(room)
         this.current = { room, site }
         this.scene = room.scene
         this.ui.setInside(true)
@@ -208,6 +234,9 @@ export class Interior
         const ex = room.exit
         if(!this.sitting && Math.hypot(ex.x - this.x, ex.z - this.z) < ex.r) best = { kind: 'exit', label: 'Leave' }
         this.near = best
+
+        // the people in the room move on their own clips, while you are in it
+        for(const person of room.people || []) person.mixer.update(dt)
 
         // the screen pulses, like a film playing (dimmer and brighter, never grey)
         if(room.screen) room.screen.material.color.copy(room.screenColor).multiplyScalar(0.8 + 0.2 * Math.sin(time * 2.2))

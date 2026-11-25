@@ -196,6 +196,7 @@ class App
         this.doors = layout.sites.filter((site) => site.entrance)
         this.interior = new Interior({
             input: this.input, ui, player: this.player, camera: this.camera, rig: this.rig, renderer: this.renderer, world: this.world,
+            figures: () => this.world.figures,
             openContent: (id) => this.openStop({ career, contact, arcade }[id])
         })
         this.rig.titleShift = this.titleShift()
