@@ -204,6 +204,7 @@ export class Player
         const canStand = this.mode === 'sit' || (this.mode === 'script' && this.script?.cancellable)
         if(canStand && (input.moving || input.consume('KeyE', 'Space'))) this.standUp()
         else if(this.mode === 'script' || (this.mode === 'sit' && this.script)) this.updateScript(dt)
+        else if(this.mode === 'ride' && this.vehicle && this.vehicle.flight) this.updateFlight(dt)
         else if(this.mode === 'ride') this.updateRide(dt)
         else this.updateWalk(dt, cameraYaw)
 
@@ -285,6 +286,12 @@ export class Player
     dismount()
     {
         const v = this.vehicle
+        // a plane can only be left on the ground and nearly still
+        if(v.flight && (!v.flight.onGround || Math.abs(v.flight.v) > 3))
+        {
+            v.flight.say('Land and slow down before you climb out', 3)
+            return
+        }
         v.x = this.x
         v.z = this.z
         v.yaw = this.yaw
@@ -300,6 +307,26 @@ export class Player
         this.speed = 0
         this.vehicle = null
         this.emit('dismount', v)
+    }
+
+    // the plane: the keys and stick fly it, and its own model moves it
+    updateFlight(dt)
+    {
+        const v = this.vehicle
+        const f = v.flight
+        const input = this.input
+        // R and F set the throttle (the touch buttons do the same)
+        const up = (input.down('KeyR') ? 1 : 0) + (input.throttleHold > 0 ? 1 : 0)
+        const down = (input.down('KeyF') ? 1 : 0) + (input.throttleHold < 0 ? 1 : 0)
+        f.throttle = Math.max(0, Math.min(1, f.throttle + (up - down) * 0.7 * dt))
+        f.update(dt, { x: input.move.x, y: input.move.y }, this.world.colliders, resolveCollisions)
+        this.x = f.x
+        this.z = f.z
+        this.yaw = f.yaw
+        this.speed = f.v
+        v.x = f.x
+        v.z = f.z
+        v.yaw = f.yaw
     }
 
     updateRide(dt)
@@ -410,7 +437,9 @@ export class Player
     // ---------------------------------------------------------------- sync visuals
     sync(dt = 0)
     {
-        const h = heightAt(this.x, this.z)
+        // in the plane the camera follows the aircraft, up in the air as well as on the ground
+        const flying = this.mode === 'ride' && this.vehicle && this.vehicle.flight
+        const h = heightAt(this.x, this.z) + (flying ? this.vehicle.flight.h : 0)
         const root = this.character.root
         // sitting on the stool: face the visitor (stool yaw), seat height handled by the pose
         let yaw = this.yaw
@@ -418,7 +447,15 @@ export class Player
         surfacePoint(this.x, this.z, h, this.position)
         mapToDir(this.x, this.z, this.up)
 
-        if(this.mode === 'ride' && this.vehicle)
+        if(flying)
+        {
+            // the plane is placed by its own flight model; the rider sits inside it
+            const plane = this.vehicle
+            plane.flight.apply(plane.model.root)
+            root.position.copy(plane.model.root.position)
+            root.quaternion.copy(plane.model.root.quaternion)
+        }
+        else if(this.mode === 'ride' && this.vehicle)
         {
             const v = this.vehicle
             place(v.model.root, this.x, this.z, this.yaw, h + 0.05)

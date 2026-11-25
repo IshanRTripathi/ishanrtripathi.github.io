@@ -8,6 +8,7 @@ import { smoothstep } from './core/noise.js'
 import { Input } from './core/input.js'
 import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
+import { ArcadeHall } from './ui/arcade.js'
 import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
@@ -78,6 +79,10 @@ class App
         ui.bindFullscreen()
         ui.bindRotateHint()
         this.ambience = new Ambience()
+        // the Game Arcade hall, opened from its door
+        this.arcade = new ArcadeHall({ onClose: () => this.canvas.focus({ preventScroll: true }) })
+        ui.externalModal = () => this.arcade.isOpen
+        ui.bindThrottle(this.input)
         this.timer = new THREE.Timer()
         this.timer.connect(document)
         this.time = 0
@@ -275,6 +280,13 @@ class App
 
     openStop(content)
     {
+        // the arcade is a place to play, not a project to read
+        if(content.kind === 'arcade')
+        {
+            this.input.keys.clear()
+            this.arcade.open()
+            return
+        }
         const index = projects.findIndex((p) => p.id === content.id)
         ui.openCard(content, index >= 0 ? { index, total: projects.length } : {})
         this.input.keys.clear()
@@ -302,7 +314,7 @@ class App
     {
         const p = this.player
         if(this.state !== 'play') return ui.setPrompt(null)
-        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : 'Get off the scooter')
+        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? 'Get out of the plane' : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
         if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
         if(p.nearby) return ui.setPrompt('Enter', `See ${p.nearby.content.title}`)
@@ -443,6 +455,8 @@ class App
             this.checkMarkers()
             const shore = smoothstep(14, 0, coastDistance(this.player.x, this.player.z))
             this.ambience.update(time, shore)
+            const flying = this.player.mode === 'ride' && this.player.vehicle && this.player.vehicle.flight
+            ui.setFlight(flying ? this.player.vehicle.flight : null)
             this.updateMap()
         }
     }

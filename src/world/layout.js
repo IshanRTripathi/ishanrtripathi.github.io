@@ -10,11 +10,14 @@ export const BAY_ANGLE = -0.62
 export const SUN_ELEVATION = 0.74 // radians above the horizon at the island centre
 
 export const COAST = {
-    base: 60,
+    base: 92,
     // amplitude, frequency, phase
     waves: [ [ 5.2, 2, 0.6 ], [ 3.9, 3, 2.1 ], [ 2.4, 5, 4.0 ], [ 1.4, 7, 1.3 ], [ 0.7, 11, 5.2 ] ],
     // headland for the lighthouse: [angle, width, height]
-    bumps: [ [ 1.95, 0.22, 8 ], [ -2.55, 0.3, 3.8 ] ]
+    bumps: [ [ 1.95, 0.22, 8 ], [ -2.55, 0.3, 3.8 ] ],
+    // a cove cut in beside the lighthouse, so the boardwalk to it stays short: [angle, width, depth]
+    // (the bay gets its own cove, so the road to the chai shack and the beach are exactly where they were)
+    coves: [ [ 1.95, 0.5, 32 ], [ BAY_ANGLE, 0.45, 32 ] ]
 }
 
 function angleDelta(a, b)
@@ -33,6 +36,11 @@ export function coastRadius(phi)
     {
         const d = angleDelta(phi, c) / w
         r += h * Math.exp(-d * d)
+    }
+    for(const [ c, w, depth ] of COAST.coves)
+    {
+        const d = angleDelta(phi, c) / w
+        r -= depth * Math.exp(-d * d)
     }
     // pull the bay in a little so it reads as a curve
     const b = angleDelta(phi, BAY_ANGLE) / 0.45
@@ -65,6 +73,7 @@ export function coastGLSL()
     for(const [ a, fr, p ] of COAST.waves) s += `  r += ${f(a)} * sin(${f(fr)} * phi + ${f(p)});\n`
     const wrap = (c) => `(mod(phi - (${f(c)}) + 3.14159265, 6.2831853) - 3.14159265)`
     for(const [ c, w, h ] of COAST.bumps) s += `  { float d = ${wrap(c)} / ${f(w)}; r += ${f(h)} * exp(-d * d); }\n`
+    for(const [ c, w, depth ] of COAST.coves) s += `  { float d = ${wrap(c)} / ${f(w)}; r -= ${f(depth)} * exp(-d * d); }\n`
     s += `  { float b = ${wrap(BAY_ANGLE)} / 0.45; r -= 3.2 * exp(-b * b); }\n`
     s += '  return r;\n}\n'
     return s
@@ -184,6 +193,33 @@ function buildMainPath()
         [ 45, bay - 16 ], [ coastRadius(BAY_ANGLE) - 9, bay ]
     ]
     return new Path(control.map(([ r, a ]) => polar(r, a * deg)))
+}
+
+// The airstrip: a straight runway on the far side of the island, past the city.
+// Its middle sits on a ring at this distance from the middle of the island, and
+// it runs along the ring's tangent, so a plane flying straight stays on it.
+export const RUNWAY = { angle: 4.2, radius: 56, length: 80, width: 12 }
+
+function buildRunway()
+{
+    const mid = polar(RUNWAY.radius, RUNWAY.angle)
+    // the tangent to the ring: the way round the island
+    const t = { x: -Math.sin(RUNWAY.angle), z: Math.cos(RUNWAY.angle) }
+    const points = []
+    for(let i = 0; i <= 14; i++)
+    {
+        const s = -RUNWAY.length / 2 + RUNWAY.length * i / 14
+        points.push({ x: mid.x + t.x * s, z: mid.z + t.z * s })
+    }
+    const a = points[0]
+    const b = points[1]
+    return {
+        points,
+        width: RUNWAY.width,
+        // the plane starts at the near end, pointing down the strip
+        start: { x: a.x, z: a.z, yaw: Math.atan2(b.x - a.x, b.z - a.z) },
+        end: points[points.length - 1]
+    }
 }
 
 function offsetFrom(p, side, distance)
@@ -310,6 +346,27 @@ export function buildLayout()
         sites.push({ id: 'lighthouse', kind: 'lighthouse', x: tip.x, z: tip.z, yaw: yawTowards(tip, end), w: 4.2, d: 4.2, h: 14 })
     }
 
+    // --- the Game Arcade: a hall beside the far end of the runway, with a boardwalk
+    // from the road loop to its door
+    const runway = buildRunway()
+    const arcade = (() =>
+    {
+        // out past the city on the sea side of the island, clear of the houses, the road and the runway
+        const pos = polar(62, 2.55)
+        const near = main.nearest(pos.x, pos.z)
+        const road = main.points[near.index]
+        const yaw = yawTowards(pos, road)
+        const fx = Math.sin(yaw)
+        const fz = Math.cos(yaw)
+        const door = { x: pos.x + fx * 6.6, z: pos.z + fz * 6.6 }
+        const from = road
+        const mid = { x: (from.x + door.x) / 2 + 2.5, z: (from.z + door.z) / 2 - 1.5 }
+        paths.push(new Path([ from, mid, door ], 1.6, 'boardwalk'))
+        const site = { id: 'arcade', kind: 'arcade', contentId: 'arcade', x: pos.x, z: pos.z, yaw, w: 10, d: 8, h: 10, door }
+        sites.push(site)
+        return site
+    })()
+
     // --- a short cut from the square straight north across the middle,
     // so the paths make a loop instead of one long line
     {
@@ -336,7 +393,9 @@ export function buildLayout()
         main,
         spawn: { x: start.x, z: start.z, yaw: Math.atan2(start.tx, start.tz) },
         studioDoor: studio.door,
-        studioInside: studio.inside
+        studioInside: studio.inside,
+        runway,
+        arcade: sites.find((s) => s.id === 'arcade')
     }
 }
 

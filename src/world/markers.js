@@ -30,7 +30,7 @@ const fragmentShader = /* glsl */`
     }
 `
 
-export const MARKER_COLORS = { project: '#FF3EA5', career: '#FFE45E', achievements: '#FFE45E', contact: '#2DE2E6' }
+export const MARKER_COLORS = { project: '#FF3EA5', career: '#FFE45E', achievements: '#FFE45E', contact: '#2DE2E6', arcade: '#2DE2E6' }
 
 export class Markers
 {

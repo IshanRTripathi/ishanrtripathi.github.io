@@ -7,6 +7,9 @@ import { pathEdgeDistance, roadEdgeDistance, coastDistance } from './terrain.js'
 
 const noise = createNoise2D(77)
 
+// how far from the middle the land is scattered with trees, bushes and blocks
+const WORLD_EXTENT = 112
+
 // clearance around each site (circle approximation of its footprint)
 export const siteRadius = (site) => Math.hypot(site.w, site.d) / 2
 
@@ -100,10 +103,10 @@ function placeFillers()
     }
 
     // fill the open ground further from the roads, each block facing the nearest road
-    for(let i = 0; i < 9000 && fillers.length < 46; i++)
+    for(let i = 0; i < 16000 && fillers.length < 80; i++)
     {
-        const x = (random() * 2 - 1) * 66
-        const z = (random() * 2 - 1) * 66
+        const x = (random() * 2 - 1) * WORLD_EXTENT
+        const z = (random() * 2 - 1) * WORLD_EXTENT
         const w = 6.5 + random() * 2.5
         const d = 5.5 + random() * 2
         const r = Math.hypot(w, d) / 2
@@ -189,10 +192,10 @@ function placeTrees(lamps, fillers)
 
     // tropical green between the blocks, denser where the noise says so
     const inland = [ 'rain', 'palm', 'slender', 'royal', 'rain' ]
-    for(let i = 0; i < 90000 && trees.length < 420; i++)
+    for(let i = 0; i < 160000 && trees.length < 480; i++)
     {
-        const x = (random() * 2 - 1) * 70
-        const z = (random() * 2 - 1) * 70
+        const x = (random() * 2 - 1) * WORLD_EXTENT
+        const z = (random() * 2 - 1) * WORLD_EXTENT
         const s = coastDistance(x, z)
         const phi = Math.atan2(z, x)
         if(s < beachWidth(phi) + 1.5) continue
@@ -215,10 +218,10 @@ function placeDecor(trees, fillers)
     const bushes = []
     const flowers = []
     const rocks = []
-    for(let i = 0; i < 14000; i++)
+    for(let i = 0; i < 26000; i++)
     {
-        const x = (random() * 2 - 1) * 70
-        const z = (random() * 2 - 1) * 70
+        const x = (random() * 2 - 1) * WORLD_EXTENT
+        const z = (random() * 2 - 1) * WORLD_EXTENT
         const s = coastDistance(x, z)
         if(s < 0.5) continue
         const pd = pathEdgeDistance(x, z)
@@ -233,16 +236,16 @@ function placeDecor(trees, fillers)
             if(roll < 0.05 && rocks.length < 60) rocks.push({ x, z, yaw: random() * 6.28, scale: 0.4 + random() * 0.8 })
             continue
         }
-        if(roll < 0.12 && bushes.length < 260)
+        if(roll < 0.12 && bushes.length < 380)
         {
             if(trees.some((t) => (t.x - x) ** 2 + (t.z - z) ** 2 < 1.4)) continue
             bushes.push({ x, z, yaw: random() * 6.28, scale: 0.6 + random() * 0.7 })
         }
-        else if(roll < 0.5 && pd < 4 && flowers.length < 700)
+        else if(roll < 0.5 && pd < 4 && flowers.length < 900)
         {
             flowers.push({ x, z, yaw: random() * 6.28, scale: 0.7 + random() * 0.6, color: Math.floor(random() * 4) })
         }
-        else if(roll < 0.53 && rocks.length < 120)
+        else if(roll < 0.53 && rocks.length < 160)
         {
             rocks.push({ x, z, yaw: random() * 6.28, scale: 0.3 + random() * 0.6 })
         }
@@ -511,6 +514,7 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
         {
             const p = along(boardwalk, s, side * (bwHalf + 0.3))
             const bad = coastDistance(p.x, p.z) < 0.5 || clearOf(lanterns, p.x, p.z, 0.7) || clearOf(stones, p.x, p.z, 0.6) ||
+                layout.sites.some((site) => Math.hypot(p.x - site.x, p.z - site.z) < siteRadius(site) + 0.8) ||
                 roadEdgeDistance(p.x, p.z) < 0.15 || layout.paths.some((o) => o !== boardwalk && o.nearest(p.x, p.z).distance < o.edge + 0.2)
             if(bad) { if(r.length > 1) fences.push({ kind: 'rope', posts: r }); r = []; continue }
             r.push({ x: p.x, z: p.z })
@@ -599,8 +603,8 @@ function placeDetails({ lamps, fillers, streetPalms, trees, bushes, umbrellas, t
         const random = mulberry32(4242)
         for(let i = 0; i < 26000 && tufts.length < 1500; i++)
         {
-            const x = (random() * 2 - 1) * 66
-            const z = (random() * 2 - 1) * 66
+            const x = (random() * 2 - 1) * WORLD_EXTENT
+            const z = (random() * 2 - 1) * WORLD_EXTENT
             const phi = Math.atan2(z, x)
             if(coastDistance(x, z) < beachWidth(phi) + 0.4) continue
             const pd = pathEdgeDistance(x, z)

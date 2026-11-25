@@ -58,6 +58,17 @@
         </div>
     </header>
 
+    <!-- the plane's readout, while flying -->
+    <div class="flight-hud" hidden>
+        <p class="flight-stats"><span data-flight="speed">0</span> km/h <span class="flight-sep" aria-hidden="true">·</span> <span data-flight="alt">0</span> m up</p>
+        <div class="flight-throttle" aria-hidden="true"><span class="flight-throttle-fill"></span></div>
+        <p class="flight-hint" aria-live="polite"></p>
+        <div class="flight-buttons">
+            <button class="hud-button" type="button" data-throttle="down">Throttle −</button>
+            <button class="hud-button" type="button" data-throttle="up">Throttle +</button>
+        </div>
+    </div>
+
     <div class="hud-help" hidden>
         <p class="hud-help-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Shift</kbd> run</p>
         <p class="hud-help-keys"><kbd>E</kbd> get in or out of a car, <kbd>P</kbd> phone</p>

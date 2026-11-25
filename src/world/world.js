@@ -17,12 +17,15 @@ import { Traffic } from './traffic.js'
 import { Markers } from './markers.js'
 import { Birds } from './birds.js'
 import { createDetails, updateDetails } from './details.js'
-import { projects, achievements, career, contact } from '../content.js'
+import { buildAirstrip } from './airstrip.js'
+import { buildPlane } from './plane.js'
+import { Flight } from '../player/flight.js'
+import { projects, achievements, career, contact, arcade } from '../content.js'
 import { registry, sized } from '../models/registry.js'
 import { clayMaterial } from '../models/kit.js'
 import { BAY_ANGLE, coastRadius, duskAt } from './layout.js'
 
-const contentById = Object.fromEntries([ ...projects, achievements, career, contact ].map((c) => [ c.id, c ]))
+const contentById = Object.fromEntries([ ...projects, achievements, career, contact, arcade ].map((c) => [ c.id, c ]))
 
 // Any car body you can get into and drive: no moving parts, just a slight roll
 class ShellCar
@@ -124,6 +127,23 @@ export class World
         this.addVehicle({ id: 'scooter', kind: 'scooter', model: scooter, spot: scooterSpot, radius: 0.7, maxSpeed: 11, reverse: 3, accel: 2.2, steer: 1.7, seat: new THREE.Vector3(0, 0.2, -0.32), label: 'Ride the scooter', box: { hw: 0.4, hd: 1.0 } })
         this.scooter = scooter
 
+        // the airstrip, and the plane parked at its near end
+        this.airstrip = buildAirstrip(layout.runway)
+        scene.add(this.airstrip)
+        const planeModel = buildPlane()
+        const flight = new Flight(planeModel)
+        const start = layout.runway.start
+        flight.reset(start.x, start.z, start.yaw)
+        const planeCollider = { type: 'box', x: start.x, z: start.z, yaw: start.yaw, hw: 1.3, hd: 2.4, vehicle: 'plane' }
+        this.colliders.push(planeCollider)
+        this.vehicles.push({
+            id: 'plane', kind: 'plane', model: planeModel, flight, x: start.x, z: start.z, yaw: start.yaw,
+            collider: planeCollider, radius: 2, box: { hw: 4.2, hd: 4.2 }, seat: planeModel.seat,
+            label: 'Fly the plane', hideRider: true, maxSpeed: 36, reverse: 0, accel: 1, steer: 1
+        })
+        scene.add(planeModel.root)
+        flight.apply(planeModel.root)
+
         // traffic on the loop road
         this.traffic = new Traffic(scatter.loop, 5)
         for(const c of this.traffic.cars)
@@ -184,6 +204,18 @@ export class World
 
     parkVehicle(v)
     {
+        if(v.flight)
+        {
+            // the plane stays where it landed, level on its wheels
+            v.flight.pitch = 0
+            v.flight.bank = 0
+            v.flight.apply(v.model.root)
+            Object.assign(v.collider, { x: v.flight.x, z: v.flight.z, yaw: v.flight.yaw, disabled: false })
+            v.x = v.flight.x
+            v.z = v.flight.z
+            v.yaw = v.flight.yaw
+            return
+        }
         Object.assign(v.collider, { x: v.x, z: v.z, yaw: v.yaw, disabled: false })
         place(v.model.root, v.x, v.z, v.yaw, heightAt(v.x, v.z) + 0.05)
         v.model.lean.rotation.z = 0
@@ -240,6 +272,8 @@ export class World
                 // the marker stands in front of the board
                 markerAt = { x: site.sign.x + Math.sin(site.sign.yaw) * 1.7, z: site.sign.z + Math.cos(site.sign.yaw) * 1.7 }
             }
+            // the arcade has no board: its marker stands at the door
+            if(!site.sign && site.door) markerAt = { x: site.door.x, z: site.door.z }
             const at = site.sign ?? site
             this.interactables.push({ id: site.id, content, x: at.x, z: at.z, radius: 3.4, face, siteObject: object, markerAt })
         }
