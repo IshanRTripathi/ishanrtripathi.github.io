@@ -371,6 +371,21 @@ export function buildLayout()
         paths.push(cut)
     }
 
+    // --- two more cross roads, so the island has more than one way between its parts: one from the
+    // north-east side of the loop across to the north, and one across the west to the south-west, meeting
+    // the cut where it joins the loop. Each bows out by its `bulge` from the straight line between its ends.
+    const crossRoad = (fa, fb, bulge) =>
+    {
+        const a = main.at(fa)
+        const b = main.at(fb)
+        const dx = b.x - a.x
+        const dz = b.z - a.z
+        const len = Math.hypot(dx, dz)
+        const apex = { x: (a.x + b.x) / 2 - (dz / len) * bulge, z: (a.z + b.z) / 2 + (dx / len) * bulge }
+        return new Path([ { x: a.x, z: a.z }, apex, { x: b.x, z: b.z } ], ROAD_HALF)
+    }
+    paths.push(crossRoad(0.1, 0.36, 6), crossRoad(0.5, 0.76, 10))
+
     // spawn: just outside the studio door
     const studio = sites[0]
     const start = main.at(0.0)
