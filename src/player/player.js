@@ -129,6 +129,42 @@ export function resolveCollisions(pos, radius, colliders)
     return pos
 }
 
+// the nearest spot where a body fits, clear of every collider: searched outward, so a landing in a
+// narrow gap between houses comes out at the open end of it rather than being pushed back in
+export function freeSpot(x, z, colliders)
+{
+    // a body fits where no collider is closer than its radius: each collider is checked directly
+    const fits = (px, pz) =>
+    {
+        const radius = 0.32
+        for(const c of colliders)
+        {
+            if(c.disabled) continue
+            if(c.type === 'circle')
+            {
+                if(Math.hypot(px - c.x, pz - c.z) < c.r + radius) return false
+                continue
+            }
+            const fx = Math.sin(c.yaw)
+            const fz = Math.cos(c.yaw)
+            const dx = px - c.x
+            const dz = pz - c.z
+            if(Math.abs(dx * fz - dz * fx) < c.hw + radius && Math.abs(dx * fx + dz * fz) < c.hd + radius) return false
+        }
+        return true
+    }
+    if(fits(x, z)) return { x, z }
+    for(let r = 0.25; r <= 8; r += 0.25)
+        for(let k = 0; k < 24; k++)
+        {
+            const a = (k / 24) * Math.PI * 2
+            const px = x + Math.cos(a) * r
+            const pz = z + Math.sin(a) * r
+            if(fits(px, pz)) return { x: px, z: pz }
+        }
+    return { x, z }
+}
+
 export class Player
 {
     constructor(world, input)
@@ -359,6 +395,10 @@ export class Player
             if(shore) { this.x = shore.x; this.z = shore.z }
             this.emit('splash')
         }
+        // a landing inside a house, or against a tree or a post, steps out onto the nearest open ground
+        const free = freeSpot(this.x, this.z, this.world.colliders)
+        this.x = free.x
+        this.z = free.z
         this.chute = null
         this.mode = 'walk'
         this.speed = 0
