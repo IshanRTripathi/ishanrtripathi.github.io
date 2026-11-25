@@ -25,6 +25,9 @@ export class CameraRig
         this.pitch = 0.36
         this.distance = 8
         this.orbitAngle = BAY_ANGLE + 1.25
+        // the landing screen's view of the planet: dragged round, lifted or lowered, pulled back or in
+        this.orbitElevation = 0.92
+        this.orbitZoom = 1
         this.fly = null
         this.lastDrag = -Infinity
         this.pose = { position: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) }
@@ -37,8 +40,8 @@ export class CameraRig
     orbitPose(time, out)
     {
         const a = this.orbitAngle + (this.reducedMotion ? 0 : time * 0.035)
-        const e = 0.92
-        const d = R * 3.7
+        const e = this.orbitElevation
+        const d = R * 3.7 * this.orbitZoom
         out.position.set(Math.cos(a) * Math.cos(e) * d, Math.sin(e) * d + R * 0.2, Math.sin(a) * Math.cos(e) * d)
         out.target.set(0, R * 0.42, 0)
         out.up.set(0, 1, 0)
@@ -199,6 +202,18 @@ export class CameraRig
     update(dt, time, player)
     {
         const input = this.input
+
+        // the landing screen: drag to turn the planet and lift or lower the view, scroll to zoom
+        if(this.mode === 'orbit')
+        {
+            if(input.drag.dx || input.drag.dy)
+            {
+                const k = input.drag.touch ? 1.6 : 1
+                this.orbitAngle -= input.drag.dx * 0.0055 * k
+                this.orbitElevation = clamp(this.orbitElevation + input.drag.dy * 0.004 * k, 0.12, 1.4)
+            }
+            if(input.zoom) this.orbitZoom = clamp(this.orbitZoom * Math.pow(1.12, input.zoom), 0.55, 1.8)
+        }
 
         // manual control
         if(this.mode !== 'orbit')
