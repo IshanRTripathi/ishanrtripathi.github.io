@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { resolveCollisions } from '../player/player.js'
 import { ROOMS } from './rooms.js'
 import { cloneFigure } from '../world/people.js'
+import { findBones, dancePose, fidgetPose, patrol, setClip } from './motion.js'
 import { mulberry32 } from '../core/noise.js'
 
 // Going in and out of buildings. While you are inside, the planet is not drawn at all: only the room
@@ -99,11 +100,18 @@ export class Interior
             const figure = figures[n.gender === 'f' ? 'female' : 'male']
             if(!figure) continue
             const f = cloneFigure(figure, n.gender, rng)
-            f.model.position.set(n.x, 0, n.z)
+            const start = n.walk ? n.walk[0] : n
+            f.model.position.set(start.x, n.y || 0, start.z)
             f.model.rotation.y = n.yaw
+            f.rest = { y: n.y || 0 }
+            f.bones = findBones(f.model)
+            f.phase = rng() * Math.PI * 2
+            f.dance = n.dance ? { energy: n.energy ?? 1, phase: rng() * Math.PI * 2 } : null
+            f.fidget = !!n.fidget
+            f.walk = n.walk ? { path: n.walk, speed: 1.0, i: 1 % n.walk.length, wait: 0.5 + rng() * 2 } : null
+            f.clip = n.pose === 'sit' ? 'SitDown' : 'Idle'
+            f.actions[f.clip]?.reset().play()
             room.group.add(f.model)
-            const action = n.pose === 'sit' ? f.actions.SitDown : f.actions.Idle
-            if(action) action.reset().play()
             room.people.push(f)
         }
     }
@@ -237,18 +245,43 @@ export class Interior
             if(d < pt.r && d < bestD) { best = pt; bestD = d }
         }
         const ex = room.exit
-        if(!this.sitting && Math.hypot(ex.x - this.x, ex.z - this.z) < ex.r) best = { kind: 'exit', label: 'Leave' }
+        if(!this.sitting && Math.hypot(ex.x - this.x, ex.z - this.z) < ex.r) best = { kind: 'exit', label: 'Leave through the door' }
         this.near = best
 
-        // the people in the room move on their own clips, while you are in it
-        for(const person of room.people || []) person.mixer.update(dt)
+        // the people in the room: sitters stay in their seats, walkers follow their route, dancers dance,
+        // and the rest stand and fidget
+        for(const person of room.people || []) this.moveRoomPerson(person, dt, time)
+
+        // the room's lights breathe a little, so nothing in it is perfectly still
+        room.lights?.forEach((l, i) =>
+        {
+            if(!l.isPointLight) return
+            l.userData.base ??= l.intensity
+            l.intensity = l.userData.base * (0.94 + 0.06 * Math.sin(time * (1.3 + i * 0.37) + i))
+        })
 
         // the screen pulses, like a film playing (dimmer and brighter, never grey)
         if(room.screen) room.screen.material.color.copy(room.screenColor).multiplyScalar(0.8 + 0.2 * Math.sin(time * 2.2))
-        // a room can animate its own things, such as the lounge's tiles, its mirror ball and its light
+        // a room can animate its own things, such as the club's tiles, its mirror ball and its disco spots
         room.animate?.(time)
 
         if(input.consume('KeyE') || input.consume('Enter')) this.act()
+    }
+
+    // one person in a room, for one frame: their clip, their route or their dance
+    moveRoomPerson(person, dt, time)
+    {
+        if(person.clip === 'SitDown')
+        {
+            person.mixer.update(dt)
+            return
+        }
+        const walking = person.walk ? patrol(person, dt) : false
+        setClip(person, walking ? 'Walk' : 'Idle')
+        person.mixer.update(dt)
+        if(walking) return
+        if(person.dance) dancePose(person, time)
+        else if(person.fidget) fidgetPose(person, time)
     }
 
     act()

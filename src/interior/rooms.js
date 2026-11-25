@@ -12,6 +12,9 @@ import { NEON } from '../world/buildings.js'
 //   { kind: 'info', label, sub }          shows a short line
 //   { kind: 'content', content, label }   opens a card from the site (career or contact)
 //   { kind: 'sit', label, yaw }           sit down facing `yaw`
+// The people in a room (`npcs`) can also dance (`dance: true`, with `energy`), fidget where they stand
+// (`fidget: true`), or walk a route (`walk: [{x, z}, ...]`, back and forth), and a person can stand on a
+// raised floor (`y`). The room's `animate(time)` hook moves its own lights and signs.
 // `exit` is the door zone, where you leave the building.
 
 const glowMaterials = new Map()
@@ -47,11 +50,55 @@ function finish(name, group, extra)
     return { name, group, ...extra }
 }
 
+// a kit that places each piece by its centre: y is the middle of a box, so a wall of height 5 at y 2.5
+// stands on the floor. (The kit's own default rests a box on its bottom instead.)
+class RoomKit extends Kit
+{
+    box(w, h, d, color, t = {})
+    {
+        return super.box(w, h, d, color, { center: true, ...t })
+    }
+
+    cyl(rTop, rBottom, h, segments, color, t = {})
+    {
+        return super.cyl(rTop, rBottom, h, segments, color, { center: true, ...t })
+    }
+}
+
+// a glowing strip whose brightness a room can change over time
+function pulseStrip(group, w, h, d, color, x, y, z)
+{
+    const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false })
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
+    mesh.position.set(x, y, z)
+    group.add(mesh)
+    return { mat, base: mat.color.clone() }
+}
+
+// the front door, seen from inside: a leaf in the opening with a frame and a push bar, and a green EXIT
+// sign above it, so you can see where to go out
+function exitDoor(group, hd, { w = 1.5, h = 2.3, color = '#3B3146' } = {})
+{
+    const kit = new RoomKit()
+    const z = hd + 0.2
+    const frame = '#8E8E96'
+    kit.box(w, h, 0.1, color, { x: 0, y: h / 2, z })
+    kit.box(0.12, h + 0.12, 0.16, frame, { x: -w / 2 - 0.06, y: (h + 0.12) / 2, z })
+    kit.box(0.12, h + 0.12, 0.16, frame, { x: w / 2 + 0.06, y: (h + 0.12) / 2, z })
+    kit.box(w + 0.24, 0.12, 0.16, frame, { x: 0, y: h + 0.06, z })
+    kit.box(w * 0.7, 0.07, 0.07, '#D9DEE8', { x: 0, y: 1.05, z: hd + 0.1 })
+    group.add(kit.mesh())
+    const sign = neonSign('EXIT', { color: NEON.green, width: 1.3, height: 0.42, panel: true })
+    sign.position.set(0, h + 0.55, hd - 0.1)
+    sign.rotation.y = Math.PI
+    group.add(sign)
+}
+
 // ------------------------------------------------------------------ the movie hall
 export function buildCinema()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 7
     const hd = 6
@@ -121,6 +168,7 @@ export function buildCinema()
         { kind: 'sit', label: 'Sit down', yaw: Math.PI, x: 2.4, z: -0.6, r: 0.9 }
     ]
 
+    exitDoor(group, hd)
     return finish('cinema', group, {
         background: '#120C24',
         half: { x: hw, z: hd },
@@ -133,7 +181,8 @@ export function buildCinema()
         lights,
         npcs: [
             { gender: 'm', x: -1.4, z: -2.4, yaw: Math.PI, pose: 'sit' },
-            { gender: 'f', x: 3.4, z: -0.6, yaw: Math.PI, pose: 'sit' }
+            { gender: 'f', x: 3.4, z: -0.6, yaw: Math.PI, pose: 'sit' },
+            { gender: 'f', x: 0, z: 4.4, yaw: Math.PI, pose: 'idle', walk: [ { x: 0, z: 4.4 }, { x: 0, z: -4.2 } ] } // the usher, up and down the aisle
         ]
     })
 }
@@ -142,7 +191,7 @@ export function buildCinema()
 export function buildHospital()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 6
     const hd = 5
@@ -217,6 +266,7 @@ export function buildHospital()
         { kind: 'info', label: 'Bed', sub: 'Nobody is ill today. Good.', x: -4.6, z: -0.8, r: 1.6 }
     ]
 
+    exitDoor(group, hd)
     return finish('hospital', group, {
         background: '#DDEFEA',
         half: { x: hw, z: hd },
@@ -226,8 +276,8 @@ export function buildHospital()
         points,
         lights,
         npcs: [
-            { gender: 'f', x: -2.4, z: -2.85, yaw: 0, pose: 'idle' },
-            { gender: 'm', x: 1.8, z: -2.4, yaw: Math.PI, pose: 'idle' }
+            { gender: 'f', x: -2.4, z: -2.85, yaw: 0, pose: 'idle', fidget: true },
+            { gender: 'm', x: 1.8, z: -2.4, yaw: Math.PI, pose: 'idle', fidget: true }
         ]
     })
 }
@@ -236,7 +286,7 @@ export function buildHospital()
 export function buildCafe()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 5
     const hd = 4
@@ -310,6 +360,7 @@ export function buildCafe()
         { kind: 'sit', label: 'Sit down', yaw: -Math.PI / 2, x: 3.4, z: 1.2, r: 0.9 }
     ]
 
+    exitDoor(group, hd)
     return finish('cafe', group, {
         background: '#1D2B2A',
         half: { x: hw, z: hd },
@@ -320,7 +371,8 @@ export function buildCafe()
         lights,
         npcs: [
             { gender: 'm', x: 1.6, z: 2.8, yaw: Math.PI / 2, pose: 'sit' },
-            { gender: 'f', x: 3.4, z: 2.8, yaw: -Math.PI / 2, pose: 'sit' }
+            { gender: 'f', x: 3.4, z: 2.8, yaw: -Math.PI / 2, pose: 'sit' },
+            { gender: 'f', x: -2.2, z: -3.5, yaw: 0, pose: 'idle', fidget: true } // the barista, behind the counter and the tea urns
         ]
     })
 }
@@ -329,7 +381,7 @@ export function buildCafe()
 export function buildArcade()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 6
     const hd = 4
@@ -357,7 +409,7 @@ export function buildArcade()
         { x: hw - 0.7, z: -1.2, face: -Math.PI / 2, color: '#A855F7' },
         { x: -hw + 0.7, z: -1.2, face: Math.PI / 2, color: '#FF8C42' }
     ]
-    const cabinetKit = new Kit()
+    const cabinetKit = new RoomKit()
     for(const c of cabinets)
     {
         // the body faces the room; its screen is a glowing panel on the front
@@ -395,6 +447,7 @@ export function buildArcade()
         { kind: 'sit', label: 'Sit and watch', yaw: Math.PI, x: 2.6, z: 2.0, r: 0.9 }
     ]
 
+    exitDoor(group, hd)
     return finish('arcade', group, {
         background: '#0E0A22',
         half: { x: hw, z: hd },
@@ -404,7 +457,8 @@ export function buildArcade()
         points,
         lights,
         npcs: [
-            { gender: 'f', x: 1.6, z: -1.2, yaw: Math.PI, pose: 'idle' }
+            { gender: 'f', x: 1.6, z: -1.2, yaw: Math.PI, pose: 'idle', fidget: true },
+            { gender: 'm', x: -1.6, z: -1.2, yaw: Math.PI, pose: 'idle', fidget: true }
         ]
     })
 }
@@ -413,7 +467,7 @@ export function buildArcade()
 export function buildStudio()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 5
     const hd = 4
@@ -460,7 +514,7 @@ export function buildStudio()
     // the window to the sea, the monitor on the desk, and the pin board by the sofa
     glow(group, 2.4, 1.6, 0.08, '#9AD0EC', -1.8, 2.3, -hd + 0.2)
     glow(group, 1.6, 0.9, 0.06, '#1C7F86', 2.0, 1.7, -3.1)
-    const board = new Kit()
+    const board = new RoomKit()
     board.box(1.2, 0.9, 0.06, '#C9A36B', { x: -2.6, y: 2.2, z: -hd + 0.2 })
     group.add(board.mesh())
     glow(group, 0.08, 0.08, 0.08, '#FFE45E', -2.6, 2.6, -hd + 0.25)
@@ -481,6 +535,7 @@ export function buildStudio()
         { kind: 'info', label: 'Bookshelf', sub: 'Shelves of books and notes from the projects.', x: 3.4, z: -0.6, r: 1.5 }
     ]
 
+    exitDoor(group, hd)
     return finish('studio', group, {
         background: '#2A1B2E',
         half: { x: hw, z: hd },
@@ -493,36 +548,76 @@ export function buildStudio()
     })
 }
 
-// ------------------------------------------------------------------ the Velvet Lounge
-export function buildLounge()
+// ------------------------------------------------------------------ the Gilded Lily
+// A strip club on the main street, in the style of the GTA nightspots, kept non-explicit: a stage with
+// two dancers and a chrome pole, a dance floor under a mirror ball and moving disco spots, a bar with a
+// bartender who walks behind it, and VIP booths with velvet curtains. The people are clothed, and the
+// staging is lights, neon, a beat and a bouncer.
+export function buildClub()
 {
     const group = new THREE.Group()
-    const kit = new Kit()
+    const kit = new RoomKit()
     const colliders = []
     const hw = 7
     const hd = 6
-    const walls = '#43276A'
-    const leather = '#B3183F'
-    const dark = '#14102A'
-    // every box and cylinder here is placed by its centre, so y is the middle of the piece
-    const box = (w, h, d, color, t) => kit.box(w, h, d, color, { center: true, ...t })
-    const cyl = (rt, rb, h, seg, color, t) => kit.cyl(rt, rb, h, seg, color, { center: true, ...t })
+    const wall = '#2A1020'
+    const floor = '#170A14'
+    const velvet = '#7A1030'
+    const dark = '#120A14'
+    const chrome = '#D9DEE8'
 
     // the floor, the walls, and the front wall with a doorway in the middle
-    box(hw * 2 + 0.4, 0.2, hd * 2 + 0.4, '#2A1E4F', { y: -0.1 })
-    box(hw * 2 + 0.4, 5, 0.4, walls, { y: 2.5, z: -hd - 0.2 })
-    box(0.4, 5, hd * 2 + 0.4, walls, { x: -hw - 0.2, y: 2.5 })
-    box(0.4, 5, hd * 2 + 0.4, walls, { x: hw + 0.2, y: 2.5 })
-    box(hw - 1.0, 5, 0.4, walls, { x: -(hw + 1.4) / 2, y: 2.5, z: hd + 0.2 })
-    box(hw - 1.0, 5, 0.4, walls, { x: (hw + 1.4) / 2, y: 2.5, z: hd + 0.2 })
-    box(2.4, 1.0, 0.4, walls, { y: 4.5, z: hd + 0.2 })
+    kit.box(hw * 2 + 0.4, 0.2, hd * 2 + 0.4, floor, { y: -0.1 })
+    kit.box(hw * 2 + 0.4, 5, 0.4, wall, { y: 2.5, z: -hd - 0.2 })
+    kit.box(0.4, 5, hd * 2 + 0.4, wall, { x: -hw - 0.2, y: 2.5 })
+    kit.box(0.4, 5, hd * 2 + 0.4, wall, { x: hw + 0.2, y: 2.5 })
+    kit.box(hw - 1.0, 5, 0.4, wall, { x: -(hw + 1.4) / 2, y: 2.5, z: hd + 0.2 })
+    kit.box(hw - 1.0, 5, 0.4, wall, { x: (hw + 1.4) / 2, y: 2.5, z: hd + 0.2 })
+    kit.box(2.4, 1.0, 0.4, wall, { y: 4.5, z: hd + 0.2 })
     solid(colliders, 0, -hd - 0.2, hw + 0.2, 0.2)
     solid(colliders, -hw - 0.2, 0, 0.2, hd + 0.2)
     solid(colliders, hw + 0.2, 0, 0.2, hd + 0.2)
     solid(colliders, -(hw + 1.4) / 2, hd + 0.2, (hw - 1.0) / 2, 0.2)
     solid(colliders, (hw + 1.4) / 2, hd + 0.2, (hw - 1.0) / 2, 0.2)
 
-    // a grid of tiles in the middle of the room, each pulsing on its own beat
+    // the stage across the back wall, with a speaker at each back corner, and a chrome pole at each front corner
+    kit.box(6.0, 0.6, 2.6, '#3A1D33', { x: 0, y: 0.3, z: -hd + 1.3 })
+    solid(colliders, 0, -hd + 1.3, 3.0, 1.3)
+    for(const x of [ -3.7, 3.7 ])
+    {
+        kit.box(0.9, 1.5, 0.9, dark, { x, y: 0.75, z: -hd + 0.6 })
+        solid(colliders, x, -hd + 0.6, 0.45, 0.45)
+    }
+    for(const x of [ -2.7, 2.7 ]) kit.cyl(0.05, 0.05, 3.8, 10, chrome, { x, y: 2.5, z: -3.6 })
+
+    // the VIP booths along the right wall: a leather bench, a back, a table with a lamp, and a velvet curtain
+    for(const z0 of [ -1.8, 1.8 ])
+    {
+        kit.box(1.5, 0.45, 2.8, velvet, { x: hw - 1.05, y: 0.225, z: z0 })
+        kit.box(0.45, 1.0, 2.8, velvet, { x: hw - 0.25, y: 0.5, z: z0 })
+        kit.cyl(0.4, 0.4, 0.06, 14, '#F2E6FF', { x: hw - 2.1, y: 0.76, z: z0 })
+        kit.cyl(0.06, 0.06, 0.72, 6, dark, { x: hw - 2.1, y: 0.36, z: z0 })
+        solid(colliders, hw - 2.1, z0, 0.4, 0.4)
+        kit.box(0.1, 2.5, 0.9, velvet, { x: hw - 2.9, y: 1.25, z: z0 + 0.9 })
+    }
+
+    // the bar along the left wall: an amber panel behind it, a shelf of bottles, and a counter with a pink strip
+    glow(group, 0.06, 2.1, 7.0, '#FF9E4A', -hw + 0.04, 1.6, -0.6)
+    kit.box(0.6, 0.06, 7.0, '#3B1F33', { x: -hw + 0.3, y: 1.25, z: -0.6 })
+    const bottles = [ '#FF4FA3', '#FFE45E', '#2DE2E6', '#FF8C42', '#A855F7' ]
+    for(let i = 0; i < 11; i++) kit.cyl(0.07, 0.07, 0.36, 6, bottles[i % bottles.length], { x: -hw + 0.4, y: 1.46, z: -3.6 + i * 0.6 })
+    kit.box(1.2, 1.0, 7.0, '#2B1A2E', { x: -5.1, y: 0.5, z: -0.6 })
+    kit.box(1.4, 0.12, 7.2, dark, { x: -5.1, y: 1.06, z: -0.6 })
+    solid(colliders, -5.1, -0.6, 0.6, 3.6)
+    glow(group, 0.05, 0.06, 6.8, NEON.pink, -4.47, 0.12, -0.6)
+    for(const z of [ -2.8, -1.0, 0.8 ])
+    {
+        kit.cyl(0.27, 0.27, 0.08, 12, velvet, { x: -3.8, y: 0.8, z })
+        kit.cyl(0.05, 0.05, 0.76, 6, dark, { x: -3.8, y: 0.38, z })
+        kit.cyl(0.2, 0.2, 0.04, 12, dark, { x: -3.8, y: 0.02, z })
+    }
+
+    // the dance floor in front of the stage: tiles that pulse in turn, to the beat
     const tileColors = [ NEON.pink, NEON.cyan, NEON.purple, NEON.yellow ]
     const tiles = []
     for(let i = 0; i < 4; i++)
@@ -530,101 +625,115 @@ export function buildLounge()
         {
             const mat = new THREE.MeshBasicMaterial({ color: tileColors[(i + j) % tileColors.length], toneMapped: false })
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.0), mat)
-            mesh.position.set(-1.6 + i * 1.1, 0.02, 0.2 + j * 1.1)
+            mesh.position.set(-1.65 + i * 1.1, 0.02, -2.6 + j * 1.1)
             group.add(mesh)
             tiles.push({ mat, base: mat.color.clone(), phase: i * 0.9 + j * 1.7 })
         }
 
-    // the DJ booth on the back wall: a raised platform with decks, and a speaker on each side
-    box(4.8, 0.5, 2.0, '#3A2D6B', { x: 0, y: 0.25, z: -hd + 1.2 })
-    solid(colliders, 0, -hd + 1.2, 2.4, 1.0)
-    box(2.4, 0.08, 0.8, dark, { x: 0, y: 0.54, z: -hd + 1.2 })
-    cyl(0.3, 0.3, 0.05, 16, '#0E0A22', { x: -0.6, y: 0.6, z: -hd + 1.2 })
-    cyl(0.3, 0.3, 0.05, 16, '#0E0A22', { x: 0.6, y: 0.6, z: -hd + 1.2 })
-    for(const x of [ -3.5, 3.5 ])
-    {
-        box(1.0, 2.0, 1.0, dark, { x, y: 1.0, z: -hd + 0.9 })
-        solid(colliders, x, -hd + 0.9, 0.5, 0.5)
-        glow(group, 0.6, 0.6, 0.06, NEON.pink, x, 1.3, -hd + 1.45)
-    }
+    // the glowing lines: the stage's front edge, and two lines along the back wall
+    const edge = pulseStrip(group, 6.0, 0.05, 0.05, NEON.yellow, 0, 0.62, -3.36)
+    const lines = [
+        pulseStrip(group, 13.6, 0.06, 0.06, NEON.pink, 0, 1.6, -hd + 0.04),
+        pulseStrip(group, 13.6, 0.06, 0.06, NEON.yellow, 0, 4.6, -hd + 0.04)
+    ]
 
-    // the bar along the left wall: a glowing back panel, a shelf of bottles, and a counter with a cyan strip under it
-    glow(group, 0.06, 2.1, 7.0, NEON.purple, -hw + 0.04, 1.6, -0.6)
-    box(0.6, 0.06, 7.0, '#3B2A5A', { x: -hw + 0.3, y: 1.25, z: -0.6 })
-    const bottles = [ '#FF4FA3', '#2DE2E6', '#FFE45E', '#A855F7', '#FF8C42' ]
-    for(let i = 0; i < 11; i++) cyl(0.07, 0.07, 0.36, 6, bottles[i % bottles.length], { x: -hw + 0.4, y: 1.46, z: -3.6 + i * 0.6 })
-    box(1.2, 1.0, 7.0, '#2B2450', { x: -5.1, y: 0.5, z: -0.6 })
-    box(1.4, 0.12, 7.2, dark, { x: -5.1, y: 1.06, z: -0.6 })
-    solid(colliders, -5.1, -0.6, 0.6, 3.6)
-    glow(group, 0.05, 0.06, 6.8, NEON.cyan, -4.47, 0.12, -0.6)
-    // three bar stools in front of the counter
-    for(const z of [ -2.8, -1.0, 0.8 ])
-    {
-        cyl(0.27, 0.27, 0.08, 12, leather, { x: -3.8, y: 0.8, z })
-        cyl(0.05, 0.05, 0.76, 6, dark, { x: -3.8, y: 0.38, z })
-        cyl(0.2, 0.2, 0.04, 12, dark, { x: -3.8, y: 0.02, z })
-    }
+    // signs: the name over the stage, and a VIP sign on the right wall above the booths
+    const name = neonSign('The Gilded Lily', { color: NEON.yellow, width: 4.8, height: 1.1, script: true })
+    name.position.set(0, 4.3, -hd + 0.35)
+    group.add(name)
+    const vip = neonSign('VIP', { color: NEON.pink, width: 1.6, height: 0.56, panel: true })
+    vip.position.set(hw - 0.12, 3.4, 0)
+    vip.rotation.y = -Math.PI / 2
+    group.add(vip)
 
-    // two booths along the right wall, each with a leather bench, a table and a small lamp
-    for(const z0 of [ -1.8, 1.8 ])
-    {
-        box(1.5, 0.45, 2.8, leather, { x: hw - 1.05, y: 0.225, z: z0 })
-        box(0.45, 1.0, 2.8, leather, { x: hw - 0.25, y: 0.5, z: z0 })
-        glow(group, 0.05, 0.05, 2.7, NEON.pink, hw - 0.5, 1.08, z0)
-        cyl(0.4, 0.4, 0.06, 14, '#E9D7FF', { x: hw - 2.1, y: 0.76, z: z0 })
-        cyl(0.06, 0.06, 0.72, 6, dark, { x: hw - 2.1, y: 0.36, z: z0 })
-        glow(group, 0.18, 0.18, 0.18, NEON.yellow, hw - 2.1, 0.9, z0)
-        solid(colliders, hw - 2.1, z0, 0.4, 0.4)
-    }
-
+    // the walls, floor, furniture and lines are all in the one merged mesh (one draw call for the clay)
     group.add(kit.mesh())
 
-    // the script sign over the DJ booth, and a mirror ball over the middle of the room on a short chain
-    const sign = neonSign('Velvet', { color: NEON.pink, width: 3.6, height: 1.0, script: true })
-    sign.position.set(0, 3.8, -hd + 0.4)
-    group.add(sign)
+    // the mirror ball over the dance floor, on a short chain
     const ballMaterial = new THREE.MeshStandardMaterial({ color: '#E6EAF5', metalness: 0.2, roughness: 0.35, emissive: '#262B40' })
     const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 2), ballMaterial)
-    ball.position.set(0, 3.7, 0.8)
+    ball.position.set(0, 3.2, -1.6)
     group.add(ball)
-    const chainKit = new Kit()
-    chainKit.box(0.04, 0.9, 0.04, '#8E8E96', { center: true, x: 0, y: 4.56, z: 0.8 })
-    group.add(chainKit.mesh())
+    const chain = new RoomKit()
+    chain.box(0.04, 1.4, 0.04, '#8E8E96', { x: 0, y: 4.3, z: -1.6 })
+    group.add(chain.mesh())
 
-    const sweep = pointLight('#A855F7', 3.2, 14, 0, 3.6, 1.0)
+    // the disco spots: small discs on the floor that drift round under the ball and change colour
+    const DOTS = 16
+    const dotGeometry = new THREE.CircleGeometry(0.2, 14)
+    dotGeometry.rotateX(-Math.PI / 2)
+    const dots = new THREE.InstancedMesh(dotGeometry, new THREE.MeshBasicMaterial({ toneMapped: false }), DOTS)
+    dots.frustumCulled = false
+    group.add(dots)
+    const discColors = [ NEON.pink, NEON.cyan, NEON.yellow, NEON.purple, NEON.green ].map((c) => new THREE.Color(c).multiplyScalar(1.5))
+    const dummy = new THREE.Object3D()
+
+    // the lights: a violet wash, a pink and a gold light over the stage, cyan at the bar, warm in the booths,
+    // and a spinning spot under the ball
+    const sweep = pointLight('#A855F7', 3.0, 14, 0, 3.6, -1.6)
     const lights = [
-        new THREE.HemisphereLight('#A89BFF', '#1B1535', 2.0),
-        pointLight('#FF4FA3', 3.0, 18, -3.6, 3.4, -2.6),
-        pointLight('#2DE2E6', 2.6, 16, 3.8, 3.2, -1.0),
-        pointLight('#FFC8A2', 1.0, 9, -5.4, 2.6, -0.6),
+        new THREE.HemisphereLight('#B8A6FF', '#1A0B17', 1.6),
+        pointLight('#FF3EA5', 3.0, 16, -3.8, 3.4, -3.2),
+        pointLight('#FFB347', 2.8, 16, 3.8, 3.4, -3.2),
+        pointLight('#2DE2E6', 2.4, 14, -3.8, 3.0, 1.0),
+        pointLight('#FFD9A0', 1.0, 9, 5.4, 2.6, 0.2),
         sweep
     ]
     lights.forEach((l) => group.add(l))
 
     const points = [
-        { kind: 'content', content: 'contact', label: 'Book the DJ', x: 0, z: -hd + 3.0, r: 1.8 },
-        { kind: 'info', label: 'Dance floor', sub: 'The tiles pulse with the bass. Nobody here is keeping score.', x: 0.05, z: 1.3, r: 2.4 },
-        { kind: 'info', label: 'Bar', sub: 'Two drinks on the house. The ginger is the same as the chai shack.', x: -3.9, z: 2.6, r: 1.4 },
+        { kind: 'content', content: 'contact', label: 'Book the VIP room', x: 3.6, z: -2.4, r: 1.6 },
+        { kind: 'info', label: 'The stage', sub: 'Two dancers, a chrome pole and a lot of gold light. Look, don\'t touch.', x: 0, z: -2.9, r: 1.8 },
+        { kind: 'info', label: 'Dance floor', sub: 'The tiles pulse with the beat. Nobody here is keeping score.', x: 0, z: -1.2, r: 2.4 },
+        { kind: 'info', label: 'Bar', sub: 'Two drinks on the house. The tip jar is by the till.', x: -3.9, z: 2.6, r: 1.4 },
         { kind: 'sit', label: 'Sit at the bar', yaw: -Math.PI / 2, x: -3.8, z: -2.8, r: 0.9 },
         { kind: 'sit', label: 'Sit at the bar', yaw: -Math.PI / 2, x: -3.8, z: -1.0, r: 0.9 },
         { kind: 'sit', label: 'Sit at the bar', yaw: -Math.PI / 2, x: -3.8, z: 0.8, r: 0.9 },
-        { kind: 'sit', label: 'Sit in the booth', yaw: -Math.PI / 2, x: hw - 1.05, z: -2.5, r: 0.9 },
-        { kind: 'sit', label: 'Sit in the booth', yaw: -Math.PI / 2, x: hw - 1.05, z: -1.1, r: 0.9 },
-        { kind: 'sit', label: 'Sit in the booth', yaw: -Math.PI / 2, x: hw - 1.05, z: 1.1, r: 0.9 },
-        { kind: 'sit', label: 'Sit in the booth', yaw: -Math.PI / 2, x: hw - 1.05, z: 2.5, r: 0.9 },
-        { kind: 'info', label: 'Reserved booth', sub: 'Reserved for the regulars.', x: hw - 2.1, z: 1.8, r: 1.2 },
+        { kind: 'sit', label: 'Sit in the VIP booth', yaw: -Math.PI / 2, x: hw - 1.05, z: -1.1, r: 0.9 },
+        { kind: 'sit', label: 'Sit in the VIP booth', yaw: -Math.PI / 2, x: hw - 1.05, z: 1.1, r: 0.9 },
         { kind: 'info', label: 'Bouncer', sub: 'Arms folded. He nods you through.', x: -2.9, z: 4.2, r: 1.4 }
     ]
 
     const animate = (time) =>
     {
-        for(const t of tiles) t.mat.color.copy(t.base).multiplyScalar(0.4 + 0.6 * (0.5 + 0.5 * Math.sin(time * 3.1 + t.phase)))
+        // the tiles and the stage lines pulse on the beat (one beat a second here)
+        for(const t of tiles) t.mat.color.copy(t.base).multiplyScalar(0.35 + 0.65 * (0.5 + 0.5 * Math.sin(time * 6.2832 + t.phase)))
+        const kick = Math.pow(Math.max(0, Math.sin(time * 6.2832)), 8)
+        edge.mat.color.copy(edge.base).multiplyScalar(0.6 + 0.6 * kick)
+        for(const l of lines) l.mat.color.copy(l.base).multiplyScalar(0.7 + 0.3 * kick)
         ball.rotation.y = time * 0.6
-        sweep.position.set(Math.sin(time * 0.45) * 3.2, 3.6, 1.3 + Math.cos(time * 0.45) * 1.5)
+        sweep.position.set(Math.sin(time * 0.7) * 3.4, 3.6, -1.6 + Math.cos(time * 0.7) * 2.4)
+        // the disco spots drift round the floor and change colour
+        for(let i = 0; i < DOTS; i++)
+        {
+            const a = time * 0.3 + i * (Math.PI * 2 / DOTS)
+            const r = 2.6 + 1.2 * Math.sin(time * 0.5 + i)
+            dummy.position.set(Math.cos(a) * r * 1.3, 0.03, -2.0 + Math.sin(a) * r * 0.8)
+            dummy.updateMatrix()
+            dots.setMatrixAt(i, dummy.matrix)
+            dots.setColorAt(i, discColors[(i + Math.floor(time * 2)) % discColors.length])
+        }
+        dots.instanceMatrix.needsUpdate = true
+        dots.instanceColor.needsUpdate = true
     }
 
-    return finish('lounge', group, {
-        background: '#16102E',
+    // the people: two dancers on the stage, a crowd dancing on the floor, a bartender who walks behind the bar,
+    // two sat in the booths, and a bouncer by the door
+    const npcs = [
+        { gender: 'f', x: -1.1, y: 0.6, z: -4.8, yaw: 0, pose: 'idle', dance: true, energy: 1.0 },
+        { gender: 'f', x: 1.1, y: 0.6, z: -4.5, yaw: 0, pose: 'idle', dance: true, energy: 1.0 },
+        { gender: 'm', x: -1.6, z: -1.6, yaw: Math.PI, pose: 'idle', dance: true, energy: 0.8 },
+        { gender: 'f', x: 0.5, z: -2.2, yaw: Math.PI, pose: 'idle', dance: true, energy: 0.9 },
+        { gender: 'm', x: 1.7, z: -0.9, yaw: Math.PI, pose: 'idle', dance: true, energy: 0.8 },
+        { gender: 'f', x: -0.9, z: -0.5, yaw: Math.PI, pose: 'idle', dance: true, energy: 0.9 },
+        { gender: 'f', x: -6.05, z: -2.6, yaw: Math.PI / 2, pose: 'idle', walk: [ { x: -6.05, z: -2.6 }, { x: -6.05, z: 2.2 } ] },
+        { gender: 'm', x: hw - 1.05, z: -2.5, yaw: -Math.PI / 2, pose: 'sit' },
+        { gender: 'f', x: hw - 1.05, z: 2.5, yaw: -Math.PI / 2, pose: 'sit' },
+        { gender: 'm', x: -2.9, z: 4.6, yaw: 0, pose: 'idle', fidget: true }
+    ]
+
+    return finish('club', group, {
+        background: '#120812',
         half: { x: hw, z: hd },
         colliders,
         spawn: { x: 0, z: 3.6, yaw: Math.PI },
@@ -632,13 +741,8 @@ export function buildLounge()
         points,
         lights,
         animate,
-        npcs: [
-            { gender: 'f', x: -6.05, z: -0.6, yaw: Math.PI / 2, pose: 'idle' }, // the bartender, behind the bar
-            { gender: 'f', x: -0.5, z: 1.3, yaw: Math.PI, pose: 'idle' },
-            { gender: 'm', x: 1.7, z: 2.4, yaw: Math.PI, pose: 'idle' },
-            { gender: 'm', x: -2.9, z: 4.6, yaw: Math.PI, pose: 'idle' }        // the bouncer, inside the door
-        ]
+        npcs
     })
 }
 
-export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe, arcade: buildArcade, studio: buildStudio, lounge: buildLounge }
+export const ROOMS = { cinema: buildCinema, hospital: buildHospital, cafe: buildCafe, arcade: buildArcade, studio: buildStudio, club: buildClub }

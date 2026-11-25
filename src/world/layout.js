@@ -365,11 +365,11 @@ export function buildLayout()
         sites.push({ id: 'hospital', kind: 'hospital', interior: 'hospital', x: pos.x, z: pos.z, yaw, w: 9, d: 7, h: 8 })
     }
 
-    // --- the Velvet Lounge, in the middle of town, its door on the sidewalk
+    // --- the Gilded Lily, a strip club in the middle of town, its door on the sidewalk
     {
         const pos = { x: 18, z: -10 }
         const yaw = -0.785
-        sites.push({ id: 'lounge', kind: 'lounge', interior: 'lounge', x: pos.x, z: pos.z, yaw, w: 9, d: 7, h: 11.5 })
+        sites.push({ id: 'club', kind: 'club', interior: 'club', x: pos.x, z: pos.z, yaw, w: 9, d: 7, h: 11.5 })
     }
 
     // --- a short cut from the square straight north across the middle,

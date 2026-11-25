@@ -219,14 +219,32 @@ export class Ambience
             // quiet room tone
             noise('lowpass', 160, 0.7, 0.3)
         }
-        else if(kind === 'lounge')
+        else if(kind === 'club')
         {
-            // the bass under the room, the murmur of the crowd, and a kick drum on every beat
+            // a beat at 120 beats a minute, scheduled on the audio clock: a bass under it, the crowd on top, a
+            // kick on every beat, a snare on the backbeat and a hi-hat on each off-beat. Silent outside the room
             tone(55, 0.025)
             noise('lowpass', 380, 0.6, 0.2)
-            const kick = () =>
+            noise('bandpass', 1200, 0.5, 0.04)
+            const white = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate)
+            const data = white.getChannelData(0)
+            for(let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+            const burst = (t, type, freq, dur, level) =>
             {
-                const t = ctx.currentTime
+                const src = ctx.createBufferSource()
+                src.buffer = white
+                const f = ctx.createBiquadFilter()
+                f.type = type
+                f.frequency.value = freq
+                const g = ctx.createGain()
+                g.gain.setValueAtTime(level, t)
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur)
+                src.connect(f).connect(g).connect(out)
+                src.start(t, Math.random() * 0.3)
+                src.stop(t + dur + 0.02)
+            }
+            const kickAt = (t) =>
+            {
                 const o = ctx.createOscillator()
                 o.frequency.setValueAtTime(110, t)
                 o.frequency.exponentialRampToValueAtTime(42, t + 0.16)
@@ -237,7 +255,26 @@ export class Ambience
                 o.start(t)
                 o.stop(t + 0.25)
             }
-            blip(() => 0.5, kick)
+            const sixteenth = 60 / 120 / 4
+            let next = ctx.currentTime + 0.1
+            let step = 0
+            const schedule = () =>
+            {
+                if(this.room !== kind)
+                {
+                    next = ctx.currentTime + 0.1
+                    return
+                }
+                while(next < ctx.currentTime + 0.25)
+                {
+                    const n = step++ % 16
+                    if(n % 4 === 0) kickAt(next)
+                    if(n === 4 || n === 12) burst(next, 'highpass', 1400, 0.16, 0.1)
+                    if(n % 4 === 2) burst(next, 'highpass', 7000, 0.04, 0.03)
+                    next += sixteenth
+                }
+            }
+            bed.timers.push(setInterval(schedule, 40))
         }
         bed.level = 1
         return bed

@@ -48,7 +48,7 @@ const FOG = new THREE.Color('#F5AE93')
 const PLANET = new THREE.Sphere(new THREE.Vector3(), R)
 const _planetHit = new THREE.Vector3()
 // what a building's door leads into, for the prompt
-const PLACE = { cinema: 'the movie hall', hospital: 'the hospital', cafe: 'the chai shack', arcade: 'the Game Arcade', studio: 'the studio', lounge: 'the Velvet Lounge' }
+const PLACE = { cinema: 'the movie hall', hospital: 'the hospital', cafe: 'the chai shack', arcade: 'the Game Arcade', studio: 'the studio', club: 'the Gilded Lily' }
 const MAIN_ISLAND = { name: 'The city', blurb: 'My projects, the trophies and the chai shack on the beach' }
 
 // the island at a point on the map (x, z), if it is on land: the main island, or one of the others
