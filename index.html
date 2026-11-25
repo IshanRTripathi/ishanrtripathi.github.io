@@ -53,6 +53,7 @@
         <div class="hud-tools">
             <button class="hud-button hud-fullscreen" type="button" data-action="fullscreen" hidden>Fullscreen</button>
             <button class="hud-button" type="button" data-action="phone"><span aria-hidden="true">▯</span> Phone</button>
+            <button class="hud-button" type="button" data-action="map" aria-keyshortcuts="M">Map (M)</button>
             <button class="hud-button" type="button" data-action="sound" aria-pressed="false">Sound off</button>
             <button class="hud-button" type="button" data-action="page">Page view</button>
         </div>
@@ -66,8 +67,26 @@
         <div class="flight-buttons">
             <button class="hud-button" type="button" data-throttle="down">Throttle −</button>
             <button class="hud-button" type="button" data-throttle="up">Throttle +</button>
+            <button class="hud-button" type="button" data-flight-tips="show">How to fly</button>
         </div>
     </div>
+
+    <!-- a tip above the plane while you are next to it -->
+    <div class="plane-tip" hidden role="status"><span>Press E to climb in and fly</span></div>
+
+    <!-- how to take off, shown when you climb in -->
+    <aside class="flight-tips" hidden aria-label="How to fly the plane">
+        <div class="flight-tips-head">
+            <strong>Flying the plane</strong>
+            <button class="flight-tips-close" type="button" data-flight-tips="close">Got it</button>
+        </div>
+        <ol>
+            <li>Hold <kbd>R</kbd> (or Throttle +) to add power. The plane lifts off at about 80 km/h.</li>
+            <li>Once it's fast enough, push <kbd>W</kbd> to lift the nose.</li>
+            <li><kbd>A</kbd> and <kbd>D</kbd> bank and turn. <kbd>S</kbd> points the nose down.</li>
+            <li>To land, ease off with <kbd>F</kbd>, level the nose, and line up with the strip.</li>
+        </ol>
+    </aside>
 
     <div class="hud-help" hidden>
         <p class="hud-help-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Shift</kbd> run</p>
@@ -124,6 +143,28 @@
     </div>
 
     <!-- Phone -->
+    <!-- the full city map, opened with M -->
+    <div class="fullmap" hidden role="dialog" aria-modal="true" aria-labelledby="fullmap-title">
+        <div class="fullmap-backdrop"></div>
+        <div class="fullmap-panel" tabindex="-1">
+            <header class="fullmap-head">
+                <h2 id="fullmap-title" class="fullmap-title">City map</h2>
+                <button class="fullmap-close" type="button" data-fullmap="close">Close map</button>
+            </header>
+            <div class="fullmap-body">
+                <canvas class="fullmap-canvas" width="720" height="720" aria-label="Map of the city, north up"></canvas>
+                <ul class="fullmap-legend">
+                    <li><span class="fullmap-sw" style="--sw:#FF3EA5"></span> Projects</li>
+                    <li><span class="fullmap-sw" style="--sw:#FFE45E"></span> Career and trophies</li>
+                    <li><span class="fullmap-sw" style="--sw:#2DE2E6"></span> Chai shack and arcade</li>
+                    <li><span class="fullmap-sw fullmap-sw-plane" aria-hidden="true"></span> Plane</li>
+                    <li><span class="fullmap-sw fullmap-sw-route" aria-hidden="true"></span> Route to the next stop</li>
+                    <li class="fullmap-tip">Press M or Escape to close. Faded stops are done.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="phone-layer" hidden>
         <div class="phone-backdrop" data-action="close-phone"></div>
         <div class="phone" role="dialog" aria-modal="true" aria-labelledby="phone-title" tabindex="-1">

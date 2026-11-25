@@ -9,6 +9,7 @@ import { Input } from './core/input.js'
 import { Quality } from './core/quality.js'
 import { Ambience } from './core/audio.js'
 import { ArcadeHall } from './ui/arcade.js'
+import { FullMap } from './ui/fullmap.js'
 import { layout } from './world/layout.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
@@ -81,8 +82,12 @@ class App
         this.ambience = new Ambience()
         // the Game Arcade hall, opened from its door
         this.arcade = new ArcadeHall({ onClose: () => this.canvas.focus({ preventScroll: true }) })
-        ui.externalModal = () => this.arcade.isOpen
         ui.bindThrottle(this.input)
+        // the city map, opened with M or the Map button; the city pauses behind it
+        this.fullMap = new FullMap({ canOpen: () => this.state === 'play' && !this.arcade.isOpen && !ui.modalOpen })
+        ui.onMap = () => this.fullMap.toggle()
+        ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen
+        this.wasFlying = false
         this.timer = new THREE.Timer()
         this.timer.connect(document)
         this.time = 0
@@ -156,6 +161,14 @@ class App
         // stops in the order the road passes them
         const order = [ 'achievements', ...projects.map((p) => p.id), 'career', 'contact' ]
         this.stops = order.map((id) => this.world.interactables.find((i) => i.content.id === id)).filter(Boolean)
+        // every stop on the city map: where it is, what it's called and how to colour it
+        this.mapStops = this.world.interactables.map((i) =>
+        {
+            const at = i.marker || i
+            const arcade = i.content.kind === 'arcade'
+            const color = arcade || i.content.id === 'contact' ? '#2DE2E6' : i.content.id === 'career' || i.content.id === 'achievements' ? '#FFE45E' : '#FF3EA5'
+            return { id: i.content.id, x: at.x, z: at.z, label: arcade ? 'Game Arcade' : i.content.place, color, size: 8 }
+        })
 
         // hide the character inside the house until the intro
         const door = this.doorPoints()
@@ -267,6 +280,8 @@ class App
                 ui.showArea(item.content.place, item.content.title !== item.content.place ? item.content.title : '')
             }
         })
+        events.addEventListener('eject', () => ui.showArea('Bailed out', 'Steer with A and D, W slows the fall'))
+        events.addEventListener('landed', () => ui.showArea('Back on the ground', 'Your parachute got you down safely'))
         events.addEventListener('waved', () =>
         {
             if(!this.sawContact)
@@ -314,7 +329,7 @@ class App
     {
         const p = this.player
         if(this.state !== 'play') return ui.setPrompt(null)
-        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? 'Get out of the plane' : 'Get off the scooter')
+        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? (p.vehicle.flight.onGround ? 'Get out of the plane' : 'Bail out with the parachute') : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
         if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
         if(p.nearby) return ui.setPrompt('Enter', `See ${p.nearby.content.title}`)
@@ -457,8 +472,51 @@ class App
             this.ambience.update(time, shore)
             const flying = this.player.mode === 'ride' && this.player.vehicle && this.player.vehicle.flight
             ui.setFlight(flying ? this.player.vehicle.flight : null)
+            if(this.player.mode === 'chute') ui.setChute(this.player.chute)
+            // the how-to card opens when you climb in, and closes when you climb out
+            if(flying && !this.wasFlying) ui.showFlightTips(true)
+            if(!flying && this.wasFlying) ui.showFlightTips(false)
+            this.wasFlying = !!flying
+            this.updatePlaneTip()
             this.updateMap()
+            if(this.fullMap.isOpen) this.drawFullMap()
         }
+    }
+
+    // a tip above the plane while you stand next to it
+    updatePlaneTip()
+    {
+        const p = this.player
+        const plane = p.mode === 'walk' && p.nearVehicle && p.nearVehicle.kind === 'plane' ? p.nearVehicle : null
+        if(!plane || ui.modalOpen)
+        {
+            ui.setPlaneTip(null)
+            return
+        }
+        const at = new THREE.Vector3()
+        plane.model.root.getWorldPosition(at)
+        at.y += 4.5
+        at.project(this.camera)
+        if(at.z > 1 || at.z < -1)
+        {
+            ui.setPlaneTip(null)
+            return
+        }
+        ui.setPlaneTip({ x: (at.x + 1) / 2 * window.innerWidth, y: (1 - at.y) / 2 * window.innerHeight })
+    }
+
+    // the city map: the stops, the airstrip, the plane and the route to the next stop
+    drawFullMap()
+    {
+        const p = this.player
+        this.fullMap.draw({
+            player: { x: p.x, z: p.z, yaw: p.yaw },
+            stops: this.mapStops,
+            vehicles: this.world.vehicles.map((v) => ({ kind: v.kind, x: v.x, z: v.z, yaw: v.yaw })),
+            runway: layout.runway.points,
+            route: this.mapRoute || [],
+            visited: this.visited
+        })
     }
 
     updateMap()
@@ -477,6 +535,7 @@ class App
         for(const v of this.world.vehicles)
             if(this.player.vehicle !== v) blips.push({ x: v.x, z: v.z, color: '#FFF6EC', size: 4 })
         const target = next ? (next.marker || next) : null
+        this.mapRoute = this.minimap.routePoints(this.player, target)
         const distance = this.minimap.update(this.player, this.rig.yaw, blips, target)
         ui.setProgress(this.visited.size, this.stops.length)
         ui.setNext(next ? `Next: ${next.content.place}${distance ? `, ${Math.round(distance / 10) * 10 || 10} m` : ''}` : 'Chai at the beach is always open')

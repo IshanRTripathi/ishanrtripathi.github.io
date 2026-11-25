@@ -20,7 +20,7 @@ npm run build    # checks the island, then builds to dist/
 
 Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
-Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of a car, the scooter or the plane, Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E). In the plane: W and S for the nose, A and D to bank, R and F for throttle. On a phone, the left thumb steers the plane and two throttle buttons appear at the top. In the arcade: arrows or A and D, Space to drop or launch, Escape to go back, or tap and drag on a phone.
+Controls: WASD or arrow keys to walk (or drive), Shift to run, M for the city map (north up, with the route to the next stop), E to get in or out of a car, the scooter or the plane (in the air, E bails out under a parachute that you steer with A and D), Enter to open a project, P for the phone, drag to look around. Any car can be driven: the parked ones, and the traffic too (stand in a car's way, it stops, then press E). In the plane: W and S for the nose, A and D to bank, R and F for throttle. On a phone, the left thumb steers the plane and two throttle buttons appear at the top. In the arcade: arrows or A and D, Space to drop or launch, Escape to go back, or tap and drag on a phone.
 
 To see a particular sky, add it to the address: `?time=dawn` (or `day`, `dusk`, `night`, or a fraction of the day like `0.8`), `?season=winter`, `?weather=storm` (`clear`, `cloudy`, `rain`, `storm`, `snow`, `fog`).
 

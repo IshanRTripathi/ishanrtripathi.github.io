@@ -8,23 +8,23 @@ import { surfaceAt, SURFACE } from '../world/terrain.js'
 const EXTENT = 72 // metres from the centre to the edge of the map image
 const IMAGE = 512
 
-function drawCity()
+export function drawCity(extent = EXTENT, image = IMAGE)
 {
     const canvas = document.createElement('canvas')
-    canvas.width = IMAGE
-    canvas.height = IMAGE
+    canvas.width = image
+    canvas.height = image
     const ctx = canvas.getContext('2d')
-    const px = IMAGE / (EXTENT * 2)
+    const px = image / (extent * 2)
     const colors = {
         [SURFACE.SEABED]: '#1C6E93', [SURFACE.WET_SAND]: '#E8D3AE', [SURFACE.SAND]: '#F4E2C4',
         [SURFACE.GRASS]: '#6FAF55', [SURFACE.PATH]: '#E6D8C6', [SURFACE.ROAD]: '#3E414D', [SURFACE.ROCK]: '#A99D90'
     }
     const step = 1
-    for(let i = 0; i < IMAGE; i += step * 2)
-        for(let j = 0; j < IMAGE; j += step * 2)
+    for(let i = 0; i < image; i += step * 2)
+        for(let j = 0; j < image; j += step * 2)
         {
-            const x = (i + 1) / px - EXTENT
-            const z = (j + 1) / px - EXTENT
+            const x = (i + 1) / px - extent
+            const z = (j + 1) / px - extent
             ctx.fillStyle = colors[surfaceAt(x, z)] || '#6FAF55'
             ctx.fillRect(i, j, 2, 2)
         }
@@ -32,7 +32,7 @@ function drawCity()
     const block = (x, z, w, d, yaw, fill) =>
     {
         ctx.save()
-        ctx.translate((x + EXTENT) * px, (z + EXTENT) * px)
+        ctx.translate((x + extent) * px, (z + extent) * px)
         ctx.rotate(-yaw)
         ctx.fillStyle = fill
         ctx.fillRect(-w / 2 * px, -d / 2 * px, w * px, d * px)
@@ -124,6 +124,15 @@ export class Minimap
         this.route = null
         this.routeKey = ''
         this.scale = 2.1 // pixels per metre at 200px
+    }
+
+    // the walking route from the player to a target, as a list of map points
+    routePoints(player, target)
+    {
+        if(!target) return []
+        const from = nearestNode(this.graph, player.x, player.z)
+        const to = nearestNode(this.graph, target.x, target.z)
+        return [ { x: player.x, z: player.z }, ...route(this.graph, from, to).points, { x: target.x, z: target.z } ]
     }
 
     // target: { x, z } or null

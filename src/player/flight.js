@@ -24,6 +24,8 @@ export class Flight
     constructor(plane)
     {
         this.plane = plane
+        // where a crashed plane is put back: the runway's near end
+        this.spawn = { x: 0, z: 0, yaw: 0 }
         this.reset(0, 0, 0)
     }
 
@@ -58,7 +60,7 @@ export class Flight
             this.crashed -= dt
             this.v = Math.max(0, this.v - 30 * dt)
             this.pitch += (0.0 - this.pitch) * Math.min(1, dt * 2)
-            if(this.crashed <= 0) this.reset(this.spawnX, this.spawnZ, this.spawnYaw)
+            if(this.crashed <= 0) this.reset(this.spawn.x, this.spawn.z, this.spawn.yaw)
             return
         }
         if(this.hintTime > 0) this.hintTime -= dt
