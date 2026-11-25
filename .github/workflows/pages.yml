@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages 
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -26,14 +26,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
+      # keep optional dependencies: Vite's bundler ships its native binary as one
       - name: Install dependencies
-        run: |
-          npm ci || npm install --legacy-peer-deps
+        run: npm ci
 
-      - name: Build
+      # fails if anything on the island ends up on a road or in the sea
+      - name: Check the island and build
         run: npm run build
 
       - name: Add CNAME

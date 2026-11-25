@@ -1,0 +1,94 @@
+{
+  "models": [
+    {
+      "id": "character",
+      "file": "character.glb",
+      "kind": "character",
+      "fit": [
+        1.2,
+        1.75,
+        1.2
+      ],
+      "yaw": 0,
+      "walkStride": 1.9,
+      "runStride": 3.2
+    },
+    {
+      "id": "car",
+      "file": "car-player.glb",
+      "kind": "vehicle",
+      "fit": [
+        1.9,
+        1.6,
+        4.3
+      ],
+      "yaw": 0,
+      "hideRider": true
+    },
+    {
+      "id": "traffic-1",
+      "file": "traffic-1.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "traffic-2",
+      "file": "traffic-2.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "traffic-3",
+      "file": "traffic-3.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "traffic-4",
+      "file": "traffic-4.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "traffic-5",
+      "file": "traffic-5.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "traffic-6",
+      "file": "traffic-6.glb",
+      "kind": "traffic"
+    },
+    {
+      "id": "parked-1",
+      "file": "parked-1.glb",
+      "kind": "parked"
+    },
+    {
+      "id": "parked-2",
+      "file": "parked-2.glb",
+      "kind": "parked"
+    },
+    {
+      "id": "parked-3",
+      "file": "parked-3.glb",
+      "kind": "parked"
+    },
+    {
+      "id": "palm-curved",
+      "file": "palm-curved.glb",
+      "kind": "instanced",
+      "target": "palm",
+      "height": 7.6
+    },
+    {
+      "id": "palm-straight",
+      "file": "palm-straight.glb",
+      "kind": "instanced",
+      "target": "royal",
+      "height": 8.4
+    },
+    {
+      "id": "cruise",
+      "file": "cruise.glb",
+      "kind": "scenery",
+      "length": 46
+    }
+  ]
+}

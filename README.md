@@ -1,151 +1,86 @@
-# Folio 2025
+# ishanr.com
 
-![image info](./static/social/share-image.png)
+My portfolio as a small open-world city at sunset, in the spirit of the neon Miami crime-game genre (original art, names and story, nothing borrowed from any one game). You walk out of my place, wave hi, and follow the GPS on the minimap past one pastel Art Deco building per project. Step into a glowing marker to open a project briefing, jump in the convertible or on the scooter, catch my career on the cinema poster, and end at the chai shack on the beach where I sit down and wave you over.
 
-## Setup
+The phone (P) has my contacts, career and trophies. "Page view" shows everything as a plain page, for anyone who'd rather read than drive (and for browsers without WebGL).
 
-Create `.env` file based on `.env.example`
+![The city](public/social/share.png)
 
-Download and install [Node.js](https://nodejs.org/en/download/) then run this followed commands:
+## Run it
 
-``` bash
-# Install dependencies
-npm install --force
-
-# Serve at localhost:1234
-npm run dev
-
-# Build for production in the dist/ directory
-npm run build
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # checks the island, then builds to dist/
 ```
 
-## Game loop
+Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
-#### 0
+Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around.
 
-- Time
-- Inputs
+On phones it plays best sideways: the left thumb anywhere on the left half is a joystick (push all the way to run, or to drive), the right thumb drags to look, and a big button bottom right does whatever is nearby (get in the car, open a project, stand up). Tapping Explore goes fullscreen and locks to landscape where the browser allows it (Android Chrome; iPhone Safari has no fullscreen for pages, so it just plays in the browser). Held upright, a hint suggests turning the phone, and can be dismissed. Phones also get a lower resolution cap and a smaller shadow map.
 
-#### 1
+## Change the content
 
-- Player:pre-physics (Inputs)
+Everything people read is in [`src/content.js`](src/content.js): intro, projects, career stops, achievements and links. Add a project there and it gets a building, a sign, a marker and a spot on the GPS. The giant object on its roof comes from its `building` field (`tiffin`, `calculator`, `clock`, `phone`, `arcade`).
 
-#### 2
+If you move things around in [`src/world/layout.js`](src/world/layout.js), run `npm run check`. It fails if a building, tree, street light or city block ends up on a road or in the sea, or if traffic would leave the asphalt, and it runs before every build.
 
-- PhysicalVehicle:pre-physics (Player:pre-physics)
+## Models
 
-#### 3
+The character, cars, palm trees and the cruise ship are free CC0 models from [Quaternius](https://quaternius.com) and [Kenney](https://kenney.nl), restyled to match the city: each static model is baked into one flat-coloured mesh, some cars are repainted in the city's pastels, and the character is recoloured and merged into a single skinned mesh. Everything in `public/models` is about 570 KB. Credits are in [`public/models/CREDITS.md`](public/models/CREDITS.md) and on the page view.
 
-- Physics
+To rebuild them, or swap a model or a colour, edit the recipe in [`tools/asset-baker/bake.mjs`](tools/asset-baker/bake.mjs) and run:
 
-#### 4
+```bash
+npm install --no-save playwright && npx playwright install chromium
+node tools/asset-baker/bake.mjs
+```
 
-- PhysicsWireframe (Physics)
-- Objects (Physics)
+If a model is missing, the world falls back to the procedural stand-in, so the site always works.
 
-#### 5
+## Make your own 3D models with Tripo
 
-- PhysicalVehicle:post-physics (Player:pre-physics)
+The buildings are built in code. The Tripo pipeline swaps any of them, or the character and car, for generated models, including a rigged and animated character made from your photos.
 
-#### 6
+1. Get an API key at [developers.tripo3d.ai](https://developers.tripo3d.ai/) and put it in `.env.local` (git ignores it):
+   ```
+   TRIPO_API_KEY=tsk_...
+   ```
+2. Fill in the `[brackets]` in [`tripo/jobs.mjs`](tripo/jobs.mjs) (how you look, what you wear) and add two photos: `tripo/photos/headshot.jpg` and `tripo/photos/fullbody.jpg` (also ignored by git).
+3. Look at the dry run. It shows every step and what it costs, and spends nothing:
+   ```bash
+   npm run tripo
+   ```
+4. Make the images, then look at them in `tripo/out/<job>/`:
+   ```bash
+   npm run tripo -- run tiffin --yes
+   ```
+   A bad image means a bad model, so the pipeline stops after each image. If it is good, approve it and run again to make the 3D model. If not, ask for a new one:
+   ```bash
+   npm run tripo -- approve tiffin
+   npm run tripo -- run tiffin --yes
+   npm run tripo -- redo tiffin image
+   ```
+5. Shrink the results for the web (simplified mesh, WebP textures, meshopt). The model tools are optional dependencies, so `npm install` already added them locally:
+   ```bash
+   npm run models:optimize
+   ```
 
-- Player:post-physics (Physics, PhysicalVehicle:post-physics)
+Finished models land in `public/models/` and are listed in `public/models/manifest.json`; the world loads them in place of the stand-ins. If one comes in facing the wrong way, set its `yaw` there (in radians, `3.1416` turns it around). Task ids are kept in `tripo/state.json`, so finished steps are never paid for twice.
 
-#### 7
+Notes:
+- Everything uses one style line (`STYLE` in `tripo/jobs.mjs`) so the models look like one world.
+- The character uses Tripo's v1.0 rig because it is the one with wave and sit animations. The newer v3.0 rig (`MODELS.rig`) is better for humanoids but only has idle, walk and run.
+- Walk and run clips play at a rate matched to the walking speed. If feet slide, tune `walkStride` and `runStride` on the character in the manifest.
 
-- View (Inputs, Player:post-physics)
+## How it's built
 
-#### 8
+Three.js and Vite, no framework.
 
-- Intro
-- DayCycles
-- YearCycles
-- Weather (DayCycles, YearCycles)
-- Zones (Player:post-physics)
-- VisualVehicle (PhysicalVehicle:post-physics, Inputs, Player:post-physics, View)
+- `src/core/geo.js`: the island is laid out on a flat map and wrapped onto a small planet. Everything is placed with map coordinates.
+- `src/world/`: terrain, roads, sea, sky, Art Deco buildings and city blocks, neon, palms (instanced, swaying in the wind), traffic, markers, boats, birds, the car and scooter.
+- `src/player/`: the character, walking and driving, and the follow camera.
+- `src/ui/`: title, HUD, minimap with GPS, briefing cards, phone, page view, touch controls.
 
-#### 9
-
-- Wind (Weather)
-- Lighting (DayCycles, View)
-- Tornado (DayCycles, PhysicalVehicle)
-- InteractivePoints (Player:post-physics)
-- Tracks (VisualVehicle)
-
-#### 10
-
-- Area++ (View, PhysicalVehicle:post-physics, Player:post-physics, Wind)
-- Foliage (VisualVehicle, View)
-- Fog (View)
-- Reveal (DayCycles)
-- Terrain (Tracks)
-- Trails (PhysicalVehicle)
-- Floor (View)
-- Grass (View, Wind)
-- Leaves (View, PhysicalVehicle)
-- Lightnings (View, Weather)
-- RainLines (View, Weather, Reveal)
-- Snow (View, Weather, Reveal, Tracks)
-- VisualTornado (Tornado)
-- WaterSurface (Weather, View)
-- Benches (Objects)
-- Bricks (Objects)
-- ExplosiveCrates (Objects)
-- Fences (Objects)
-- Lanterns (Objects)
-- Whispers (Player)
-
-#### 13
-
-- InstancedGroup (Objects, [SpecificObjects])
-
-#### 14
-
-- Audio (View, Objects)
-- Notifications
-- Title (PhysicalVehicle:post-physics)
-
-#### 998
-
-- Rendering
-
-#### 999
-
-- Monitoring
-
-## Blender
-
-### Export
-
-- Mute the palette texture node (loaded and set in Three.js `Material` directly)
-- Use corresponding export presets
-- Don't use compression (will be done later)
-
-### Compress
-
-Run `npm run compress`
-
-Will do the following
-
-#### GLB
-
-- Traverses the `static/` folder looking for glb files (ignoring already compressed files)
-- Compresses embeded texture with `etc1s --quality 255` (lossy, GPU friendly)
-- Generates new files to preserve originals
-
-#### Texture files
-
-- Traverses the `static/` folder looking for `png|jpg` files (ignoring non-model related folders)
-- Compresses with default preset to `--encode etc1s --qlevel 255` (lossy, GPU friendly) or specific preset according to path
-- Generates new files to preserve originals
-
-#### UI files
-
-- Traverses the `static/ui.` folder looking for `png|jpg` files
-- Compresses to WebP
-
-#### Resources
-
-- https://gltf-transform.dev/cli
-- https://github.com/KhronosGroup/KTX-Software?tab=readme-ov-file
-- https://github.khronos.org/KTX-Software/ktxtools/toktx.html 
+To keep it at 60 fps, repeated things are instanced, all city blocks are one mesh, buildings behind the planet's curve are not drawn, and if the frame rate drops the resolution goes down first and the neon glow switches off last.
