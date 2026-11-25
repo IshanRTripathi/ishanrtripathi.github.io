@@ -14,7 +14,7 @@ npm run dev      # http://localhost:5173
 npm run build    # checks the island, then builds to dist/
 ```
 
-Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/main.yml`).
+Pushing to `master` deploys to GitHub Pages at ishanr.com (`.github/workflows/pages.yml`).
 
 Controls: WASD or arrow keys to walk (or drive), Shift to run, E to get in or out of the car or scooter, Enter to open a project, P for the phone, drag to look around.
 
