@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { surfacePoint, frameQuaternion, mapToDir } from '../core/geo.js'
+import { surfacePoint, frameQuaternion, mapToDir, R } from '../core/geo.js'
 import { groundAt, coastDistance } from '../world/terrain.js'
 import { layout } from '../world/layout.js'
 import { Character } from './character.js'
@@ -14,6 +14,11 @@ const TURN_RATE = 9
 const SWIM_LIMIT = -40
 // a swimmer floats with the water level at about his chest: never lower than the ground under him
 const SWIM_FLOAT = -0.15
+// the swimming pose: how far forward the body leans (about 77 degrees, face down), the height of the hips
+// in the body, and the level of the water the hips rest on
+const SWIM_LEAN = 1.35
+const SWIM_HIP = 0.85
+const SWIM_WATER = 0.0
 
 function angleDiff(a, b)
 {
@@ -64,6 +69,8 @@ function ramp(a, b, x)
 // the lean of the body while falling: a free-fall dive, and a tilt into a turn
 const _tiltEuler = new THREE.Euler()
 const _tiltQuat = new THREE.Quaternion()
+const _hipOffset = new THREE.Vector3()
+const _hipWorld = new THREE.Vector3()
 
 // Push a circle out of every collider it overlaps (map space)
 export function resolveCollisions(pos, radius, colliders)
@@ -728,11 +735,18 @@ export class Player
             _tiltEuler.set(-1.0 * (1 - this.chute.open) ** 2, 0, this.chute.sway * 0.12)
             root.quaternion.multiply(_tiltQuat.setFromEuler(_tiltEuler))
         }
-        // swimming: the body lies forward, head up, with the water about the chest
+        // swimming: the body lies forward on the water, face down, the hips on the surface and the legs
+        // trailing behind. It turns about the hips, so the body rests on the water rather than dipping into it.
         if(this.swimming)
         {
-            _tiltEuler.set(-0.9, 0, 0)
+            _tiltEuler.set(SWIM_LEAN, 0, 0)
             root.quaternion.multiply(_tiltQuat.setFromEuler(_tiltEuler))
+            _hipOffset.set(0, SWIM_HIP, 0).applyQuaternion(root.quaternion)
+            surfacePoint(this.x, this.z, SWIM_WATER, _hipWorld)
+            root.position.copy(_hipWorld).sub(_hipOffset)
+            // the feet never go below the ground under them
+            const ground = groundAt(this.x, this.z)
+            if(root.position.length() < R + ground) root.position.setLength(R + ground)
         }
         // the canopy: shown while you fall, and while it folds up on the ground after a landing
         if(this.landing !== null) this.landing += dt
