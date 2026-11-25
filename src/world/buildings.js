@@ -616,6 +616,42 @@ const builders = {
         const group = b.build()
         group.userData.posterAnchor = b.posterAnchor
         return group
+    },
+
+    // the Velvet Lounge: a plum night club with lit purple windows, a canopy over the door, a script
+    // marquee, a vertical neon blade on the corner and a neon beacon on the roof
+    lounge: () =>
+    {
+        const b = new Builder()
+        const k = b.clay
+        const w = 9
+        const d = 7
+        const plum = '#4B2E6B'
+        const top = 8.6
+        plinth(k, w, d, C.black)
+        k.box(w, top - 0.5, d, plum, { y: 0.5 })
+        // a dark cap on the roof, a smaller block on it, and a beacon on top
+        k.box(w + 0.2, 0.3, d + 0.2, C.black, { y: top })
+        k.box(w * 0.5, 1.2, d * 0.5, plum, { y: top + 0.3 })
+        k.box(w * 0.24, 0.8, d * 0.3, C.black, { y: top + 1.5 })
+        b.neon.sphere(0.35, NEON.purple, { y: top + 2.65 })
+        // two lit windows, and the door in the middle
+        for(const x of [ -2.55, 2.55 ]) b.glow.box(1.2, 2.6, 0.1, '#8C4FD6', { x, y: 3.6, z: d / 2 + 0.06 })
+        door(k, 0, d / 2 + 0.02, { w: 1.6, h: 2.3, color: '#1B1535', frame: C.black })
+        // the canopy over the door, with a pink line along its front edge
+        k.box(4.6, 0.4, 2.0, C.black, { y: 3.0, z: d / 2 + 0.9 })
+        b.tube([ -2.3, 2.95, d / 2 + 1.95 ], [ 2.3, 2.95, d / 2 + 1.95 ], NEON.pink, 0.08)
+        // a pink band under the roof and a cyan line along the top of the front
+        b.tube([ -w / 2, 6.9, d / 2 + 0.12 ], [ w / 2, 6.9, d / 2 + 0.12 ], NEON.pink, 0.07)
+        b.tube([ -w / 2, top + 0.2, d / 2 + 0.12 ], [ w / 2, top + 0.2, d / 2 + 0.12 ], NEON.cyan, 0.08)
+        // the script marquee above the door, and the vertical blade on a frame at the corner
+        const name = neonSign('Velvet Lounge', { color: NEON.pink, width: 3.6, height: 0.9, script: true })
+        name.position.set(0, 4.3, d / 2 + 0.25)
+        k.box(1.3, 5.2, 0.4, C.black, { x: 3.7, y: 2.6, z: d / 2 + 0.45 })
+        const blade = neonSign('Open late', { color: NEON.cyan, width: 1.0, height: 5.0, vertical: true })
+        blade.position.set(3.7, 5.2, d / 2 + 0.75)
+        b.extras.push(name, blade)
+        return b.build()
     }
 }
 
