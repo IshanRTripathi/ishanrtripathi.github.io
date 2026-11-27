@@ -5,7 +5,7 @@
 import { layout } from '../src/world/layout.js'
 import { scatter, siteRadius } from '../src/world/scatter.js'
 import { pathEdgeDistance, roadEdgeDistance, coastDistance, clearDistance, heightAt } from '../src/world/terrain.js'
-import { ISLANDS, structureSpots } from '../src/world/islands.js'
+import { ISLANDS, MAP_EXTENT, structureSpots, signSpots, mooringSpots, buoySpots, islandSigned } from '../src/world/islands.js'
 
 const problems = []
 const fail = (msg) => problems.push(msg)
@@ -252,6 +252,40 @@ for(const island of ISLANDS)
     for(const spot of structureSpots(island))
         if(clearDistance(spot.x, spot.z) < 0) fail(`${island.name}: ${spot.kind} stands in front of its airstrip`)
 
+// the islands: their landmarks, notice boards and moored boats are on the right side of the coast,
+// no landmark stands on another island, and no two islands run into each other or off the map
+for(const island of ISLANDS)
+{
+    for(const spot of structureSpots(island))
+    {
+        const s = islandSigned(island, spot.x, spot.z)
+        if(s < 3) fail(`${island.name}: ${spot.kind} is only ${s.toFixed(1)} m from the coast (needs 3)`)
+        for(const other of ISLANDS)
+            if(other !== island && islandSigned(other, spot.x, spot.z) > 0) fail(`${island.name}: ${spot.kind} stands on ${other.name}`)
+    }
+    for(const sign of signSpots(island))
+    {
+        if(islandSigned(island, sign.x, sign.z) < 2) fail(`${island.name}: the "${sign.title}" board is too close to the coast`)
+        if(clearDistance(sign.x, sign.z) < 0) fail(`${island.name}: the "${sign.title}" board stands in front of its airstrip`)
+    }
+    for(const buoy of buoySpots(island))
+        if(islandSigned(island, buoy.x, buoy.z) > -6) fail(`${island.name}: a buoy is only ${(-islandSigned(island, buoy.x, buoy.z)).toFixed(1)} m off the land (needs 6)`)
+    for(const boat of mooringSpots(island))
+    {
+        const s = islandSigned(island, boat.x, boat.z)
+        if(s > -6) fail(`${island.name}: a ${boat.kind} is moored only ${(-s).toFixed(1)} m off the land (needs 6)`)
+    }
+    if(Math.hypot(island.at.x, island.at.z) + island.extent > MAP_EXTENT) fail(`${island.name} runs off the edge of the map`)
+}
+for(let i = 0; i < ISLANDS.length; i++)
+    for(let j = i + 1; j < ISLANDS.length; j++)
+    {
+        const a = ISLANDS[i]
+        const b = ISLANDS[j]
+        const gap = Math.hypot(a.at.x - b.at.x, a.at.z - b.at.z) - a.extent - b.extent
+        if(gap < 8) fail(`${a.name} and ${b.name} are only ${gap.toFixed(0)} m apart (needs 8)`)
+    }
+
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)
 if(spawnPath > 0) fail('spawn point is not on a path')
 
@@ -264,4 +298,4 @@ if(problems.length)
     for(const p of problems) console.error('  - ' + p)
     process.exit(1)
 }
-console.log(`World check passed: ${layout.sites.length} sites, ${layout.paths.length} paths, ${counts}.`)
+console.log(`World check passed: ${layout.sites.length} sites, ${layout.paths.length} paths, ${ISLANDS.length} islands, ${counts}.`)

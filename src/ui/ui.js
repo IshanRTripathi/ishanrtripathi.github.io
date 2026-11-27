@@ -1,4 +1,5 @@
 import { person, links, projects, achievements, career, contact, credits } from '../content.js'
+import { progressText } from '../errands.js'
 
 // Everything outside the canvas: title, HUD, briefing cards, the phone, the
 // page view and touch controls.
@@ -27,6 +28,11 @@ export class UI
         this.minimapEl = this.$('.minimap')
         this.minimapCanvas = this.$('.minimap-canvas')
         this.nextEl = this.$('.minimap-next')
+        this.errandEl = this.$('.minimap-errand')
+        // the errands as the game last summed them up, and which phone screen is showing
+        this.errandList = []
+        this.errandsKey = ''
+        this.screen = 'home'
         // the minimap is a way into the city map: tap it, or press Enter when it has focus
         this.minimapEl.setAttribute('role', 'button')
         this.minimapEl.setAttribute('tabindex', '0')
@@ -373,6 +379,61 @@ export class UI
         return '<ul class="card-list">' + links.map((l) => `<li><span>${escape(l.label)}</span><a class="when" href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}>${escape(l.text)}</a></li>`).join('') + '</ul>'
     }
 
+    // ---------------------------------------------------------------- errands
+    // the errand you are on, under the minimap; written only when the text changes
+    setErrand(text)
+    {
+        if(this.errandEl && this.errandEl.textContent !== text) this.errandEl.textContent = text
+    }
+
+    // the errands as the game sums them up. An open errands screen follows them in place, so its
+    // buttons are not rebuilt while you tap them
+    setErrands(list)
+    {
+        const key = JSON.stringify(list)
+        if(key === this.errandsKey) return
+        this.errandsKey = key
+        this.errandList = list
+        if(this.screen !== 'errands' || this.phoneLayer.hidden) return
+        const box = this.phoneView.querySelector('.errands')
+        if(box && list.length) this.paintErrands(box)
+        else this.phoneScreen('errands')
+    }
+
+    errandsIntro(list)
+    {
+        const done = list.filter((e) => e.done).length
+        return done === list.length ? 'Done, and the chai is on me.' : `${done} of ${list.length} done.`
+    }
+
+    paintErrands(box)
+    {
+        box.querySelector('.errands-intro').textContent = this.errandsIntro(this.errandList)
+        box.querySelector('.errands-list').innerHTML = this.errandList.map((e) => this.errandCard(e)).join('')
+    }
+
+    errandsBody()
+    {
+        const list = this.errandList
+        if(!list.length) return '<div class="phone-contact"><p>Nothing to do yet. Look around, and the errands will turn up.</p></div>'
+        return `<div class="phone-contact errands"><p class="errands-intro">${this.errandsIntro(list)}</p>
+            <ul class="card-list errands-list">${list.map((e) => this.errandCard(e)).join('')}</ul></div>`
+    }
+
+    // one errand: its title, what it asks, a bar for how far along it is, and the count
+    errandCard(e)
+    {
+        const text = progressText(e)
+        const pct = Math.round(Math.min(1, e.value / e.goal) * 100)
+        const line = e.done ? text : `${text}. Still out there`
+        return `<li class="errand${e.done ? ' is-done' : ''}">
+            <div class="errand-head"><strong>${escape(e.title)}</strong><span class="errand-stamp"${e.done ? '' : ' hidden'}>Done</span></div>
+            <span class="note">${escape(e.text)}</span>
+            <div class="errand-bar" role="progressbar" aria-label="${escape(e.title)}" aria-valuemin="0" aria-valuemax="${e.goal}" aria-valuenow="${e.value}" aria-valuetext="${escape(line)}"><span class="errand-fill" style="width:${pct}%"></span></div>
+            <span class="note errand-value">${escape(line)}</span>
+        </li>`
+    }
+
     // ---------------------------------------------------------------- phone
     togglePhone()
     {
@@ -406,6 +467,7 @@ export class UI
 
     phoneScreen(name)
     {
+        this.screen = name
         const back = '<button class="phone-back" type="button" data-phone="home">Back</button>'
         let html = ''
         if(name === 'home')
@@ -415,6 +477,7 @@ export class UI
             html += app('Contact', '#FF3EA5', 'data-phone="contact"', 'I')
             html += app('Career', '#A855F7', 'data-phone="career"', 'C')
             html += app('Trophies', '#F2B705', 'data-phone="trophies"', 'T')
+            html += app('Errands', '#2DE2E6', 'data-phone="errands"', 'E')
             if(this.sky) html += app('Sky', '#3C7AD4', 'data-phone="sky"', 'S')
             for(const l of links)
                 html += app(l.label, APP_COLORS[l.label] || '#2FA4A0', `href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}`, l.label[0])
@@ -426,6 +489,8 @@ export class UI
             html += `${back}<h2 id="phone-title" class="phone-heading">Career</h2><div class="phone-contact">${this.careerList()}</div>`
         else if(name === 'trophies')
             html += `${back}<h2 id="phone-title" class="phone-heading">Trophies</h2><div class="phone-contact"><ul class="card-list">${achievements.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="note">${escape(i.detail)}</span></li>`).join('')}</ul></div>`
+        else if(name === 'errands')
+            html += `${back}<h2 id="phone-title" class="phone-heading">Errands</h2>${this.errandsBody()}`
         else if(name === 'sky' && this.sky)
             html += `${back}<h2 id="phone-title" class="phone-heading">Sky</h2>${this.skyControls()}`
         this.phoneView.innerHTML = html

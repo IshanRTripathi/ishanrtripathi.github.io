@@ -18,6 +18,7 @@ export const PALETTE = {
     jungle: [ '#3F8A3A', '#4A9A40', '#347A36', '#2F7535' ],
     snow: [ '#F4F8FC', '#E6EEF6', '#FFFFFF' ],
     dune: [ '#F2C77E', '#EDB96A', '#F6D18E' ],
+    volcanic: [ '#4A4347', '#3E383C', '#56504F', '#342F33' ],
     path: [ '#E6D8C6', '#E1D2BF', '#EADDCC' ],
     road: '#454854',
     rock: '#B4A89A',
@@ -130,7 +131,7 @@ export function createTerrainMesh({ radius = 136, spacing = 1.45 } = {})
     group.add(buildRegion({ cx: 0, cz: 0, radius, seed: 5, name: 'terrain-main' }, spacing, material))
     ISLANDS.forEach((island, i) =>
     {
-        group.add(buildRegion({ cx: island.at.x, cz: island.at.z, radius: island.radius + 6, seed: 50 + i, name: `terrain-${island.id}` }, spacing, material))
+        group.add(buildRegion({ cx: island.at.x, cz: island.at.z, radius: island.extent + 6, seed: 50 + i, name: `terrain-${island.id}` }, spacing, material))
     })
     return group
 }
@@ -175,6 +176,10 @@ function faceColor(x, z, h, slope, random, out)
             break
         case SURFACE.DUNE:
             out.set(pick(PALETTE.dune, random))
+            break
+        case SURFACE.VOLCANIC:
+            out.set(pick(PALETTE.volcanic, random))
+            if(slope > 1.6) out.set(PALETTE.rock)
             break
         default:
             if(slope > 1.1) out.set(PALETTE.rock)

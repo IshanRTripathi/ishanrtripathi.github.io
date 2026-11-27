@@ -19,7 +19,7 @@ import { Birds } from './birds.js'
 import { People } from './people.js'
 import { createDetails, updateDetails } from './details.js'
 import { buildAirstrip, animateAirstrip, airstripUniforms } from './airstrip.js'
-import { ISLANDS, islandCoastRadius } from './islands.js'
+import { ISLANDS, mooringSpots } from './islands.js'
 import { buildPlane } from './plane.js'
 import { buildIslandStructures } from './islandBuildings.js'
 import { Flight } from '../player/flight.js'
@@ -106,6 +106,7 @@ export class World
         // the islands' landmarks: the hut, the cabin, the oasis and the tent
         const landmarks = buildIslandStructures()
         this.landmarks = landmarks.group
+        this.animateLandmarks = landmarks.animate
         scene.add(landmarks.group)
         this.colliders.push(...landmarks.colliders)
         for(const t of [ ...scatter.trees, ...scatter.streetPalms ])
@@ -237,18 +238,13 @@ export class World
         return v
     }
 
-    // two boats moored offshore of an island, on opposite sides, clear of its airstrip
+    // the boats moored offshore of an island (its spots are in islands.js), clear of its airstrip
     moorBoats(island)
     {
-        const sides = [ { k: 0, kind: 'yacht' }, { k: 3, kind: 'speedboat' } ]
-        for(const { k, kind } of sides)
+        for(const spot of mooringSpots(island))
         {
-            const phi = k * Math.PI / 3 + 0.4
-            const r = islandCoastRadius(island, phi) + 6.5
-            const x = island.at.x + Math.cos(phi) * r
-            const z = island.at.z + Math.sin(phi) * r
-            if(clearDistance(x, z) < 12) continue
-            this.addBoat(kind, x, z, phi + Math.PI / 2)
+            if(clearDistance(spot.x, spot.z) < 12) continue
+            this.addBoat(spot.kind, spot.x, spot.z, spot.yaw)
         }
     }
 
@@ -448,6 +444,7 @@ export class World
             for(const g of [ this.forest, this.details, this.landmarks, ...(this.blocks || []) ]) if(g) g.visible = !far
         }
         updateWind(time)
+        this.animateLandmarks?.(time)
         this.sky.position.copy(camera.position)
 
         for(const boat of this.boats)

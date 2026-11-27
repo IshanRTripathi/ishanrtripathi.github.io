@@ -9,9 +9,13 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 export class ArcadeHall
 {
-    constructor({ onClose } = {})
+    // onPlay(game) runs once when a game starts; onOver(game) once when it first ends
+    constructor({ onClose, onPlay, onOver } = {})
     {
         this.onClose = onClose
+        this.onPlay = onPlay
+        this.onOver = onOver
+        this.overSent = false
         this.open_ = false
         this.game = null
         this.root = document.createElement('div')
@@ -104,6 +108,8 @@ export class ArcadeHall
         this.overEl = this.body.querySelector('.arcade-over')
         game.reset()
         this.bindBoard()
+        this.overSent = false
+        this.onPlay?.(game)
         this.last = performance.now()
         this.raf = requestAnimationFrame((t) => this.frame(t))
     }
@@ -137,10 +143,19 @@ export class ArcadeHall
         g.draw(ctx, BOARD.W, BOARD.H)
         if(g.status === 'over')
         {
+            if(!this.overSent)
+            {
+                this.overSent = true
+                this.onOver?.(g)
+            }
             this.overEl.hidden = false
             this.overEl.textContent = `${g.gameOver}. Score ${g.score}. Press Enter or Restart to play again.`
         }
-        else this.overEl.hidden = true
+        else
+        {
+            this.overSent = false
+            this.overEl.hidden = true
+        }
         this.raf = requestAnimationFrame((t) => this.frame(t))
     }
 

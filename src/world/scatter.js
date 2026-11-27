@@ -657,11 +657,13 @@ function placeIslands()
         const spots = structureSpots(island)
         const near = (x, z, d) => spots.some((s) => Math.hypot(x - s.x, z - s.z) < d)
         const trees = []
-        // the island is about twice as wide as it was, so it gets about twice the tries
-        for(let i = 0; i < 1800; i++)
+        // the tries grow with the island's area (the bigger shapes get more of them), and each one
+        // lands anywhere out to the island's full width, so lobes and arms get their share too
+        const tries = Math.round(1800 * (island.extent / 46) ** 2)
+        for(let i = 0; i < tries; i++)
         {
             const a = random() * Math.PI * 2
-            const d = Math.sqrt(random()) * (island.radius - 2.5)
+            const d = Math.sqrt(random()) * (island.extent - 2.5)
             const x = island.at.x + Math.cos(a) * d
             const z = island.at.z + Math.sin(a) * d
             if(islandSigned(island, x, z) < 2.5 || near(x, z, 4.5) || placementDistance(x, z) < 1.5) continue

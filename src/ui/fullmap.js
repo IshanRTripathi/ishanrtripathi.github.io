@@ -1,4 +1,5 @@
 import { drawCity } from './minimap.js'
+import { MAP_EXTENT } from '../world/islands.js'
 
 // The full city map: north-up, the whole island and the islands, with the airstrips,
 // the stops, the Game Arcade, the planes, and the route to the next stop. Opens with
@@ -6,7 +7,7 @@ import { drawCity } from './minimap.js'
 // button. Every airstrip is a place to fly to: tap it on the map, or use the buttons
 // under the map. While it is open the city is paused, like the phone and the cards.
 
-const EXTENT = 224 // metres from the middle of the main island to the edge of the map, far enough for the islands
+const EXTENT = MAP_EXTENT // metres from the middle of the main island to the edge of the map, far enough for the islands
 const SIZE = 720 // canvas pixels
 const TAP = 30 // how close, in canvas pixels, a tap has to be to a destination
 
