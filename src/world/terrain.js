@@ -262,15 +262,17 @@ export function padHeight(siteId)
 }
 
 // ------------------------------------------------------------------ surface type
-export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5, ROAD: 6, JUNGLE: 7, SNOW: 8, DUNE: 9 }
+export const SURFACE = { SEABED: 0, SAND: 1, GRASS: 2, PATH: 3, ROCK: 4, WET_SAND: 5, ROAD: 6, JUNGLE: 7, SNOW: 8, DUNE: 9, VOLCANIC: 10 }
+
+// the inland ground of each island's theme; anything not listed is sand dunes
+const GROUND = { jungle: SURFACE.JUNGLE, frost: SURFACE.SNOW, geyser: SURFACE.VOLCANIC, harbour: SURFACE.GRASS, meadow: SURFACE.GRASS, ridge: SURFACE.GRASS, mangrove: SURFACE.JUNGLE }
 
 // the ground on an island, by how far in from the shore it is
 function islandGround(isl)
 {
     if(isl.s < 0.9) return SURFACE.WET_SAND
     if(isl.s < 3) return SURFACE.SAND
-    const theme = isl.island.theme
-    return theme === 'jungle' ? SURFACE.JUNGLE : theme === 'frost' ? SURFACE.SNOW : SURFACE.DUNE
+    return GROUND[isl.island.theme] ?? SURFACE.DUNE
 }
 
 export function surfaceAt(x, z)

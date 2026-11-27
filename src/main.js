@@ -11,12 +11,14 @@ import { Ambience } from './core/audio.js'
 import { ArcadeHall } from './ui/arcade.js'
 import { FullMap } from './ui/fullmap.js'
 import { layout, coastRadius } from './world/layout.js'
-import { ISLANDS, islandSigned } from './world/islands.js'
+import { ISLANDS, islandSigned, structureSpots, signSpots } from './world/islands.js'
 import { coastDistance } from './world/terrain.js'
 import { createLights } from './world/lights.js'
 import { UI } from './ui/ui.js'
 import { projects, career, contact, arcade } from './content.js'
 import { Interior } from './interior/interior.js'
+import { Errands, landmarksOf, boardsOf, lighthousesOf, progressText } from './errands.js'
+import { GAMES } from './arcade/games.js'
 
 const params = new URLSearchParams(location.search)
 const isTouch = window.matchMedia('(pointer: coarse)').matches || params.has('touch')
@@ -114,8 +116,18 @@ class App
                 : 'click'
             this.ambience.ui(kind)
         })
+        // the errands: side missions, kept in this browser. The arcade reports each game it starts and ends.
+        // the goals that follow the world's size come from its island and game counts
+        this.errands = new Errands({ islands: ISLANDS.length, games: GAMES.length })
+        this.errandTimer = 0
+        this.wasInside = false
+        window.addEventListener('pagehide', () => this.errands.save())
         // the Game Arcade hall, opened from its door
-        this.arcade = new ArcadeHall({ onClose: () => this.canvas.focus({ preventScroll: true }) })
+        this.arcade = new ArcadeHall({
+            onClose: () => this.canvas.focus({ preventScroll: true }),
+            onPlay: (game) => { this.errands.playedGame(game.id); this.pushErrands() },
+            onOver: (game) => { this.errands.gameOver(game.id, game.score); this.pushErrands() }
+        })
         ui.bindThrottle(this.input)
         // the city map, opened with M or the Map button; the city pauses behind it
         this.fullMap = new FullMap({
@@ -191,6 +203,14 @@ class App
             }
         })
         this.player = new Player(this.world, this.input)
+        // what the errands measure each frame: the player, the vehicles and the airstrips, plus the places to
+        // find. Those places never move, so their lists are made once here and not every frame.
+        this.landmarks = landmarksOf(ISLANDS, structureSpots)
+        this.errandWorld = {
+            player: this.player, vehicles: this.world.vehicles, airstrips: this.world.airstrips,
+            landmarks: this.landmarks, boards: boardsOf(ISLANDS, signSpots), lighthouses: lighthousesOf(layout.sites, ISLANDS, structureSpots)
+        }
+        this.pushErrands()
         this.rig = new CameraRig(this.camera, this.input)
         // the buildings you can walk into, and the rooms inside them
         this.doors = layout.sites.filter((site) => site.entrance)
@@ -566,6 +586,11 @@ class App
             input.move.y = 0
         }
 
+        // going through a door counts the building for the errands, once
+        const inside = this.interior.active
+        if(inside && !this.wasInside && this.errands.enterSite(this.interior.current?.site?.id)) this.pushErrands()
+        this.wasInside = inside
+
         // inside a building only the room is updated and drawn: the city, the traffic and the weather are not
         if(this.interior.active)
         {
@@ -639,6 +664,7 @@ class App
             this.wasFlying = !!flying
             this.updatePlaneTip()
             this.updateMap()
+            this.updateErrands(dt)
             if(this.fullMap.isOpen) this.drawFullMap()
         }
     }
@@ -663,6 +689,30 @@ class App
             return
         }
         ui.setPlaneTip({ x: (at.x + 1) / 2 * window.innerWidth, y: (1 - at.y) / 2 * window.innerHeight })
+    }
+
+    // the errands, measured in the city (never inside a building): a completed one gets a toast
+    updateErrands(dt)
+    {
+        const done = this.errands.update(dt, this.errandWorld)
+        for(const errand of done) ui.showArea('Errand done', errand.title)
+        if(done.length) this.pushErrands()
+        else if((this.errandTimer -= dt) <= 0) this.pushErrands()
+    }
+
+    // the phone's errands and the errand line under the minimap: pushed at most twice a second, or at once after a change
+    pushErrands()
+    {
+        this.errandTimer = 0.5
+        ui.setErrands(this.errands.summary())
+        ui.setErrand(this.errandLine())
+    }
+
+    errandLine()
+    {
+        if(this.errands.allDone()) return 'All errands done'
+        const c = this.errands.current()
+        return c ? `Errand: ${c.title}, ${progressText(c)}` : 'All errands done'
     }
 
     // the city map: the stops, the airstrip, the plane and the route to the next stop

@@ -348,6 +348,23 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 .is-touch .minimap-canvas { width: 128px; height: 128px; }
 .is-touch .minimap-next { font-size: 0.78rem; }
 
+/* the errand you are on: under the next-stop line, a little smaller and in cyan. It wraps, so the pill is a rounded box */
+.minimap-errand
+{
+    margin: 0.35rem 0 0;
+    padding: 0.2rem 0.6rem 0.16rem;
+    border-radius: 14px;
+    background: var(--night-glass);
+    color: var(--cyan);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    backdrop-filter: blur(6px);
+}
+.minimap-errand:empty { display: none; }
+.is-touch .minimap-errand { font-size: 0.7rem; }
+
 /* area name */
 .area
 {
@@ -819,6 +836,43 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 .phone-contact p { margin: 0 0 0.8rem; font-size: 0.98rem; }
 .phone-contact .card-list li { grid-template-columns: 1fr; }
 .phone-contact .card-list a { word-break: break-all; }
+
+/* errands: the list on the phone, each with a bar for how far along it is */
+.phone-contact .errands-intro { margin: 0 0 0.3rem; font-weight: 700; color: var(--yellow); }
+.errand-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-width: 0; }
+.errand-head strong { min-width: 0; overflow-wrap: anywhere; }
+.errand-stamp
+{
+    flex: none;
+    padding: 0 0.45rem;
+    border: 2px solid var(--yellow);
+    border-radius: 4px;
+    color: var(--yellow);
+    font-family: var(--display);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transform: rotate(-4deg);
+}
+.errand-bar
+{
+    height: 8px;
+    margin: 0.5rem 0 0.4rem;
+    border-radius: 999px;
+    background: rgba(255, 246, 236, 0.15);
+    overflow: hidden;
+}
+.errand-fill
+{
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--cyan), var(--pink));
+    transition: width 300ms ease;
+}
+.errand.is-done .errand-fill { background: var(--yellow); }
+.errand-value { font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------ page view */
 .page-layer { background: #FFF3E6; color: #1B1535; }
