@@ -8,6 +8,12 @@ import { surfaceAt, SURFACE } from '../world/terrain.js'
 const EXTENT = 72 // metres from the centre to the edge of the map image
 const IMAGE = 512
 
+const COLORS = {
+    [SURFACE.SEABED]: '#1C6E93', [SURFACE.WET_SAND]: '#E8D3AE', [SURFACE.SAND]: '#F4E2C4',
+    [SURFACE.GRASS]: '#6FAF55', [SURFACE.PATH]: '#E6D8C6', [SURFACE.ROAD]: '#3E414D', [SURFACE.ROCK]: '#A99D90',
+    [SURFACE.JUNGLE]: '#3F8A3A', [SURFACE.SNOW]: '#F4F8FC', [SURFACE.DUNE]: '#F2C77E'
+}
+
 export function drawCity(extent = EXTENT, image = IMAGE)
 {
     const canvas = document.createElement('canvas')
@@ -15,20 +21,56 @@ export function drawCity(extent = EXTENT, image = IMAGE)
     canvas.height = image
     const ctx = canvas.getContext('2d')
     const px = image / (extent * 2)
-    const colors = {
-        [SURFACE.SEABED]: '#1C6E93', [SURFACE.WET_SAND]: '#E8D3AE', [SURFACE.SAND]: '#F4E2C4',
-        [SURFACE.GRASS]: '#6FAF55', [SURFACE.PATH]: '#E6D8C6', [SURFACE.ROAD]: '#3E414D', [SURFACE.ROCK]: '#A99D90',
-        [SURFACE.JUNGLE]: '#3F8A3A', [SURFACE.SNOW]: '#F4F8FC', [SURFACE.DUNE]: '#F2C77E'
-    }
     const step = 1
     for(let i = 0; i < image; i += step * 2)
         for(let j = 0; j < image; j += step * 2)
         {
             const x = (i + 1) / px - extent
             const z = (j + 1) / px - extent
-            ctx.fillStyle = colors[surfaceAt(x, z)] || '#6FAF55'
+            ctx.fillStyle = COLORS[surfaceAt(x, z)] || '#6FAF55'
             ctx.fillRect(i, j, 2, 2)
         }
+    drawBlocks(ctx, extent, px)
+    return canvas
+}
+
+// The same picture at one sample a pixel, filled in a few rows at a time so the page
+// never stalls: the canvas comes back at once, sea first, and the land appears as it is
+// sampled. Used by the full map, which zooms in far.
+export function drawCityBands(extent, image)
+{
+    const canvas = document.createElement('canvas')
+    canvas.width = image
+    canvas.height = image
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = COLORS[SURFACE.SEABED]
+    ctx.fillRect(0, 0, image, image)
+    const px = image / (extent * 2)
+    const rgb = {}
+    for(const [ k, hex ] of Object.entries(COLORS)) rgb[k] = [ parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16) ]
+    let row = 0
+    const work = () =>
+    {
+        const t = performance.now()
+        while(row < image && performance.now() - t < 12)
+        {
+            const strip = ctx.createImageData(image, 1)
+            for(let i = 0; i < image; i++)
+            {
+                const c = rgb[surfaceAt((i + 0.5) / px - extent, (row + 0.5) / px - extent)] || rgb[SURFACE.GRASS]
+                strip.data.set([ c[0], c[1], c[2], 255 ], i * 4)
+            }
+            ctx.putImageData(strip, 0, row++)
+        }
+        if(row < image) setTimeout(work, 0)
+        else drawBlocks(ctx, extent, px)
+    }
+    work()
+    return canvas
+}
+
+function drawBlocks(ctx, extent, px)
+{
     // city blocks and sites
     const block = (x, z, w, d, yaw, fill) =>
     {
@@ -41,7 +83,6 @@ export function drawCity(extent = EXTENT, image = IMAGE)
     }
     for(const f of scatter.fillers) block(f.x, f.z, f.w, f.d, f.yaw, '#F2B5CC')
     for(const s of layout.sites) block(s.x, s.z, s.w, s.d, s.yaw, '#FFF6EC')
-    return canvas
 }
 
 // ------------------------------------------------------------------ road graph

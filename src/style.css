@@ -1204,7 +1204,17 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 .fullmap-close:hover { border-color: var(--pink); color: #fff; }
 .fullmap-close:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .fullmap-body { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; align-items: start; }
-.fullmap-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 14px; box-shadow: 0 0 0 2px var(--pink); }
+.fullmap-stage { position: relative; }
+.fullmap-canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 14px; box-shadow: 0 0 0 2px var(--pink); cursor: grab; touch-action: none; }
+.fullmap-tools { position: absolute; top: 10px; right: 10px; display: grid; gap: 6px; }
+.fullmap-tools button
+{
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid rgba(255, 246, 236, 0.5);
+    background: rgba(27, 21, 53, 0.85); color: var(--cream); font: inherit; font-size: 1.2rem; font-weight: 700; cursor: pointer;
+}
+.fullmap-tools button:hover { border-color: var(--cyan); }
+.fullmap-tools button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.fullmap-jump[aria-pressed="true"] { background: var(--cyan); color: #1B1535; font-weight: 700; }
 .fullmap-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 0.95rem; }
 .fullmap-sw { display: inline-block; width: 14px; height: 14px; margin-right: 9px; border-radius: 50%; background: var(--sw); vertical-align: -2px; box-shadow: 0 0 0 2px #1B1535; }
 .fullmap-sw-plane { background: #FFFFFF; border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 50% 70%, 0 100%); }
@@ -1231,7 +1241,7 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 {
     .fullmap-panel { padding: 10px 12px 12px; }
     .fullmap-title { font-size: 1.5rem; }
-    .fullmap-canvas { width: min(100%, calc(100dvh - 150px)); margin: 0 auto; }
+    .fullmap-stage { width: min(100%, calc(100dvh - 150px)); margin: 0 auto; }
     .fullmap-body { grid-template-columns: auto minmax(0, 1fr); }
     .fullmap-legend { font-size: 0.8rem; gap: 5px; }
 }

@@ -198,6 +198,7 @@ class App
         // the places the map can fly you to: the city's airstrip, and each island's
         this.destinations = this.world.airstrips.map((strip) => this.destinationFor(strip))
         this.fullMap.setDestinations(this.destinations)
+        setTimeout(() => this.fullMap.prepare(), 5000) // the map terrain, sampled in the background
         // time of day, seasons and weather
         this.environment = new Environment({
             scene: this.scene, renderer: this.renderer, lights: this.lights, sky: this.world.sky, fog: this.fog,
@@ -931,13 +932,18 @@ class App
         }))
         for(const v of this.world.vehicles)
             if(this.player.vehicle !== v) blips.push({ x: v.x, z: v.z, color: '#FFF6EC', size: 4 })
+        for(const m of this.fullMap.markers) blips.push({ x: m.x, z: m.z, color: '#2DE2E6', size: 6, label: String(m.id) })
         // a mission's target comes first: the minimap points straight at it, across the sea if need be
-        const target = mission || (next ? (next.marker || next) : null)
-        this.mapRoute = mission ? [] : this.minimap.routePoints(this.player, target)
+        // then a marker you dropped on the map, then the next stop
+        const pin = this.fullMap.target
+        if(pin && Math.hypot(pin.x - this.player.x, pin.z - this.player.z) < 8) this.fullMap.clearActive()
+        const target = mission || this.fullMap.target || (next ? (next.marker || next) : null)
+        this.mapRoute = mission || target?.direct ? [] : this.minimap.routePoints(this.player, target)
         const distance = this.minimap.update(this.player, this.rig.yaw, blips, target)
         const metres = distance ? `${Math.round(distance / 10) * 10 || 10} m` : ''
         ui.setProgress(this.visited.size, this.stops.length, missions.cash)
         if(mission) ui.setNext(`Mission: ${mission.label}${metres ? `, ${metres}` : ''}`)
+        else if(target?.direct) ui.setNext(`${target.label}${metres ? `, ${metres}` : ''}`)
         else ui.setNext(next ? `Next: ${next.content.place}${distance ? `, ${Math.round(distance / 10) * 10 || 10} m` : ''}` : 'Chai at the beach is always open')
     }
 }
