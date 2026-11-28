@@ -13,9 +13,10 @@ import { routeGates } from './routes.js'
 //       marks(state) { return [ { type: 'beam', ... } ] } // what to draw in the world (see missionView.js)
 //   })
 //
-// `rider` is what the player is riding: { kind, x, z, alt, v, onGround }, kind being 'plane',
-// 'heli', 'car', 'scooter' or 'boat'. A mission lists the kinds it allows, so the engine only
-// calls update() while the rider is in one of them.
+// `rider` is what the player is riding: { kind, x, z, alt, v, onGround }, kind being 'walk',
+// 'plane', 'heli', 'car', 'scooter' or 'boat'. A mission lists the kinds it allows, so the engine
+// only calls update() while the rider is in one of them. update() also gets `world`, what else it
+// may look at ({ traffic: the traffic cars }), and `dt`, the seconds since the last frame.
 
 const types = {}
 
@@ -94,6 +95,7 @@ registerStep('gates', {
         const gates = routeGates(def).map((g) => ({
             ...g,
             // a ring in the air hangs `height` above the ground; an arch stands on it, its middle low enough that the foot of it is buried
+            ground: Math.max(0, groundAt(g.x, g.z)),
             alt: Math.max(0, groundAt(g.x, g.z)) + (air ? def.height ?? 24 : radius * 0.45)
         }))
         return { def, air, radius, gates, index: 0 }
@@ -118,9 +120,60 @@ registerStep('gates', {
     },
     marks(s)
     {
-        return s.gates.map((g, i) => ({
+        // a stop on foot is a beam on the next one only; a race is a row of rings or arches
+        if(s.def.marker === 'beam')
+        {
+            const g = s.gates[Math.min(s.index, s.gates.length - 1)]
+            return [ { type: 'beam', x: g.x, z: g.z, alt: g.ground, radius: s.radius } ]
+        }
+        const marks = s.gates.map((g, i) => ({
             type: 'ring', x: g.x, z: g.z, yaw: g.yaw, alt: g.alt, radius: s.radius,
             state: i < s.index ? 'passed' : i === s.index ? 'next' : 'ahead'
         }))
+        // ramps (for a boat to jump) halfway between one gate and the next
+        if(s.def.ramps)
+            for(let i = 0; i + 1 < s.gates.length; i++)
+            {
+                const a = s.gates[i]
+                const b = s.gates[i + 1]
+                marks.push({ type: 'ramp', x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, yaw: Math.atan2(b.x - a.x, b.z - a.z), alt: 0 })
+            }
+        return marks
     }
+})
+
+// ------------------------------------------------------------------ weave
+// Drive close past the traffic without hitting it, at speed: each near miss counts. The same car
+// does not count twice in a row. Done after `goal` near misses.
+registerStep('weave', {
+    create(def)
+    {
+        return { def, count: 0, clock: 0, last: new Map() }
+    },
+    update(s, rider, world, dt)
+    {
+        s.clock += dt
+        // a near miss: close enough to be scary (the cars are 1.9 m wide, so under 1.6 m apart is a hit), at speed
+        const near = s.def.near ?? 4.2
+        const fastEnough = s.def.speed ?? 7
+        let progress = null
+        ;(world.traffic || []).forEach((car, i) =>
+        {
+            const d = Math.hypot(car.x - rider.x, car.z - rider.z)
+            if(d > near || d < 1.6 || rider.v < fastEnough) return
+            if(s.clock - (s.last.get(i) ?? -99) < 2.5) return
+            s.last.set(i, s.clock)
+            s.count++
+            progress = { count: Math.min(s.count, s.def.goal), total: s.def.goal }
+        })
+        if(!progress) return null
+        return { progress, done: s.count >= s.def.goal }
+    },
+    // there is nowhere to point to: the traffic moves
+    target() { return null },
+    objective(s)
+    {
+        return `${(s.def.label ?? 'near miss').toLowerCase()} ${Math.min(s.count + 1, s.def.goal)} of ${s.def.goal}: pass the traffic close, at speed`
+    },
+    marks() { return [] }
 })

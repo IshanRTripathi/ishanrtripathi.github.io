@@ -17,6 +17,15 @@ const REFILL_MOVING = 0.12
 const REFILL_STILL = 0.25
 // once it runs out you cannot sprint until it is back above this
 const WINDED_UNTIL = 0.3
+// a boat's boost (Shift): faster while it lasts, drained in about three seconds, filled again after a rest
+const BOOST = 1.7
+const BOOST_DRAIN = 0.33
+const BOOST_REST = 1
+const BOOST_REFILL = 0.2
+// a ramp on the sea launches a boat that hits it at speed; it flies under this gravity and cannot take off again for a moment
+const RAMP_REACH = 3.2
+const RAMP_MIN_SPEED = 5
+const BOAT_GRAVITY = 11
 // jumping: the take-off speed up, and gravity (a jump is a little over a metre high and lasts about 0.7 s)
 const JUMP_SPEED = 5.4
 const GRAVITY = 15
@@ -193,6 +202,12 @@ export class Player
         this.mode = 'walk' // walk | ride | script | sit
         this.stamina = 1
         this.staminaRest = 0
+        this.boost = 1 // a boat's boost meter
+        this.boostRest = 0
+        this.boatH = 0 // height of a boat off the water in a jump
+        this.boatV = 0
+        this.boatCool = 0
+        this.ramps = [] // the ramps on the sea now: { x, z }, from the mission on hand
         this.winded = false
         this.sprinting = false
         this.jumpH = 0 // height off the ground in a jump
@@ -550,6 +565,8 @@ export class Player
         if(vehicle.traffic) vehicle = this.world.takeTrafficCar(vehicle.traffic)
         if(!vehicle) return
         this.vehicle = vehicle
+        this.boatH = 0
+        this.boatV = 0
         this.jumpH = 0
         this.jumpV = 0
         this.sprinting = false
@@ -668,7 +685,10 @@ export class Player
         const input = this.input
         const throttle = input.move.y
         const steer = input.move.x
-        const target = throttle > 0 ? throttle * v.maxSpeed * (input.run ? 1.15 : 1) : throttle < 0 ? throttle * v.reverse : 0
+        // a boat boosts on Shift while the meter lasts; a car or scooter only gets a little extra
+        const boosting = v.kind === 'boat' && input.run && throttle > 0 && this.boost > 0
+        if(v.kind === 'boat') this.updateBoost(dt, boosting)
+        const target = throttle > 0 ? throttle * v.maxSpeed * (v.kind === 'boat' ? (boosting ? BOOST : 1) : input.run ? 1.15 : 1) : throttle < 0 ? throttle * v.reverse : 0
         // S while rolling forward brakes hard; once stopped it reverses. Otherwise the vehicle coasts down.
         const braking = throttle < 0 && this.speed > 0.5
         const rate = Math.abs(target) > Math.abs(this.speed) ? v.accel : braking ? 9 : 3.5
@@ -685,7 +705,11 @@ export class Player
         this.turn = yawRate
         const before = { x: this.x, z: this.z }
         // a boat sails the sea; everything else drives on land
-        if(v.kind === 'boat') this.sail(dt)
+        if(v.kind === 'boat')
+        {
+            this.sail(dt)
+            this.updateBoatAir(dt)
+        }
         else this.move(dt, v.radius)
         // bumping into something at speed stops you
         const moved = Math.hypot(this.x - before.x, this.z - before.z)
@@ -695,6 +719,46 @@ export class Player
         // scooters lean into turns, cars roll a little the other way, boats heel a little into them
         const lean = v.kind === 'scooter' ? this.steer * amount * 0.38 : v.kind === 'boat' ? this.steer * amount * 0.08 : -this.steer * amount * 0.05
         v.model.update(dt, this.speed, -this.steer, lean)
+    }
+
+    // the boost meter drains while boosting, and fills after a rest
+    updateBoost(dt, boosting)
+    {
+        if(boosting)
+        {
+            this.boost = Math.max(0, this.boost - dt * BOOST_DRAIN)
+            this.boostRest = BOOST_REST
+            return
+        }
+        this.boostRest -= dt
+        if(this.boostRest <= 0) this.boost = Math.min(1, this.boost + dt * BOOST_REFILL)
+    }
+
+    // a boat that hits a ramp at speed leaves the water, and comes down with a splash
+    updateBoatAir(dt)
+    {
+        this.boatCool = Math.max(0, this.boatCool - dt)
+        if(this.boatH === 0 && this.boatV === 0 && this.boatCool === 0 && this.speed > RAMP_MIN_SPEED)
+            for(const r of this.ramps)
+                if(Math.hypot(r.x - this.x, r.z - this.z) < RAMP_REACH)
+                {
+                    this.boatV = 3.5 + this.speed * 0.28
+                    this.emit('boatjump')
+                    break
+                }
+        if(this.boatV !== 0 || this.boatH > 0)
+        {
+            this.boatV -= BOAT_GRAVITY * dt
+            this.boatH += this.boatV * dt
+            if(this.boatH <= 0)
+            {
+                const hit = -this.boatV
+                this.boatH = 0
+                this.boatV = 0
+                this.boatCool = 1
+                this.emit('boatland', hit)
+            }
+        }
     }
 
     // a boat sails the sea: it stops at the shore, and nothing else stops it
@@ -807,7 +871,7 @@ export class Player
         // in the plane the sea is flat, the same as the plane's own ground, so the camera follows the aircraft
         // rather than the sea floor under it
         const floor = flying ? Math.max(0, ground) : this.swimming ? Math.max(ground, SWIM_FLOAT) : ground
-        const h = (sailing ? 0 : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0) + (this.mode === 'walk' ? this.jumpH : 0)
+        const h = (sailing ? this.boatH : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0) + (this.mode === 'walk' ? this.jumpH : 0)
         const root = this.character.root
         // the character is swapped for the real model when it loads, so the canopy follows the current one
         if(this.parachute.root.parent !== root) root.add(this.parachute.root)
@@ -831,6 +895,8 @@ export class Player
             place(v.model.root, this.x, this.z, this.yaw, h + 0.05 + (sailing ? Math.sin(this.bobTime * 1.4) * 0.07 : 0))
             // the hull heels a little into a turn
             if(sailing) v.model.root.rotateZ(v.model.lean.rotation.z)
+            // in a jump the bow rises, then drops
+            if(sailing && this.boatH > 0) v.model.root.rotateX(-Math.max(-0.35, Math.min(0.3, this.boatV * 0.05)))
             v.x = this.x
             v.z = this.z
             v.yaw = this.yaw

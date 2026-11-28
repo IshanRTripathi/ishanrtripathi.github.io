@@ -88,5 +88,13 @@ registerRoute('main', (def) =>
     return out
 })
 
+// the front doors of buildings you can walk into, by site id, in the order given
+registerRoute('sites', (def) => def.ids.map((id) =>
+{
+    const site = layout.sites.find((s) => s.id === id)
+    if(!site || !site.entrance) throw new Error(`mission route names a building with no door: ${id}`)
+    return { x: site.entrance.x, z: site.entrance.z, yaw: 0 }
+}))
+
 // gates given outright in the mission, for a one-off course
 registerRoute('points', (def) => def.points.map((p) => ({ yaw: 0, ...p })))
