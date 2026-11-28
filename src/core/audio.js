@@ -15,7 +15,9 @@ const CLIPS = {
     'sfx/ui-confirm.mp3': 0.8,
     'sfx/ui-close.mp3': 0.7,
     'sfx/ui-drop.mp3': 0.7,
-    'sfx/car-engine.wav': 0.2
+    'sfx/car-engine.wav': 0.2,
+    'sfx/heli-rotor.mp3': 0.5,
+    'sfx/alarm.mp3': 0.35
 }
 
 // the button sounds, by name
@@ -530,11 +532,18 @@ export class Ambience
 
     // the engines. car: 0..1 how fast the car you drive is going, null when you are not in one.
     // plane: 0..1 the throttle of the plane you fly, null when it is not in the air.
-    setVehicle({ car = null, plane = null } = {})
+    // heli: 0..1 how hard the helicopter's rotor is turning, null when you are not in one.
+    setVehicle({ car = null, plane = null, heli = null } = {})
     {
         if(!this.context || !this.enabled) return
         const t = this.context.currentTime
         this.ensureCarEngine()
+        this.ensureHeliEngine()
+        if(this.heliGain)
+        {
+            this.heliGain.gain.setTargetAtTime(heli === null ? 0 : CLIPS['sfx/heli-rotor.mp3'] * (0.3 + 0.7 * heli), t, 0.25)
+            this.heliSource.playbackRate.setTargetAtTime(0.75 + 0.35 * (heli ?? 0), t, 0.3)
+        }
         if(this.carGain)
         {
             const speed = car ?? 0
@@ -561,6 +570,37 @@ export class Ambience
         this.carGain.gain.value = 0
         this.carSource.connect(this.carGain).connect(this.master)
         this.carSource.start()
+    }
+
+    // the helicopter's rotor: a recorded loop, started once and then only turned up and down
+    ensureHeliEngine()
+    {
+        const buffer = this.buffers['sfx/heli-rotor.mp3']
+        if(this.heliGain || !buffer) return
+        const ctx = this.context
+        this.heliSource = ctx.createBufferSource()
+        this.heliSource.buffer = buffer
+        this.heliSource.loop = true
+        this.heliGain = ctx.createGain()
+        this.heliGain.gain.value = 0
+        this.heliSource.connect(this.heliGain).connect(this.master)
+        this.heliSource.start()
+    }
+
+    // a warning siren, cut short: the first second or so of the alarm recording
+    alarm(seconds = 1.3)
+    {
+        const buffer = this.buffers['sfx/alarm.mp3']
+        if(!buffer || !this.enabled) return
+        const ctx = this.context
+        const t = ctx.currentTime
+        const source = ctx.createBufferSource()
+        source.buffer = buffer
+        const gain = ctx.createGain()
+        gain.gain.setValueAtTime(CLIPS['sfx/alarm.mp3'], t)
+        gain.gain.setTargetAtTime(0, t + seconds - 0.25, 0.08)
+        source.connect(gain).connect(this.master)
+        source.start(t, 0, seconds)
     }
 
     // a short sound, played once, through the same master as everything else

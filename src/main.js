@@ -146,6 +146,7 @@ class App
         ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen
         this.wasFlying = false
         this.missions = missions
+        this.warned = new Set() // the time warnings already sounded for the mission on hand
         this.timer = new THREE.Timer()
         this.timer.connect(document)
         this.time = 0
@@ -400,6 +401,7 @@ class App
         if(e.type === 'start')
         {
             this.ambience.sfx('missionStart')
+            this.warned = new Set()
             ui.showArea(m.title, m.brief)
         }
         else if(e.type === 'progress')
@@ -772,7 +774,8 @@ class App
             const vehicle = this.player.mode === 'ride' ? this.player.vehicle : null
             this.ambience.setVehicle({
                 car: vehicle && vehicle.kind === 'car' ? Math.min(1, Math.abs(this.player.speed) / (vehicle.maxSpeed || 10)) : null,
-                plane: flying ? vehicle.flight.throttle : null
+                plane: flying && vehicle.kind === 'plane' ? vehicle.flight.throttle : null,
+                heli: flying && vehicle.kind === 'heli' ? vehicle.flight.rotor : null
             })
             // the car radio: T tunes to the next station while driving a car
             const driving = this.player.mode === 'ride' && !!vehicle && vehicle.kind === 'car'
@@ -809,6 +812,11 @@ class App
     {
         if(!missions.active) return
         missions.update(dt, this.rider())
+        // a siren warns when a timed mission is nearly out of time
+        const left = missions.timeLeft
+        if(left !== null && missions.active)
+            for(const mark of [ 10, 5 ])
+                if(left <= mark && !this.warned.has(mark)) { this.warned.add(mark); this.ambience.alarm() }
         this.missionView.update(missions.active ? missions.marks : null)
         ui.setMission(missions.active ? missions : null)
     }
