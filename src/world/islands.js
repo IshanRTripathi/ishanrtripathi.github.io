@@ -25,9 +25,16 @@ const PI = Math.PI
 // every island's airstrip: a straight runway across the island
 export const AIRSTRIP = { length: 70, width: 12 }
 
-// how far from the middle of the city the full map reaches: far enough for the outer islands
-export const MAP_EXTENT = 310
+// how far from the middle of the city the full map reaches: far enough for the islands on their ring
+export const MAP_EXTENT = 340
 
+// The islands sit on one even ring round the city, 262 metres out, a little under the planet's
+// equator, so they read as a belt round the globe. Each one has its own angle on the ring. The
+// spacing is kept by scripts/check-world.mjs: at least 40 metres of sea to the city and between
+// neighbours. Every island's features are placed from its own middle, so moving an island moves
+// the whole of it.
+const RING = 262
+const HARBOUR_AT = 0.771
 // the harbour's cove faces the city, the geyser's bay faces the sea to the south
 const HARBOUR_FACE = 1 + PI
 const GEYSER_BAY = PI / 2
@@ -36,7 +43,7 @@ export const ISLANDS = [
     {
         id: 'jungle', name: 'Jungle Cove', theme: 'jungle', seed: 11,
         blurb: 'Palms, rainforest and a stilt hut on the beach',
-        at: polar(176, 0.3), radius: 46,
+        at: polar(RING, 3.056), radius: 46,
         waves: [ [ 2.2, 3, 0.4 ], [ 1.2, 6, 1.9 ] ],
         hills: 2.6, peak: 0,
         // a stilt hut on the beach side, and palms, ferns and tall rainforest trees
@@ -47,7 +54,7 @@ export const ISLANDS = [
     {
         id: 'frost', name: 'Frost Peak', theme: 'frost', seed: 23,
         blurb: 'Snowy pines, a log cabin and a warm window',
-        at: polar(178, 2.4), radius: 48,
+        at: polar(RING, 2.485), radius: 48,
         waves: [ [ 1.8, 2, 2.6 ], [ 1.0, 5, 0.9 ] ],
         hills: 2.2, peak: 9,
         // a log cabin with a warm window, and snowy pines
@@ -58,7 +65,7 @@ export const ISLANDS = [
     {
         id: 'dunes', name: 'Dune Oasis', theme: 'desert', seed: 37,
         blurb: 'Sand dunes, cacti and an oasis with a tent',
-        at: polar(174, 4.6), radius: 46,
+        at: polar(RING, 1.914), radius: 46,
         waves: [ [ 1.6, 4, 1.2 ], [ 0.9, 7, 0.3 ] ],
         hills: 1.4, peak: 0,
         // an oasis pool with a tent beside it, and a few cacti and palms in the dunes
@@ -70,7 +77,7 @@ export const ISLANDS = [
         // a crescent of land round a deep, sheltered cove that faces the city
         id: 'harbour', name: 'Crescent Harbour', theme: 'harbour', seed: 61,
         blurb: 'A fishing village round a sheltered cove: fish market, boat shed, 212 people',
-        at: polar(176, 1.0), radius: 44,
+        at: polar(RING, HARBOUR_AT), radius: 44,
         waves: [ [ 1.6, 3, 0.7 ], [ 0.9, 7, 2.2 ] ],
         coves: [ [ HARBOUR_FACE, 1.0, 24 ] ],
         hills: 1.4, peak: 0,
@@ -88,7 +95,7 @@ export const ISLANDS = [
         // flat, and a bay bitten out of the south
         id: 'geyser', name: 'Geyser Isle', theme: 'geyser', seed: 67,
         blurb: 'Volcanic rock, a hot spring and a geothermal station humming on the flat',
-        at: polar(176, 1.7), radius: 45,
+        at: polar(RING, 5.912), radius: 45,
         waves: [ [ 2.0, 2, 0.9 ], [ 1.2, 5, 2.2 ] ],
         bumps: [ [ -0.9, 0.6, 5 ] ],
         coves: [ [ GEYSER_BAY, 0.7, 8 ] ],
@@ -106,7 +113,7 @@ export const ISLANDS = [
         // a four-armed cay: the arms reach out to the sea, with a solar farm, a wind turbine and a dive shop
         id: 'cay', name: 'Cross Cay', theme: 'cay', seed: 73,
         blurb: 'Four sandy arms: a solar farm, a wind turbine and dive trips at 9 am',
-        at: polar(176, 3.15), radius: 34,
+        at: polar(RING, 3.627), radius: 34,
         waves: [ [ 12, 4, 0.5 ], [ 2.0, 9, 1.3 ] ],
         hills: 1.2, peak: 0,
         // the runway runs along the arms at 0.27 and 3.41 radians, so the buildings sit on the other two arms
@@ -123,7 +130,7 @@ export const ISLANDS = [
         // a heart: two lobes at the top with a cleft between them, and the point at the bottom
         id: 'heart', name: 'Heart Isle', theme: 'meadow', seed: 79,
         blurb: 'Honeymoon bungalows, a beach bar and a ferris wheel that does the full loop',
-        at: polar(176, 3.9), radius: 42,
+        at: polar(RING, 4.77), radius: 42,
         waves: [ [ 1.2, 3, 0.5 ] ],
         bumps: [ [ -PI / 2 - 0.8, 0.5, 13 ], [ -PI / 2 + 0.8, 0.5, 13 ], [ PI / 2, 0.26, 17 ] ],
         coves: [ [ -PI / 2, 0.3, 8 ] ],
@@ -143,7 +150,7 @@ export const ISLANDS = [
         // an atoll: a ring of sand round a lagoon, with bungalows, a beach bar and a turbine on the ring
         id: 'atoll', name: 'Pearl Atoll', theme: 'atoll', seed: 89,
         blurb: 'A ring of white sand round a lagoon, with boats to hire and a turbine on the rim',
-        at: polar(176, 5.5), radius: 64, hole: 22,
+        at: polar(RING, 0.2), radius: 64, hole: 22,
         waves: [ [ 1.6, 3, 0.3 ], [ 0.8, 5, 1.1 ] ],
         hills: 0.5, peak: 0,
         structures: [
@@ -152,7 +159,7 @@ export const ISLANDS = [
             { kind: 'beachbar', ...rel(44, 4.2), yaw: faceAngle(4.2) },
             { kind: 'turbine', ...rel(46, -1.4), yaw: faceAngle(-1.4) }
         ],
-        signs: [ { dx: 40, dz: 27.4, title: 'Pearl Atoll', line: 'Lagoon boats for hire. Ask at the bar' } ],
+        signs: [ { dx: -27.4, dz: -40, title: 'Pearl Atoll', line: 'Lagoon boats for hire. Ask at the bar' } ],
         life: { trees: [ 'palm', 'palm', 'palm' ], tree: 0.1, bush: 0.05, flower: 0.03, rock: 0 },
         // the lagoon is sea, so the boats float in its middle
         moor: [ { phi: 0.9, r: 9, kind: 'yacht' }, { phi: 3.6, r: 12, kind: 'speedboat' } ]
@@ -161,7 +168,7 @@ export const ISLANDS = [
         // a rocky cape out on the rim of the map: a lighthouse on its tip, and a keeper's cottage behind
         id: 'lantern', name: 'Lantern Bay', theme: 'meadow', seed: 97,
         blurb: 'A rocky cape with a working lighthouse and a keeper\'s cottage. The light comes on at dusk',
-        at: polar(256, 0.66), radius: 42,
+        at: polar(RING, 1.342), radius: 42,
         waves: [ [ 2.0, 3, 0.2 ], [ 1.0, 6, 1.4 ] ],
         bumps: [ [ -0.4, 0.32, 14 ] ],
         hills: 1.6, peak: 0,
@@ -178,7 +185,7 @@ export const ISLANDS = [
         // a windy ridge with a radio mast on the crest and an observatory dome
         id: 'ridge', name: 'Radio Ridge', theme: 'ridge', seed: 101,
         blurb: 'A windy ridge with a radio mast, and an observatory that opens on Fridays',
-        at: polar(256, 4.98), radius: 44,
+        at: polar(RING, 4.198), radius: 44,
         waves: [ [ 1.4, 2, 0.8 ], [ 0.8, 5, 2.0 ] ],
         hills: 2.4, peak: 0,
         structures: [
@@ -193,7 +200,7 @@ export const ISLANDS = [
         // a river delta: a narrow inlet cut in from the sea, mangroves, and houses on stilts
         id: 'mangrove', name: 'Mangrove Delta', theme: 'mangrove', seed: 103,
         blurb: 'A river delta with houses on stilts, crab traps and a boat shed among the mangroves',
-        at: polar(256, 6.1), radius: 47,
+        at: polar(RING, 5.341), radius: 47,
         waves: [ [ 1.8, 2, 2.0 ], [ 1.0, 5, 0.6 ] ],
         coves: [ [ 6.1, 0.22, 22 ] ],
         hills: 0.9, peak: 0,
@@ -268,15 +275,18 @@ export function islandHeight(index, x, z, s)
     const beach = Math.min(0.6, 0.12 + s * 0.07)
     const inland = smoothstep(1, 5, s)
     const n = noises[index]
+    // the hills are measured from the island's own middle, so an island looks the same wherever it sits
+    const lx = x - island.at.x
+    const lz = z - island.at.z
     let hills
     if(island.theme === 'desert')
     {
         // long dunes, rolling along one direction
-        hills = island.hills * (0.5 + 0.5 * Math.sin(0.19 * x + 0.12 * z + 2.2 * fbm(n, x * 0.04, z * 0.04, 2)))
+        hills = island.hills * (0.5 + 0.5 * Math.sin(0.19 * lx + 0.12 * lz + 2.2 * fbm(n, lx * 0.04, lz * 0.04, 2)))
         // level sand around the oasis
-        hills *= smoothstep(4, 11, Math.hypot(x - island.at.x, z - island.at.z))
+        hills *= smoothstep(4, 11, Math.hypot(lx, lz))
     }
-    else hills = island.hills * smoothstep(-0.2, 0.7, fbm(n, x * 0.07 + 3, z * 0.07 - 1, 3))
+    else hills = island.hills * smoothstep(-0.2, 0.7, fbm(n, lx * 0.07 + 3, lz * 0.07 - 1, 3))
     let peak = 0
     if(island.peak)
     {

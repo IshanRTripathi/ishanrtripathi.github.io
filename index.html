@@ -59,16 +59,26 @@
         </div>
     </header>
 
+    <!-- the mission on hand: its objective, and the time left if it has a limit -->
+    <div class="mission-hud" hidden aria-live="polite">
+        <p class="mission-kicker">Mission</p>
+        <p class="mission-title"></p>
+        <p class="mission-objective"></p>
+        <p class="mission-time"></p>
+    </div>
+
     <!-- the plane's readout, while flying -->
     <div class="flight-hud" hidden>
         <p class="flight-stats"><span data-flight="speed">0</span> km/h <span class="flight-sep" aria-hidden="true">·</span> <span data-flight="alt">0</span> m up</p>
         <div class="flight-throttle" aria-hidden="true"><span class="flight-throttle-fill"></span></div>
         <p class="flight-hint" aria-live="polite"></p>
-        <div class="flight-buttons">
-            <button class="hud-button" type="button" data-throttle="down">Throttle −</button>
-            <button class="hud-button" type="button" data-throttle="up">Throttle +</button>
-            <button class="hud-button" type="button" data-flight-tips="show">How to fly</button>
-        </div>
+    </div>
+
+    <!-- the throttle and the tips on a touch screen: a column at the right, beside the view -->
+    <div class="flight-buttons">
+        <button class="hud-button throttle-button" type="button" data-throttle="up" aria-label="Throttle up">+</button>
+        <button class="hud-button throttle-button" type="button" data-throttle="down" aria-label="Throttle down">−</button>
+        <button class="hud-button" type="button" data-flight-tips="show">How to fly</button>
     </div>
 
     <!-- a tip above the plane while you are next to it -->
@@ -84,7 +94,7 @@
             <li>Hold <kbd>R</kbd> (or Throttle +) to add power. The plane lifts off at about 80 km/h.</li>
             <li>Once it's fast enough, push <kbd>W</kbd> to lift the nose.</li>
             <li><kbd>A</kbd> and <kbd>D</kbd> bank and turn. <kbd>S</kbd> points the nose down.</li>
-            <li>To land, ease off with <kbd>F</kbd>, level the nose, and line up with the strip.</li>
+            <li>To land, ease off with <kbd>F</kbd> and line up with the strip. Near the ground the wings level and the nose flares by itself.</li>
         </ol>
     </aside>
 

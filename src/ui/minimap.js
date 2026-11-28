@@ -161,16 +161,22 @@ export class Minimap
         ctx.translate(-player.x, -player.z)
         ctx.drawImage(this.city, -EXTENT, -EXTENT, EXTENT * 2, EXTENT * 2)
 
-        // GPS route to the target, recomputed when the nearest node changes
+        // GPS route to the target, recomputed when the nearest node changes. A target
+        // across the sea (direct) is a straight line instead: there is no road to it
         if(target)
         {
-            const from = nearestNode(this.graph, player.x, player.z)
-            const to = nearestNode(this.graph, target.x, target.z)
-            const key = from + ':' + to
-            if(key !== this.routeKey)
+            let points = []
+            if(!target.direct)
             {
-                this.routeKey = key
-                this.route = route(this.graph, from, to)
+                const from = nearestNode(this.graph, player.x, player.z)
+                const to = nearestNode(this.graph, target.x, target.z)
+                const key = from + ':' + to
+                if(key !== this.routeKey)
+                {
+                    this.routeKey = key
+                    this.route = route(this.graph, from, to)
+                }
+                points = this.route.points
             }
             ctx.strokeStyle = '#FF3EA5'
             ctx.lineWidth = 3.2 / scale * 1.4
@@ -178,7 +184,7 @@ export class Minimap
             ctx.lineCap = 'round'
             ctx.beginPath()
             ctx.moveTo(player.x, player.z)
-            for(const p of this.route.points) ctx.lineTo(p.x, p.z)
+            for(const p of points) ctx.lineTo(p.x, p.z)
             ctx.lineTo(target.x, target.z)
             ctx.stroke()
         }
@@ -227,6 +233,8 @@ export class Minimap
         ctx.stroke()
         ctx.restore()
 
+        // the distance: along the road for a GPS target, straight across for a direct one
+        if(target && target.direct) return Math.hypot(target.x - player.x, target.z - player.z)
         return this.route && target ? this.route.length + Math.hypot(player.x - this.route.points[0]?.x, player.z - this.route.points[0]?.z) : null
     }
 }

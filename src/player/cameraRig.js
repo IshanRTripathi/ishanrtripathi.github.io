@@ -27,7 +27,8 @@ export class CameraRig
         this.orbitAngle = BAY_ANGLE + 1.25
         // the landing screen's view of the planet: dragged round, lifted or lowered, pulled back or in
         this.orbitElevation = 0.92
-        this.orbitZoom = 1
+        // the landing screen's planet is drawn large: a closer view than the first version, so the globe fills more of the screen
+        this.orbitZoom = 0.86
         this.fly = null
         this.lastDrag = -Infinity
         this.pose = { position: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) }

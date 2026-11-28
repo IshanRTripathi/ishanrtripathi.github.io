@@ -2,10 +2,11 @@
 // buildings don't overlap, and every board is reachable from a path.
 // Runs before every build (npm run build) and on its own with `npm run check`.
 
-import { layout } from '../src/world/layout.js'
+import { layout, coastRadius } from '../src/world/layout.js'
 import { scatter, siteRadius } from '../src/world/scatter.js'
 import { pathEdgeDistance, roadEdgeDistance, coastDistance, clearDistance, heightAt } from '../src/world/terrain.js'
 import { ISLANDS, MAP_EXTENT, structureSpots, signSpots, mooringSpots, buoySpots, islandSigned } from '../src/world/islands.js'
+import { MISSIONS, ringsAround } from '../src/missions/missions.js'
 
 const problems = []
 const fail = (msg) => problems.push(msg)
@@ -277,14 +278,48 @@ for(const island of ISLANDS)
     }
     if(Math.hypot(island.at.x, island.at.z) + island.extent > MAP_EXTENT) fail(`${island.name} runs off the edge of the map`)
 }
+// The islands are spaced: at least MIN_SEA metres of open sea between each island and the city,
+// and between any two islands, measured along the line between their middles to each coast
+const MIN_SEA = 40
+const reach = (island, dx, dz) =>
+{
+    let t = 0
+    while(t < 400 && islandSigned(island, island.at.x + dx * t, island.at.z + dz * t) > 0) t += 0.5
+    return t
+}
+for(const island of ISLANDS)
+{
+    const d = Math.hypot(island.at.x, island.at.z)
+    const phi = Math.atan2(island.at.z, island.at.x)
+    const sea = d - reach(island, -island.at.x / d, -island.at.z / d) - coastRadius(phi)
+    if(sea < MIN_SEA) fail(`${island.name} is only ${sea.toFixed(0)} m of sea from the city (needs ${MIN_SEA})`)
+}
 for(let i = 0; i < ISLANDS.length; i++)
     for(let j = i + 1; j < ISLANDS.length; j++)
     {
         const a = ISLANDS[i]
         const b = ISLANDS[j]
-        const gap = Math.hypot(a.at.x - b.at.x, a.at.z - b.at.z) - a.extent - b.extent
-        if(gap < 8) fail(`${a.name} and ${b.name} are only ${gap.toFixed(0)} m apart (needs 8)`)
+        const d = Math.hypot(b.at.x - a.at.x, b.at.z - a.at.z)
+        const dx = (b.at.x - a.at.x) / d
+        const dz = (b.at.z - a.at.z) / d
+        const sea = d - reach(a, dx, dz) - reach(b, -dx, -dz)
+        if(sea < MIN_SEA) fail(`${a.name} and ${b.name} are only ${sea.toFixed(0)} m of sea apart (needs ${MIN_SEA})`)
     }
+
+// every mission points at real islands, its rings hang above the water or the ground, and it pays something
+for(const m of MISSIONS)
+{
+    for(const id of m.legs)
+        if(!ISLANDS.some((i) => i.id === id)) fail(`mission "${m.title}" flies to an island that does not exist (${id})`)
+    if(m.pay <= 0) fail(`mission "${m.title}" pays nothing`)
+    if(m.kind === 'rings')
+    {
+        const rings = ringsAround(ISLANDS.find((i) => i.id === m.legs[0]), m.rings)
+        if(rings.length !== m.rings) fail(`mission "${m.title}" has ${rings.length} rings, not ${m.rings}`)
+        for(const r of rings)
+            if(!(r.alt > 0)) fail(`mission "${m.title}" has a ring below the sea at (${r.x.toFixed(1)}, ${r.z.toFixed(1)})`)
+    }
+}
 
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)
 if(spawnPath > 0) fail('spawn point is not on a path')

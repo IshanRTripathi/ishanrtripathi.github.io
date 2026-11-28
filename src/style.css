@@ -1068,10 +1068,27 @@ body:not(.is-touch) .hud-help-touch { display: none; }
 .flight-throttle { height: 6px; margin: 0.4rem auto 0.3rem; border-radius: 999px; background: rgba(255, 246, 236, 0.18); overflow: hidden; width: 80%; }
 .flight-throttle-fill { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); transform-origin: left center; transform: scaleX(0.6); }
 .flight-hint { margin: 0.2rem 0 0; font-size: 0.85rem; opacity: 0.92; min-height: 1.2em; }
-.flight-buttons { display: none; gap: 8px; justify-content: center; margin-top: 0.45rem; }
-.is-touch .flight-buttons { display: flex; pointer-events: auto; }
-.is-touch .flight-hud { pointer-events: none; }
-.is-touch .flight-buttons .hud-button { touch-action: none; min-width: 9rem; }
+/* the touch controls of the plane: a column at the right, shown only while flying on a touch screen */
+.flight-buttons { display: none; }
+.is-touch .flight-hud:not([hidden]) + .flight-buttons
+{
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+}
+.is-touch .flight-buttons .hud-button { touch-action: none; }
+.is-touch .flight-buttons .throttle-button { width: 64px; height: 64px; padding: 0; border-radius: 50%; font-size: 1.9rem; line-height: 1; display: grid; place-items: center; }
+.is-touch .flight-buttons [data-flight-tips] { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+.is-touch .flight-hud { pointer-events: none; top: 56px; padding: 0.3rem 1rem; border-radius: 999px; width: auto; min-width: 200px; }
+.is-touch .flight-throttle, .is-touch .flight-hint { display: none; }
+.is-touch .flight-stats { font-size: 1.1rem; }
 
 /* ---------------------------------------------------------------- the arcade */
 .arcade { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 14px; }
@@ -1291,4 +1308,43 @@ kbd
 {
     .flight-tips { top: 96px; width: min(300px, calc(100vw - 32px)); padding: 0.6rem 0.75rem; font-size: 0.82rem; }
 }
-.flight-hud.is-chute .flight-buttons { display: none !important; }
+.flight-hud.is-chute + .flight-buttons { display: none !important; }
+
+/* ---------------------------------------------------------------- missions */
+.mission-hud
+{
+    position: fixed;
+    left: max(18px, env(safe-area-inset-left));
+    top: 124px;
+    z-index: 5;
+    width: min(250px, calc(100vw - 36px));
+    padding: 0.5rem 0.8rem 0.55rem;
+    border-radius: 14px;
+    border-left: 4px solid #7CFFB2;
+    background: var(--night-glass);
+    color: var(--cream);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+.mission-hud[hidden] { display: none; }
+.mission-kicker { margin: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #7CFFB2; }
+.mission-title { margin: 0.1rem 0 0; font-family: var(--display); font-size: 1.1rem; letter-spacing: 0.02em; }
+.mission-objective { margin: 0.15rem 0 0; font-size: 0.85rem; opacity: 0.92; }
+.mission-time { margin: 0.2rem 0 0; font-size: 0.85rem; font-weight: 700; color: var(--yellow); font-variant-numeric: tabular-nums; }
+.mission-time:empty { display: none; }
+.is-touch .mission-hud { top: 104px; width: min(220px, calc(100vw - 36px)); padding: 0.35rem 0.6rem 0.4rem; }
+.is-touch .mission-title { font-size: 0.98rem; }
+.is-touch .mission-objective { font-size: 0.78rem; }
+
+.mission-list { margin-top: 0.6rem; }
+.card-list li.mission-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mission-row .note { display: block; margin-top: 0.15rem; }
+.mission-row .when { display: block; margin-top: 0.2rem; }
+.mission-row.done { opacity: 0.55; }
+.mission-state { font-size: 0.8rem; font-weight: 700; white-space: nowrap; opacity: 0.8; }
+.mission-state.is-active { color: #7CFFB2; opacity: 1; }
+.mission-cancel { margin: 0.7rem 0 0; text-align: center; }
+
+/* flying on a touch screen: the minimap and its line are left off, so the view stays clear (the Map button is still there) */
+.is-touch.is-flying .minimap, .is-touch.is-flying .minimap-next, .is-touch.is-flying .minimap-errand, .is-touch.is-flying .hud-help { visibility: hidden; }
+.is-touch.is-flying .flight-tips { top: auto; right: 12px; bottom: 12px; left: 12px; width: auto; }

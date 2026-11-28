@@ -6,11 +6,14 @@ import { progressText } from '../errands.js'
 
 const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 
-const APP_COLORS = { Email: '#FF8C42', LinkedIn: '#2F6FD6', GitHub: '#2B2D31', X: '#111111', YouTube: '#E0483D' }
+const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
+
+const APP_COLORS ={ Email: '#FF8C42', LinkedIn: '#2F6FD6', GitHub: '#2B2D31', X: '#111111', YouTube: '#E0483D' }
 
 export class UI
 {
-    constructor({ onExplore, onClose, onSound, onPrompt, isTouch })
+    // missions: { list(), start(id), cancel() } from the game, for the phone's Missions app
+    constructor({ onExplore, onClose, onSound, onPrompt, isTouch, missions })
     {
         this.body = document.body
         this.isTouch = isTouch
@@ -46,6 +49,8 @@ export class UI
         this.fadeEl = this.$('.fade')
         this.touch = this.$('.touch')
         this.onClose = onClose
+        this.missions = missions
+        this.missionHud = this.$('.mission-hud')
 
         if(isTouch)
         {
@@ -82,6 +87,17 @@ export class UI
             if(e.target.closest('[data-action="close-phone"]')) this.closePhone()
             const open = e.target.closest('[data-phone]')
             if(open) this.phoneScreen(open.dataset.phone)
+            const start = e.target.closest('[data-mission-start]')
+            if(start && this.missions)
+            {
+                this.missions.start(start.dataset.missionStart)
+                this.closePhone()
+            }
+            if(e.target.closest('[data-mission-cancel]') && this.missions)
+            {
+                this.missions.cancel()
+                this.phoneScreen('missions')
+            }
         })
 
         // page view
@@ -177,7 +193,7 @@ export class UI
         if(!el) return
         clearTimeout(this.flightTipsTimer)
         el.hidden = !on
-        if(on) this.flightTipsTimer = setTimeout(() => { el.hidden = true }, 45000)
+        if(on) this.flightTipsTimer = setTimeout(() => { el.hidden = true }, 16000)
     }
 
     // a tip above the plane while you stand next to it: at is the plane's place on screen, or null
@@ -234,9 +250,10 @@ export class UI
         if(!this.help.classList.contains('is-faded')) this.help.classList.add('is-faded')
     }
 
-    setProgress(seen, total)
+    setProgress(seen, total, cash = 0)
     {
-        const text = seen >= total ? `Seen everything. <strong>${seen}/${total}</strong>` : `Stops seen <strong>${seen}/${total}</strong>`
+        const cashText = cash > 0 ? ` · <strong>${money(cash)}</strong>` : ''
+        const text = (seen >= total ? `Seen everything. <strong>${seen}/${total}</strong>` : `Stops seen <strong>${seen}/${total}</strong>`) + cashText
         if(this.progress.innerHTML !== text) this.progress.innerHTML = text
     }
 
@@ -478,6 +495,7 @@ export class UI
             html += app('Career', '#A855F7', 'data-phone="career"', 'C')
             html += app('Trophies', '#F2B705', 'data-phone="trophies"', 'T')
             html += app('Errands', '#2DE2E6', 'data-phone="errands"', 'E')
+            if(this.missions) html += app('Missions', '#22C55E', 'data-phone="missions"', 'M')
             if(this.sky) html += app('Sky', '#3C7AD4', 'data-phone="sky"', 'S')
             for(const l of links)
                 html += app(l.label, APP_COLORS[l.label] || '#2FA4A0', `href="${escape(l.href)}" ${l.href.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}`, l.label[0])
@@ -491,9 +509,52 @@ export class UI
             html += `${back}<h2 id="phone-title" class="phone-heading">Trophies</h2><div class="phone-contact"><ul class="card-list">${achievements.items.map((i) => `<li><strong>${escape(i.title)}</strong><span class="note">${escape(i.detail)}</span></li>`).join('')}</ul></div>`
         else if(name === 'errands')
             html += `${back}<h2 id="phone-title" class="phone-heading">Errands</h2>${this.errandsBody()}`
+        else if(name === 'missions' && this.missions)
+            html += `${back}<h2 id="phone-title" class="phone-heading">Missions</h2>${this.missionList()}`
         else if(name === 'sky' && this.sky)
             html += `${back}<h2 id="phone-title" class="phone-heading">Sky</h2>${this.skyControls()}`
         this.phoneView.innerHTML = html
+    }
+
+    // the jobs on offer, from the control tower: what each pays, where it is and whether it is done
+    missionList()
+    {
+        const list = this.missions.list()
+        const active = list.find((m) => m.status === 'active')
+        const rows = list.map((m) =>
+        {
+            const action = m.status === 'done' ? '<span class="mission-state">Done</span>'
+                : m.status === 'active' ? '<span class="mission-state is-active">On now</span>'
+                : `<button type="button" class="text-button" data-mission-start="${escape(m.id)}">Start</button>`
+            const limit = m.time ? ` · ${m.time} s` : ''
+            return `<li class="mission-row ${m.status}">
+                <div><strong>${escape(m.title)}</strong><span class="note">${escape(m.brief)}</span>
+                <span class="when">Pays ${money(m.pay)}${limit}</span></div>${action}</li>`
+        }).join('')
+        const cancel = active ? '<p class="mission-cancel"><button type="button" class="text-button" data-mission-cancel>Drop this mission</button></p>' : ''
+        return `<div class="phone-contact"><p class="note">Missions are on from the control tower. Land, fly or sail to finish them.</p><ul class="card-list mission-list">${rows}</ul>${cancel}</div>`
+    }
+
+    // the mission card on the HUD: the title, the objective and the time left, or hidden when none is on
+    setMission(mission)
+    {
+        if(!this.missionHud) return
+        if(!mission)
+        {
+            this.missionHud.hidden = true
+            return
+        }
+        this.missionHud.hidden = false
+        this.$('.mission-title').textContent = mission.title
+        this.$('.mission-objective').textContent = mission.objective
+        const time = mission.timeLeft
+        this.$('.mission-time').textContent = time === null ? '' : `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')} left`
+    }
+
+    // flying with a touch screen: the HUD is kept to a thin strip so the view stays clear
+    setFlying(on)
+    {
+        this.body.classList.toggle('is-flying', !!on)
     }
 
     // ---------------------------------------------------------------- time, seasons, weather
