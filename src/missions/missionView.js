@@ -1,18 +1,26 @@
 import * as THREE from 'three'
 import { mapToDir, surfacePoint, frameQuaternion } from '../core/geo.js'
 
-// What a mission looks like in the world: a glowing beam and pad over the airstrip you
-// have to land on, or a row of rings to fly through. Only the active mission is shown.
+// What a mission looks like in the world. The current step hands over its marks, and each mark
+// has a type that is drawn here:
+//   beam  { x, z, alt }                          a tall glowing column with a pad, to land on
+//   ring  { x, z, yaw, alt, radius, state }      a gate standing upright, facing along `yaw`;
+//                                                state is 'next', 'ahead' or 'passed'
+// A new kind of mark is one more entry in DRAW.
 
 const GREEN = 0x7CFFB2
 const YELLOW = 0xFFE45E
 const CYAN = 0x2DE2E6
 const BEAM_HEIGHT = 120
+const RING_BASE = 9 // the torus is built this big and scaled to the mark's radius
 
 function glow(color, opacity)
 {
     return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
 }
+
+const Z = new THREE.Vector3(0, 0, 1)
+const Y = new THREE.Vector3(0, 1, 0)
 
 export function createMissionView(scene)
 {
@@ -21,82 +29,84 @@ export function createMissionView(scene)
     group.visible = false
     scene.add(group)
 
-    // the landing target: a tall beam with a flat pad on the strip
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, BEAM_HEIGHT, 20, 1, true), glow(GREEN, 0.22))
-    const pad = new THREE.Mesh(new THREE.RingGeometry(7, 9.5, 48), glow(GREEN, 0.9))
-    const padInner = new THREE.Mesh(new THREE.CircleGeometry(7, 48), glow(GREEN, 0.18))
-    const landing = new THREE.Group()
-    landing.add(beam, pad, padInner)
-    landing.visible = false
-    group.add(landing)
-
-    // the rings of a ring race: a torus stands upright, facing along the way round
-    const ringGeometry = new THREE.TorusGeometry(9, 0.7, 10, 40)
-    const rings = []
-    const ringGroup = new THREE.Group()
-    group.add(ringGroup)
-
+    const ringGeometry = new THREE.TorusGeometry(RING_BASE, 0.7, 10, 40)
     const up = new THREE.Vector3()
-    const q = new THREE.Quaternion()
     const p = new THREE.Vector3()
+    // what is on show now, by key, so nothing is rebuilt while the marks are the same
+    let key = ''
+    let shown = []
 
-    function placeLanding(x, z, alt)
-    {
-        mapToDir(x, z, up)
-        q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), up)
-        pad.quaternion.copy(q)
-        padInner.quaternion.copy(q)
-        surfacePoint(x, z, alt + 0.4, p)
-        pad.position.copy(p)
-        padInner.position.copy(p)
-        // the beam: its base at the strip, standing along the sea's normal
-        beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), up)
-        surfacePoint(x, z, alt + BEAM_HEIGHT / 2, p)
-        beam.position.copy(p)
+    const DRAW = {
+        beam(mark)
+        {
+            const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, BEAM_HEIGHT, 20, 1, true), glow(GREEN, 0.22))
+            const pad = new THREE.Mesh(new THREE.RingGeometry(7, 9.5, 48), glow(GREEN, 0.9))
+            const padInner = new THREE.Mesh(new THREE.CircleGeometry(7, 48), glow(GREEN, 0.18))
+            mapToDir(mark.x, mark.z, up)
+            for(const m of [ pad, padInner ]) m.quaternion.setFromUnitVectors(Z, up)
+            pad.position.copy(surfacePoint(mark.x, mark.z, mark.alt + 0.4, p))
+            padInner.position.copy(p)
+            beam.quaternion.setFromUnitVectors(Y, up)
+            beam.position.copy(surfacePoint(mark.x, mark.z, mark.alt + BEAM_HEIGHT / 2, p))
+            const g = new THREE.Group()
+            g.add(beam, pad, padInner)
+            return g
+        },
+        ring(mark)
+        {
+            const m = new THREE.Mesh(ringGeometry, glow(CYAN, 0.8))
+            surfacePoint(mark.x, mark.z, mark.alt, m.position)
+            m.quaternion.copy(frameQuaternion(mark.x, mark.z, mark.yaw))
+            m.userData.base = mark.radius / RING_BASE
+            m.scale.setScalar(m.userData.base)
+            return m
+        }
     }
 
-    function syncRings(list)
+    // the state of a ring changes its colour and glow, not its shape
+    function restyle(object, mark)
     {
-        // the ring meshes are rebuilt only when the race changes: a new mission, or a new island
-        const key = list.map((r) => `${r.x.toFixed(1)},${r.z.toFixed(1)}`).join('|')
-        if(key !== ringGroup.userData.key)
+        if(mark.type !== 'ring') return
+        const color = mark.state === 'next' ? YELLOW : mark.state === 'passed' ? GREEN : CYAN
+        object.material.color.setHex(color)
+        object.material.opacity = mark.state === 'next' ? 1 : mark.state === 'passed' ? 0.25 : 0.55
+        // the next one pulses, so it can be seen from far off
+        object.scale.setScalar(object.userData.base * (mark.state === 'next' ? 1 + Math.sin(performance.now() / 180) * 0.06 : 1))
+    }
+
+    function clear()
+    {
+        for(const { object } of shown)
         {
-            ringGroup.userData.key = key
-            for(const r of rings) { ringGroup.remove(r); r.material.dispose() }
-            rings.length = 0
-            for(const r of list)
+            group.remove(object)
+            object.traverse((o) =>
             {
-                const m = new THREE.Mesh(ringGeometry, glow(CYAN, 0.8))
-                surfacePoint(r.x, r.z, r.alt, m.position)
-                m.quaternion.copy(frameQuaternion(r.x, r.z, r.yaw))
-                ringGroup.add(m)
-                rings.push(m)
+                if(o.geometry && o.geometry !== ringGeometry) o.geometry.dispose()
+                o.material?.dispose()
+            })
+        }
+        shown = []
+    }
+
+    // marks: the current step's marks, or null for none
+    function update(marks)
+    {
+        group.visible = !!marks && marks.length > 0
+        if(!group.visible) { if(key) { clear(); key = '' } return }
+        // the shape of the marks: types and places (the states are not part of it)
+        const next = marks.map((m) => `${m.type}:${m.x.toFixed(1)},${m.z.toFixed(1)},${m.alt.toFixed(1)}`).join('|')
+        if(next !== key)
+        {
+            clear()
+            key = next
+            for(const mark of marks)
+            {
+                const object = DRAW[mark.type](mark)
+                group.add(object)
+                shown.push({ object, mark })
             }
         }
-        list.forEach((r, i) =>
-        {
-            const color = r.state === 'next' ? YELLOW : r.state === 'passed' ? GREEN : CYAN
-            rings[i].material.color.setHex(color)
-            rings[i].material.opacity = r.state === 'next' ? 1 : r.state === 'passed' ? 0.25 : 0.55
-            // the next ring pulses, so you can see it from far off
-            rings[i].scale.setScalar(r.state === 'next' ? 1 + Math.sin(performance.now() / 180) * 0.06 : 1)
-        })
-    }
-
-    // mission: what Missions gives back (its landing and rings), or null for none
-    function update(mission)
-    {
-        group.visible = !!mission
-        if(!mission) return
-        const landingSpot = mission.landing
-        if(landingSpot)
-        {
-            landing.visible = true
-            placeLanding(landingSpot.x, landingSpot.z, landingSpot.alt)
-        }
-        else landing.visible = false
-        ringGroup.visible = mission.rings.length > 0
-        if(ringGroup.visible) syncRings(mission.rings)
+        marks.forEach((mark, i) => restyle(shown[i].object, mark))
     }
 
     return { group, update }

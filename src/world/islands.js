@@ -293,7 +293,12 @@ export function islandHeight(index, x, z, s)
         const d = Math.hypot(x - island.at.x, z - island.at.z)
         peak = island.peak * Math.exp(-(d / 13) * (d / 13))
     }
-    return beach + inland * (0.4 + hills + peak)
+    // the middle of an island rises into a dome, and ridges run across it, so it is a landscape and not a flat plate
+    const dome = (1.4 + island.hills * 0.8) * smoothstep(5, 26, s)
+    const ridge = Math.pow(1 - Math.abs(fbm(n, lx * 0.05 - 8, lz * 0.05 + 5, 3)), 2) * island.hills * 1.2 * smoothstep(8, 24, s)
+    // the extra relief fades out near the airstrip (found once, on the flat ground this relief is added to), so the strip and its surroundings stay level
+    const away = island.clearSeg ? smoothstep(CLEAR.half + 2, CLEAR.half + 26, distanceToSegment(island.clearSeg, x, z)) : 0
+    return beach + inland * (0.4 + hills + peak) + (dome + ridge) * away
 }
 
 // the kind of ground at a point on an island: the terrain colours depend on it
@@ -422,6 +427,7 @@ function findAirstrip(index)
     }
     const pick = best || fallback
     island.runway = pick.runway
+    island.clearSeg = clearZone(pick.runway)
     island.airstrip = { range: pick.range, coast: pick.coast, near: pick.near, fits: !!best }
 }
 

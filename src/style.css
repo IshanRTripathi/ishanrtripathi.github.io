@@ -1348,3 +1348,62 @@ kbd
 /* flying on a touch screen: the minimap and its line are left off, so the view stays clear (the Map button is still there) */
 .is-touch.is-flying .minimap, .is-touch.is-flying .minimap-next, .is-touch.is-flying .minimap-errand, .is-touch.is-flying .hud-help { visibility: hidden; }
 .is-touch.is-flying .flight-tips { top: auto; right: 12px; bottom: 12px; left: 12px; width: auto; }
+
+/* the car radio's dial: under the top bar while driving a car */
+.radio-pill
+{
+    position: fixed;
+    top: 58px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    padding: 0.35rem 0.9rem 0.3rem;
+    border: 1px solid rgba(255, 246, 236, 0.35);
+    border-radius: 999px;
+    background: var(--night-glass);
+    color: var(--cream);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.radio-pill[hidden] { display: none; }
+.radio-pill:hover { border-color: var(--pink); }
+
+/* stamina: a thin bar at the bottom while it is not full; and the jump button on a touch screen */
+.stamina
+{
+    position: fixed;
+    left: 50%;
+    bottom: 84px;
+    transform: translateX(-50%);
+    z-index: 5;
+    width: 140px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 246, 236, 0.2);
+    overflow: hidden;
+    pointer-events: none;
+}
+.stamina[hidden] { display: none; }
+.stamina span { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--yellow)); transform-origin: left center; }
+.stamina.is-winded span { background: #FF4D5E; }
+.jump-button
+{
+    position: fixed;
+    right: max(22px, env(safe-area-inset-right));
+    bottom: 118px;
+    z-index: 6;
+    width: 74px;
+    height: 74px;
+    border: 2px solid rgba(255, 246, 236, 0.7);
+    border-radius: 50%;
+    background: var(--night-glass);
+    color: var(--cream);
+    font: inherit;
+    font-weight: 700;
+    touch-action: none;
+}
+.jump-button[hidden] { display: none; }
+.jump-button:active { transform: scale(0.94); }

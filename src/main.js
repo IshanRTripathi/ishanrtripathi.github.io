@@ -141,6 +141,8 @@ class App
             onJump: (dest) => this.jump(dest)
         })
         ui.onMap = () => this.fullMap.toggle()
+        ui.onRadio = () => this.nextStation()
+        ui.onJump = () => this.input.pressed.add('Space')
         ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen
         this.wasFlying = false
         this.missions = missions
@@ -330,6 +332,54 @@ class App
         }
     }
 
+    // on foot: footsteps by stride, the stamina bar, the jump button, and the camera widening in a sprint
+    updateOnFoot(dt)
+    {
+        const p = this.player
+        const walking = p.mode === 'walk'
+        if(walking && !p.swimming && p.jumpH === 0 && p.speed > 0.8)
+        {
+            this.stride = (this.stride || 0) + p.speed * dt
+            const length = p.sprinting ? 2.1 : 1.6
+            if(this.stride > length)
+            {
+                this.stride -= length
+                this.ambience.sfx('step', { level: Math.min(1, p.speed / 7.8) })
+            }
+        }
+        ui.setStamina(walking ? p.stamina : 1, p.winded)
+        ui.setJump(walking && !p.swimming)
+        const kick = p.sprinting ? 6 : 0
+        this.fovKick = (this.fovKick || 0) + (kick - (this.fovKick || 0)) * Math.min(1, dt * 5)
+        const fov = (window.innerWidth < window.innerHeight ? 58 : 45) + this.fovKick
+        if(Math.abs(this.camera.fov - fov) > 0.01)
+        {
+            this.camera.fov = fov
+            this.camera.updateProjectionMatrix()
+        }
+    }
+
+    // the next radio station (then off); the radio needs the sound on
+    nextStation()
+    {
+        if(!this.ambience.enabled)
+        {
+            ui.showArea('Radio', 'Turn the sound on first, with the Sound button')
+            return
+        }
+        const station = this.ambience.radioNext()
+        this.ambience.ui('switch')
+        ui.showArea(station ? `${station.name} ${station.freq}` : 'Radio off', station ? station.tag : 'Press T to tune in again')
+    }
+
+    // the dial's text: the station, or how to turn the radio on
+    radioLabel()
+    {
+        if(!this.ambience.enabled) return 'Radio · turn the sound on'
+        const station = this.ambience.radio?.current
+        return station ? `${station.name} ${station.freq} · T` : 'Radio off · T'
+    }
+
     // a mission from the phone: it sets the target and shows the brief
     startMission(id)
     {
@@ -349,27 +399,28 @@ class App
         const m = e.mission
         if(e.type === 'start')
         {
-            this.ambience.ui('confirm')
+            this.ambience.sfx('missionStart')
             ui.showArea(m.title, m.brief)
         }
-        else if(e.type === 'ring')
+        else if(e.type === 'progress')
         {
-            this.ambience.ui('click')
-            ui.showArea(`Ring ${e.count} of ${e.total}`, e.count < e.total ? 'Keep going' : 'All rings flown')
+            this.ambience.sfx('checkpoint')
+            ui.showArea(`${e.label} ${e.count} of ${e.total}`, e.count < e.total ? 'Keep going' : 'All done')
         }
-        else if(e.type === 'leg')
+        else if(e.type === 'step')
         {
-            this.ambience.ui('click')
-            ui.showArea('Landed', `Next: ${missions.target ? missions.target.label : ''}`)
+            this.ambience.sfx('checkpoint')
+            ui.showArea('Done', `Next: ${missions.target ? missions.target.label : ''}`)
         }
         else if(e.type === 'complete')
         {
-            this.ambience.ui('confirm')
+            this.ambience.sfx('missionPass')
+            setTimeout(() => this.ambience.sfx('cash'), 900)
             ui.showArea('Mission complete', `${m.title}: +$${e.pay.toLocaleString('en-US')}`)
         }
         else if(e.type === 'fail')
         {
-            this.ambience.ui('close')
+            this.ambience.sfx('missionFail')
             ui.showArea('Mission failed', `${m.title}: ${e.reason}. Try again from the phone`)
         }
         else if(e.type === 'cancel')
@@ -377,7 +428,7 @@ class App
             ui.showArea('Mission dropped', m.title)
         }
         // the markers and the HUD card follow the mission, including the moment it ends
-        this.missionView.update(missions.active ? missions : null)
+        this.missionView.update(missions.active ? missions.marks : null)
         ui.setMission(missions.active ? missions : null)
     }
 
@@ -461,6 +512,13 @@ class App
             ui.showArea('Back on the ground', 'Your parachute got you down safely')
         })
         events.addEventListener('notice', (e) => ui.showArea('Not here', e.detail))
+        events.addEventListener('jump', () => this.ambience.sfx('jump'))
+        events.addEventListener('land', (e) => { if(e.detail > 2.5) this.ambience.sfx('land', { level: Math.min(1, e.detail / 9) }) })
+        events.addEventListener('winded', () =>
+        {
+            this.ambience.sfx('puff')
+            ui.showArea('Out of breath', 'Catch your breath to sprint again')
+        })
         events.addEventListener('splash', () =>
         {
             this.ambience.splash()
@@ -528,7 +586,7 @@ class App
             const prompt = this.interior.prompt()
             return prompt ? ui.setPrompt(prompt.key, prompt.label) : ui.setPrompt(null)
         }
-        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' ? (p.vehicle.flight.onGround ? 'Get out of the plane' : 'Bail out with the parachute') : p.vehicle.kind === 'boat' ? 'Get off the boat' : 'Get off the scooter')
+        if(p.mode === 'ride') return ui.setPrompt('E', p.vehicle.kind === 'car' ? 'Get out of the car' : p.vehicle.kind === 'plane' || p.vehicle.kind === 'heli' ? (p.vehicle.flight.onGround ? `Get out of the ${p.vehicle.kind === 'heli' ? 'helicopter' : 'plane'}` : 'Bail out with the parachute') : p.vehicle.kind === 'boat' ? 'Get off the boat' : 'Get off the scooter')
         if(p.mode === 'sit') return ui.setPrompt('W', 'Stand up')
         if(p.nearVehicle) return ui.setPrompt('E', p.nearVehicle.label)
         const door = p.mode === 'walk' ? this.doorNear() : null
@@ -716,16 +774,25 @@ class App
                 car: vehicle && vehicle.kind === 'car' ? Math.min(1, Math.abs(this.player.speed) / (vehicle.maxSpeed || 10)) : null,
                 plane: flying ? vehicle.flight.throttle : null
             })
+            // the car radio: T tunes to the next station while driving a car
+            const driving = this.player.mode === 'ride' && !!vehicle && vehicle.kind === 'car'
+            this.ambience.radioDrive(driving)
+            if(driving && input.consume('KeyT')) this.nextStation()
+            if(this.player.mode === 'ride' && input.consume('KeyH')) this.ambience.sfx('horn')
+            this.updateOnFoot(dt)
+            ui.setRadio(driving ? this.radioLabel() : null)
             ui.setFlight(flying ? this.player.vehicle.flight : null)
             if(this.player.mode === 'chute') ui.setChute(this.player.chute)
-            // a mission follows the plane you fly: its landings and rings are checked here
-            this.updateMissions(dt, flying ? this.player.vehicle.flight : null)
+            // a mission follows what you ride: its landings, rings and checkpoints are checked here
+            this.updateMissions(dt)
             // in the air on a touch screen the HUD is a thin strip, so the view stays clear
             ui.setFlying(!!flying && isTouch)
             // the how-to card opens when you climb in (not on a touch screen, where it would cover the view)
             if(flying && !this.wasFlying)
             {
-                if(!isTouch) ui.showFlightTips(true)
+                const heli = this.player.vehicle.kind === 'heli'
+                if(!isTouch && !heli) ui.showFlightTips(true)
+                if(heli) ui.showArea('Helicopter', 'R climbs, F descends, W and S fly, A and D turn. Let go and it hovers')
                 ui.fadeHelp()
             }
             if(!flying && this.wasFlying) ui.showFlightTips(false)
@@ -738,20 +805,33 @@ class App
     }
 
     // the mission on hand: the plane's place, in the sky and on the ground, is what it checks
-    updateMissions(dt, flight)
+    updateMissions(dt)
     {
-        const plane = flight ? { x: flight.x, z: flight.z, alt: flight.ground + flight.h, v: flight.v, onGround: flight.onGround } : null
-        if(!missions.active && !plane) return
-        missions.update(dt, plane)
-        this.missionView.update(missions.active ? missions : null)
+        if(!missions.active) return
+        missions.update(dt, this.rider())
+        this.missionView.update(missions.active ? missions.marks : null)
         ui.setMission(missions.active ? missions : null)
+    }
+
+    // what the player is riding, for the missions: the vehicle's kind, and where and how fast it is
+    rider()
+    {
+        const p = this.player
+        if(p.mode !== 'ride' || !p.vehicle) return null
+        const v = p.vehicle
+        if(v.flight)
+        {
+            const f = v.flight
+            return { kind: v.kind, x: f.x, z: f.z, alt: f.ground + f.h, v: f.v, onGround: f.onGround }
+        }
+        return { kind: v.kind, x: p.x, z: p.z, alt: 0, v: Math.abs(p.speed), onGround: true }
     }
 
     // a tip above the plane while you stand next to it
     updatePlaneTip()
     {
         const p = this.player
-        const plane = p.mode === 'walk' && p.nearVehicle && p.nearVehicle.kind === 'plane' ? p.nearVehicle : null
+        const plane = p.mode === 'walk' && p.nearVehicle && (p.nearVehicle.kind === 'plane' || p.nearVehicle.kind === 'heli') ? p.nearVehicle : null
         if(!plane || ui.modalOpen)
         {
             ui.setPlaneTip(null)

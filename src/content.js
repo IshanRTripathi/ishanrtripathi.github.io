@@ -5,7 +5,7 @@ export const person = {
     name: 'Ishan R Tripathi',
     shortName: 'Ishan',
     role: 'Software engineer',
-    intro: 'I build backend systems, Android apps and the odd game. This is my city at sunset. Walk or drive around, step into the glowing markers to see what I built, and find me at the chai shack on the beach.',
+    intro: 'An open-world island game with my portfolio built in. Walk, sprint and jump around the city, drive, fly a plane or a helicopter, sail, race and take missions from your phone. My projects, career and trophies live on the city island: step into a glowing marker to read one, and find me at the chai shack on the beach.',
     about: 'Software engineer specialising in backend development with Java, Spring Boot and Postgres, with experience in financial services, e-commerce and logistics. I like building products from scratch, design discussions included. Google Agentic AI Hackathon winner and Math Olympiad silver medallist.'
 }
 

@@ -16,6 +16,7 @@ export class Music
         this.context = context
         this.on = false
         this.night = 0
+        this.duckLevel = 1 // the radio turns the music down while it plays
         this.out = context.createGain()
         this.out.gain.value = 0
         this.out.connect(destination)
@@ -58,6 +59,12 @@ export class Music
             const share = track.night ? this.night : 1 - this.night
             gain.gain.setTargetAtTime(share * track.trim, t, 1.2)
         }
-        this.out.gain.setTargetAtTime(this.on ? 1 : 0, t, 0.4)
+        this.out.gain.setTargetAtTime(this.on ? this.duckLevel : 0, t, 0.4)
+    }
+
+    duck(on)
+    {
+        this.duckLevel = on ? 0.1 : 1
+        this.fade()
     }
 }

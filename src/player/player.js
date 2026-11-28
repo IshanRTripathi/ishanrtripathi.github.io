@@ -7,8 +7,19 @@ import { place } from '../world/world.js'
 import { buildParachute, updateParachute } from '../world/parachute.js'
 import { ISLANDS } from '../world/islands.js'
 
-const WALK = 2.7
-const RUN = 6.2
+const WALK = 2.7 // the slow end: a script's pace, and a light push on the stick
+const JOG = 4.4 // the normal pace on foot
+const SPRINT = 7.8 // Shift (or a full push on the stick), while there is stamina
+// stamina: 1 is full. A sprint empties it in five seconds; it fills again after a short rest, quicker standing still
+const SPRINT_DRAIN = 0.2
+const REST_BEFORE_REFILL = 0.9
+const REFILL_MOVING = 0.12
+const REFILL_STILL = 0.25
+// once it runs out you cannot sprint until it is back above this
+const WINDED_UNTIL = 0.3
+// jumping: the take-off speed up, and gravity (a jump is a little over a metre high and lasts about 0.7 s)
+const JUMP_SPEED = 5.4
+const GRAVITY = 15
 const TURN_RATE = 9
 // how far out to sea you can swim, in metres from the nearest land
 const SWIM_LIMIT = -40
@@ -180,6 +191,12 @@ export class Player
         this.speed = 0
         this.turn = 0
         this.mode = 'walk' // walk | ride | script | sit
+        this.stamina = 1
+        this.staminaRest = 0
+        this.winded = false
+        this.sprinting = false
+        this.jumpH = 0 // height off the ground in a jump
+        this.jumpV = 0
         this.script = null
         this.idleTime = 0
         this.steer = 0
@@ -433,6 +450,8 @@ export class Player
         const mx = input.move.x
         const my = input.move.y
         const amount = Math.hypot(mx, my)
+        this.updateStamina(dt, amount)
+        this.updateJump(dt)
         let targetSpeed = 0
         if(amount > 0.05)
         {
@@ -444,15 +463,66 @@ export class Player
             const dx = fx * my + rx * mx
             const dz = fz * my + rz * mx
             const diff = this.turnTowards(Math.atan2(dx, dz), dt)
-            targetSpeed = amount * (input.run ? RUN : WALK) * THREE.MathUtils.clamp(Math.cos(diff) * 0.8 + 0.35, 0, 1)
+            targetSpeed = amount * (this.sprinting ? SPRINT : JOG) * THREE.MathUtils.clamp(Math.cos(diff) * 0.8 + 0.35, 0, 1)
         }
         // swimming is slower than walking
         if(this.swimming) targetSpeed *= 0.55
-        const accel = targetSpeed > this.speed ? 10 : 14
+        // in the air you steer a little, but you keep the speed you took off with
+        const grip = this.jumpH > 0 ? 0.3 : 1
+        const accel = (targetSpeed > this.speed ? 10 : 14) * grip
         this.speed += (targetSpeed - this.speed) * Math.min(1, dt * accel)
         if(this.speed < 0.02) this.speed = 0
         // on foot you can swim out to sea, not off the edge of the world
         this.move(dt, 0.32, SWIM_LIMIT)
+    }
+
+    // sprinting drains the stamina; resting fills it, and at nothing you are winded until it is back
+    updateStamina(dt, amount)
+    {
+        const wants = this.input.run && amount > 0.3 && !this.swimming && !this.winded && this.jumpH === 0
+        const was = this.sprinting
+        this.sprinting = wants && this.stamina > 0
+        if(this.sprinting)
+        {
+            this.stamina = Math.max(0, this.stamina - dt * SPRINT_DRAIN)
+            this.staminaRest = REST_BEFORE_REFILL
+            if(this.stamina <= 0)
+            {
+                this.winded = true
+                this.sprinting = false
+                this.emit('winded')
+            }
+        }
+        else
+        {
+            // a sprint carries on in the air, and the stamina waits until you are down
+            if(was && this.jumpH > 0) this.sprinting = true
+            this.staminaRest -= dt
+            if(this.staminaRest <= 0) this.stamina = Math.min(1, this.stamina + dt * (amount > 0.05 ? REFILL_MOVING : REFILL_STILL))
+            if(this.winded && this.stamina > WINDED_UNTIL) this.winded = false
+        }
+    }
+
+    // Space jumps from the ground (not while swimming); gravity brings you down
+    updateJump(dt)
+    {
+        if(this.jumpH === 0 && this.jumpV === 0 && !this.swimming && this.input.consume('Space'))
+        {
+            this.jumpV = JUMP_SPEED
+            this.emit('jump')
+        }
+        if(this.jumpV !== 0 || this.jumpH > 0)
+        {
+            this.jumpV -= GRAVITY * dt
+            this.jumpH += this.jumpV * dt
+            if(this.jumpH <= 0)
+            {
+                const hit = -this.jumpV
+                this.jumpH = 0
+                this.jumpV = 0
+                this.emit('land', hit)
+            }
+        }
     }
 
     move(dt, radius, limit = -1.4)
@@ -480,6 +550,9 @@ export class Player
         if(vehicle.traffic) vehicle = this.world.takeTrafficCar(vehicle.traffic)
         if(!vehicle) return
         this.vehicle = vehicle
+        this.jumpH = 0
+        this.jumpV = 0
+        this.sprinting = false
         vehicle.collider.disabled = true
         vehicle.ridden = true
         this.mode = 'ride'
@@ -571,11 +644,15 @@ export class Player
         const v = this.vehicle
         const f = v.flight
         const input = this.input
-        // R and F set the throttle (the touch buttons do the same)
+        // R and F set the throttle (the touch buttons do the same); in a helicopter they climb and descend
         const up = (input.down('KeyR') ? 1 : 0) + (input.throttleHold > 0 ? 1 : 0)
         const down = (input.down('KeyF') ? 1 : 0) + (input.throttleHold < 0 ? 1 : 0)
-        f.throttle = Math.max(0, Math.min(1, f.throttle + (up - down) * 0.7 * dt))
-        f.update(dt, { x: input.move.x, y: input.move.y }, this.world.colliders, resolveCollisions)
+        if(f.kind === 'heli') f.update(dt, { x: input.move.x, y: input.move.y, lift: Math.max(-1, Math.min(1, up - down)) }, this.world.colliders, resolveCollisions)
+        else
+        {
+            f.throttle = Math.max(0, Math.min(1, f.throttle + (up - down) * 0.7 * dt))
+            f.update(dt, { x: input.move.x, y: input.move.y }, this.world.colliders, resolveCollisions)
+        }
         this.x = f.x
         this.z = f.z
         this.yaw = f.yaw
@@ -730,7 +807,7 @@ export class Player
         // in the plane the sea is flat, the same as the plane's own ground, so the camera follows the aircraft
         // rather than the sea floor under it
         const floor = flying ? Math.max(0, ground) : this.swimming ? Math.max(ground, SWIM_FLOAT) : ground
-        const h = (sailing ? 0 : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0)
+        const h = (sailing ? 0 : floor) + (flying ? this.vehicle.flight.h : chuting ? this.chute.h : 0) + (this.mode === 'walk' ? this.jumpH : 0)
         const root = this.character.root
         // the character is swapped for the real model when it loads, so the canopy follows the current one
         if(this.parachute.root.parent !== root) root.add(this.parachute.root)
@@ -805,10 +882,11 @@ export class Player
         this.character.setState({
             speed: this.mode === 'ride' ? 0 : this.speed,
             walkSpeed: WALK,
-            runSpeed: RUN,
+            runSpeed: SPRINT,
+            air: this.mode === 'walk' && this.jumpH > 0,
             turn: this.mode === 'ride' ? 0 : this.turn,
             // hanging in the harness looks like sitting: the same pose
-            mode: this.mode === 'ride' ? 'ride' : this.mode === 'sit' || this.mode === 'chute' ? 'sit' : this.speed > 0.05 ? 'move' : 'idle'
+            mode: this.mode === 'ride' ? 'ride' : this.mode === 'sit' || this.mode === 'chute' ? 'sit' : this.speed > 0.05 || this.jumpH > 0 ? 'move' : 'idle'
         })
         this.character.update(dt)
     }

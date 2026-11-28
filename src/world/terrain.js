@@ -117,7 +117,9 @@ function rawHeight(x, z)
     const inland = smoothstep(bw - 1, bw + 5, s)
     const hillMask = smoothstep(bw + 3, bw + 15, s)
     const h = smoothstep(-0.25, 0.75, fbm(noise, x * 0.022 + 3.1, z * 0.022 - 1.7, 3))
-    const hills = h * 3.2 * hillMask
+    // taller hills than a flat park, and a broad swell that lifts the middle of the island, away from the coast and the roads
+    const swell = smoothstep(bw + 14, bw + 50, s) * 1.8
+    const hills = h * 5.4 * hillMask + swell
     const bumps = noiseB(x * 0.22, z * 0.22) * 0.16 * inland
 
     const pathK = smoothstep(4.5, 0.0, pathEdgeDistance(x, z))
