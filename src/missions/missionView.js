@@ -3,9 +3,11 @@ import { mapToDir, surfacePoint, frameQuaternion } from '../core/geo.js'
 
 // What a mission looks like in the world. The current step hands over its marks, and each mark
 // has a type that is drawn here:
-//   beam  { x, z, alt }                          a tall glowing column with a pad, to land on
+//   beam  { x, z, alt, radius? }                 a tall glowing column with a pad, to land or stand on;
+//                                                radius sizes it (9 is the size of an airstrip pad)
 //   ring  { x, z, yaw, alt, radius, state }      a gate standing upright, facing along `yaw`;
 //                                                state is 'next', 'ahead' or 'passed'
+//   ramp  { x, z, yaw, alt }                     a floating ramp on the sea for a boat to jump
 // A new kind of mark is one more entry in DRAW.
 
 const GREEN = 0x7CFFB2
@@ -39,9 +41,10 @@ export function createMissionView(scene)
     const DRAW = {
         beam(mark)
         {
-            const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, BEAM_HEIGHT, 20, 1, true), glow(GREEN, 0.22))
-            const pad = new THREE.Mesh(new THREE.RingGeometry(7, 9.5, 48), glow(GREEN, 0.9))
-            const padInner = new THREE.Mesh(new THREE.CircleGeometry(7, 48), glow(GREEN, 0.18))
+            const k = (mark.radius ?? RING_BASE) / RING_BASE
+            const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * k, 2.6 * k, BEAM_HEIGHT, 20, 1, true), glow(GREEN, 0.22))
+            const pad = new THREE.Mesh(new THREE.RingGeometry(7 * k, 9.5 * k, 48), glow(GREEN, 0.9))
+            const padInner = new THREE.Mesh(new THREE.CircleGeometry(7 * k, 48), glow(GREEN, 0.18))
             mapToDir(mark.x, mark.z, up)
             for(const m of [ pad, padInner ]) m.quaternion.setFromUnitVectors(Z, up)
             pad.position.copy(surfacePoint(mark.x, mark.z, mark.alt + 0.4, p))
@@ -50,6 +53,21 @@ export function createMissionView(scene)
             beam.position.copy(surfacePoint(mark.x, mark.z, mark.alt + BEAM_HEIGHT / 2, p))
             const g = new THREE.Group()
             g.add(beam, pad, padInner)
+            return g
+        },
+        // a wedge, low at the near edge and high at the far one, with a bright edge to see from afar
+        ramp(mark)
+        {
+            const g = new THREE.Group()
+            const slope = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.25, 6), glow(YELLOW, 0.75))
+            slope.rotation.x = -0.28
+            slope.position.y = 0.55
+            g.add(slope)
+            const edge = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.12, 0.3), glow(0xFFFFFF, 0.95))
+            edge.position.set(0, 1.4, 2.8)
+            g.add(edge)
+            surfacePoint(mark.x, mark.z, mark.alt, g.position)
+            g.quaternion.copy(frameQuaternion(mark.x, mark.z, mark.yaw))
             return g
         },
         ring(mark)

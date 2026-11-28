@@ -8,14 +8,18 @@ import { MISSIONS } from './list.js'
 //
 // Events: { type: 'start' | 'progress' | 'step' | 'complete' | 'fail' | 'cancel', mission, ... }
 //
-// update() is given `rider`, what the player is riding now: { kind, x, z, alt, v, onGround }, or
-// null on foot. The clock only starts once the rider is in a vehicle the mission allows.
+// update() is given `rider`, what the player is riding now: { kind, x, z, alt, v, onGround } (kind
+// 'walk' on foot), or null while swimming or in a scene. The clock only starts once the rider is in a vehicle the mission allows.
 
 export { MISSIONS }
 
-const VEHICLE_NAMES = { plane: 'plane', heli: 'helicopter', car: 'car', scooter: 'scooter', boat: 'boat' }
+// `walk` is on foot: a mission that allows it is done without a vehicle
+const VEHICLE_NAMES = { walk: 'on foot', plane: 'plane', heli: 'helicopter', car: 'car', scooter: 'scooter', boat: 'boat' }
 
 export const vehicleNames = (kinds) => kinds.map((k) => VEHICLE_NAMES[k] || k).join(' or ')
+
+// what to do before the clock and the objective count
+const needText = (kinds) => (kinds.every((k) => k === 'walk') ? 'Get out and on your feet' : `Get in a ${vehicleNames(kinds.filter((k) => k !== 'walk'))}`)
 
 // the runtime steps of a mission: each step's definition with its own state
 export function buildSteps(def)
@@ -87,7 +91,8 @@ export class Missions
     get target()
     {
         const s = this.current
-        return s ? { ...s.impl.target(s.state), direct: true } : null
+        const t = s ? s.impl.target(s.state) : null
+        return t ? { ...t, direct: true } : null
     }
 
     // the short objective line for the HUD; until you are in a vehicle that counts it says which
@@ -98,7 +103,7 @@ export class Missions
         const step = a.steps[a.step]
         const legs = a.steps.length > 1 ? `Step ${a.step + 1} of ${a.steps.length}: ` : ''
         const text = `${legs}${step.impl.objective(step.state)}`
-        return a.riding ? text : `Get in a ${vehicleNames(a.def.vehicles)}: ${text}`
+        return a.riding ? text : `${needText(a.def.vehicles)}: ${text}`
     }
 
     // seconds left, or null when the mission has no limit
@@ -116,7 +121,8 @@ export class Missions
         return s ? s.impl.marks(s.state) : []
     }
 
-    update(dt, rider)
+    // world: what the steps may look at besides the rider, e.g. { traffic: [ { x, z } ] }
+    update(dt, rider, world = {})
     {
         const a = this.active
         if(!a) return
@@ -131,7 +137,7 @@ export class Missions
         }
         if(!a.riding) return
         const step = a.steps[a.step]
-        const result = step.impl.update(step.state, rider)
+        const result = step.impl.update(step.state, rider, world, dt)
         if(!result) return
         if(result.progress) this.onEvent({ type: 'progress', mission: a.def, label: step.state.def.label ?? 'Gate', ...result.progress })
         if(result.done) this.nextStep(a)

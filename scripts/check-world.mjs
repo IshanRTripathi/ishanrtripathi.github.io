@@ -309,7 +309,7 @@ for(let i = 0; i < ISLANDS.length; i++)
 // The missions: each one builds (its steps, islands and routes all exist), pays something, names
 // real vehicles, and can be done. A road race has its checkpoints on the road, a boat race has
 // its gates on the sea, and a race against the clock leaves a sensible time for its length.
-const KINDS = [ 'plane', 'heli', 'car', 'scooter', 'boat' ]
+const KINDS = [ 'walk', 'plane', 'heli', 'car', 'scooter', 'boat' ]
 const ids = new Set()
 for(const m of MISSIONS)
 {
@@ -322,18 +322,25 @@ for(const m of MISSIONS)
     try { steps = buildSteps(m) }
     catch(err) { fail(`${name}: ${err.message}`); continue }
     let length = 0
-    for(const { state } of steps)
+    for(const { impl, state } of steps)
     {
+        if(state.def.type === 'weave' && !m.vehicles.every((k) => k === 'car' || k === 'scooter')) fail(`${name}: a traffic weave is for the car or the scooter`)
+        // ramps stand on the sea
+        for(const mark of impl.marks(state))
+            if(mark.type === 'ramp' && coastDistance(mark.x, mark.z) > -2) fail(`${name}: a ramp is not on the sea at (${mark.x.toFixed(1)}, ${mark.z.toFixed(1)})`)
         if(!state.gates) continue
         for(let i = 0; i < state.gates.length; i++)
         {
             const g = state.gates[i]
             if(i) length += Math.hypot(g.x - state.gates[i - 1].x, g.z - state.gates[i - 1].z)
             if(state.air) { if(!(g.alt > 0)) fail(`${name}: a ring is below the ground at (${g.x.toFixed(1)}, ${g.z.toFixed(1)})`) }
+            else if(m.vehicles.every((k) => k === 'walk')) { if(pathEdgeDistance(g.x, g.z) > 3) fail(`${name}: stop ${i + 1} is ${pathEdgeDistance(g.x, g.z).toFixed(1)} m from a path`) }
             else if(m.vehicles.includes('boat')) { if(coastDistance(g.x, g.z) > -2) fail(`${name}: a gate is not on the sea at (${g.x.toFixed(1)}, ${g.z.toFixed(1)})`) }
             else if(roadEdgeDistance(g.x, g.z) > 1.5) fail(`${name}: checkpoint ${i + 1} is ${roadEdgeDistance(g.x, g.z).toFixed(1)} m off the road`)
         }
     }
+    // on foot, a sprint lasts five seconds, so about 5.5 m/s is the most there is to ask
+    if(m.time && length && m.vehicles.every((k) => k === 'walk') && length / m.time > 5.5) fail(`${name}: ${length.toFixed(0)} m in ${m.time} s needs ${(length / m.time).toFixed(1)} m/s on foot`)
     // the slowest vehicle allowed has to be able to do it in the time: a rough speed of 6 m/s on the road
     if(m.time && length && m.vehicles.every((k) => k === 'car' || k === 'scooter') && length / m.time > 8) fail(`${name}: ${length.toFixed(0)} m in ${m.time} s needs ${(length / m.time).toFixed(1)} m/s, too quick for a car`)
 }

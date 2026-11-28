@@ -9,6 +9,7 @@
 
 const AIR = [ 'plane', 'heli' ]
 const ROAD = [ 'car', 'scooter' ]
+const FOOT = [ 'walk' ]
 
 export const MISSIONS = [
     { id: 'milk-run', title: 'Milk Run', pay: 400, time: 0, vehicles: AIR,
@@ -53,5 +54,18 @@ export const MISSIONS = [
 
     { id: 'regatta', title: 'Pearl Regatta', pay: 900, time: 120, vehicles: [ 'boat' ],
         brief: 'Sail a boat round Pearl Atoll through six gates over the water.',
-        steps: [ { type: 'gates', route: 'around', island: 'atoll', count: 6, offset: 12, label: 'Buoy gate', where: 'round Pearl Atoll' } ] }
+        steps: [ { type: 'gates', route: 'around', island: 'atoll', count: 6, offset: 12, label: 'Buoy gate', where: 'round Pearl Atoll' } ] },
+
+    // from the reel's ideas: a boat race with ramps and a boost, a courier run on foot, a traffic weave
+    { id: 'wavebreaker', title: 'Wavebreaker Run', pay: 1300, time: 70, vehicles: [ 'boat' ],
+        brief: 'Race a boat round Pearl Atoll through eight gates. Hit the ramps at speed to jump the waves, and hold Shift to boost.',
+        steps: [ { type: 'gates', route: 'around', island: 'atoll', count: 8, offset: 16, ramps: true, label: 'Buoy gate', where: 'round Pearl Atoll' } ] },
+
+    { id: 'city-courier', title: 'City Courier', pay: 800, time: 55, vehicles: FOOT,
+        brief: 'Run a package round the city on foot, from door to door. Hold Shift to sprint (it tires you out) and press Space to jump.',
+        steps: [ { type: 'gates', route: 'sites', ids: [ 'studio', 'career', 'hospital', 'arcade', 'club', 'contact' ], marker: 'beam', radius: 3.5, label: 'Stop', where: 'on foot' } ] },
+
+    { id: 'close-shave', title: 'Close Shave', pay: 900, time: 75, vehicles: ROAD,
+        brief: 'Drive the loop road and pass the traffic close, at speed, without hitting it. Six near misses.',
+        steps: [ { type: 'weave', goal: 6, label: 'Near miss' } ] }
 ]

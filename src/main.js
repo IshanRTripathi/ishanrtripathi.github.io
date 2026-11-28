@@ -348,7 +348,9 @@ class App
                 this.ambience.sfx('step', { level: Math.min(1, p.speed / 7.8) })
             }
         }
-        ui.setStamina(walking ? p.stamina : 1, p.winded)
+        // the bar is the stamina on foot and the boost in a boat
+        const boating = p.mode === 'ride' && p.vehicle && p.vehicle.kind === 'boat'
+        ui.setStamina(walking ? p.stamina : boating ? p.boost : 1, walking && p.winded)
         ui.setJump(walking && !p.swimming)
         const kick = p.sprinting ? 6 : 0
         this.fovKick = (this.fovKick || 0) + (kick - (this.fovKick || 0)) * Math.min(1, dt * 5)
@@ -431,6 +433,7 @@ class App
         }
         // the markers and the HUD card follow the mission, including the moment it ends
         this.missionView.update(missions.active ? missions.marks : null)
+        if(!missions.active) this.player.ramps = []
         ui.setMission(missions.active ? missions : null)
     }
 
@@ -516,6 +519,12 @@ class App
         events.addEventListener('notice', (e) => ui.showArea('Not here', e.detail))
         events.addEventListener('jump', () => this.ambience.sfx('jump'))
         events.addEventListener('land', (e) => { if(e.detail > 2.5) this.ambience.sfx('land', { level: Math.min(1, e.detail / 9) }) })
+        events.addEventListener('boatjump', () => this.ambience.sfx('jump'))
+        events.addEventListener('boatland', (e) =>
+        {
+            this.ambience.splash()
+            this.ambience.sfx('land', { level: Math.min(1, e.detail / 8) })
+        })
         events.addEventListener('winded', () =>
         {
             this.ambience.sfx('puff')
@@ -811,13 +820,15 @@ class App
     updateMissions(dt)
     {
         if(!missions.active) return
-        missions.update(dt, this.rider())
+        missions.update(dt, this.rider(), { traffic: this.world.traffic.cars })
         // a siren warns when a timed mission is nearly out of time
         const left = missions.timeLeft
         if(left !== null && missions.active)
             for(const mark of [ 10, 5 ])
                 if(left <= mark && !this.warned.has(mark)) { this.warned.add(mark); this.ambience.alarm() }
-        this.missionView.update(missions.active ? missions.marks : null)
+        const marks = missions.active ? missions.marks : null
+        this.missionView.update(marks)
+        this.player.ramps = marks ? marks.filter((mark) => mark.type === 'ramp') : []
         ui.setMission(missions.active ? missions : null)
     }
 
@@ -825,6 +836,8 @@ class App
     rider()
     {
         const p = this.player
+        // on foot counts, as a kind of its own (the courier run); swimming and scripted scenes do not
+        if(p.mode === 'walk') return p.swimming ? null : { kind: 'walk', x: p.x, z: p.z, alt: 0, v: p.speed, onGround: p.jumpH === 0 }
         if(p.mode !== 'ride' || !p.vehicle) return null
         const v = p.vehicle
         if(v.flight)
