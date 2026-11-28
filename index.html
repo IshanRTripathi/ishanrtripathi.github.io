@@ -177,7 +177,20 @@
                 <button class="fullmap-close" type="button" data-fullmap="close">Close map</button>
             </header>
             <div class="fullmap-body">
-                <canvas class="fullmap-canvas" width="720" height="720" aria-label="Map of the city and the islands, north up"></canvas>
+                <div class="fullmap-stage">
+                    <canvas class="fullmap-canvas" width="720" height="720" aria-label="Map of the city and the islands, north up. Drag to move, scroll or pinch to zoom."></canvas>
+                    <div class="fullmap-tools">
+                        <button type="button" data-fullmap="in" aria-label="Zoom in">+</button>
+                        <button type="button" data-fullmap="out" aria-label="Zoom out">−</button>
+                        <button type="button" data-fullmap="me" aria-label="Centre on me and zoom in">◎</button>
+                        <button type="button" data-fullmap="fit" aria-label="Show the whole map">⤢</button>
+                    </div>
+                </div>
+                <div class="fullmap-jumps">
+                    <button type="button" class="fullmap-jump" data-fullmap="marker" aria-pressed="false">Add marker</button>
+                    <button type="button" class="fullmap-jump" data-fullmap="clear" hidden>Clear markers</button>
+                </div>
+                <div class="fullmap-jumps" data-markers aria-label="Your markers"></div>
                 <div class="fullmap-jumps" data-jumps aria-label="Fly to"></div>
                 <ul class="fullmap-legend">
                     <li><span class="fullmap-sw" style="--sw:#FF3EA5"></span> Projects</li>
@@ -185,7 +198,7 @@
                     <li><span class="fullmap-sw" style="--sw:#2DE2E6"></span> Chai shack and arcade</li>
                     <li><span class="fullmap-sw fullmap-sw-plane" aria-hidden="true"></span> Plane</li>
                     <li><span class="fullmap-sw fullmap-sw-route" aria-hidden="true"></span> Route to the next stop</li>
-                    <li class="fullmap-tip">Tap an airstrip, or a button above, to fly there. Press M or Escape to close. Faded stops are done.</li>
+                    <li class="fullmap-tip">Drag to move, scroll or pinch to zoom. Right-click or long-press drops a marker; tap a marker to point the minimap at it. Tap an airstrip, or a button, to fly there. M or Escape closes.</li>
                 </ul>
             </div>
         </div>
