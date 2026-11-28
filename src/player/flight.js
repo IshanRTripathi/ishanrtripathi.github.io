@@ -20,7 +20,10 @@ const VCRUISE = 28
 const MAX_PITCH = 0.36
 const MAX_BANK = 0.62
 const GROUND_PITCH_MAX = 0.2
-const SAFE_TOUCHDOWN = -4.5 // sink rate you can land at
+const SAFE_TOUCHDOWN = -6.5 // sink rate you can land at (a little firmer than before, so a gentle descent always counts)
+// near the ground the wings are eased level, and a sinking nose is lifted into a flare, so a landing is forgiving
+const FLARE_BELOW = 24 // metres: the assist starts to work here
+const FLARE_FULL = 6 // and is at full strength by here
 const CRASH_SINK = -9
 // how fast the wings roll, in radians a second: the stick is answered at once, not in a slow ease
 const BANK_RATE = 2.4
@@ -110,14 +113,17 @@ export class Flight
             const target = this.throttle * VMAX
             this.v += (target - this.v) * Math.min(1, dt * 0.35)
             // the nose goes where the stick says
-            const pitchWanted = input.y * MAX_PITCH
+            // near the ground: the assist fades in, levels the wings and lifts a sinking nose into a flare
+            const assist = Math.min(1, Math.max(0, (FLARE_BELOW - this.h) / (FLARE_BELOW - FLARE_FULL)))
+            const flare = assist * Math.min(0.14, Math.max(0, -this.vy - 1.5) * 0.025)
+            const pitchWanted = input.y * MAX_PITCH + flare
             this.pitch += (pitchWanted - this.pitch) * Math.min(1, dt * 2.2)
             // below stall speed the nose drops on its own
             if(this.v < VSTALL) this.pitch += (-0.25 - this.pitch) * Math.min(1, dt * 1.5)
             this.pitch = Math.max(-0.9, Math.min(0.9, this.pitch))
             // the stick banks the wings: D rolls right (right wing down), A rolls left. The wings follow
             // the stick at a steady rate, and roll back level when it is let go
-            const bankWanted = -input.x * MAX_BANK
+            const bankWanted = -input.x * MAX_BANK * (1 - 0.35 * assist)
             const step = BANK_RATE * dt
             this.bank += Math.max(-step, Math.min(step, bankWanted - this.bank))
             // a banked plane turns the way its wings lean: the coordinated turn rate for the bank and
@@ -132,7 +138,7 @@ export class Flight
             if(this.h <= 0)
             {
                 this.h = 0
-                if(this.vy > SAFE_TOUCHDOWN && this.pitch < 0.3 && Math.abs(this.bank) < 0.35)
+                if(this.vy > SAFE_TOUCHDOWN && this.pitch < 0.3 && Math.abs(this.bank) < 0.45)
                 {
                     this.onGround = true
                     this.landed = true

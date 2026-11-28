@@ -19,16 +19,22 @@ import { projects, career, contact, arcade } from './content.js'
 import { Interior } from './interior/interior.js'
 import { Errands, landmarksOf, boardsOf, lighthousesOf, progressText } from './errands.js'
 import { GAMES } from './arcade/games.js'
+import { Missions } from './missions/missions.js'
+import { createMissionView } from './missions/missionView.js'
 
 const params = new URLSearchParams(location.search)
 const isTouch = window.matchMedia('(pointer: coarse)').matches || params.has('touch')
+
+// the jobs from the phone's Missions app; their events reach the app once it exists
+const missions = new Missions((e) => app.missionEvent(e))
 
 const ui = new UI({
     isTouch,
     onExplore: () => app.explore(),
     onClose: () => app.canvas.focus({ preventScroll: true }),
     onSound: (on) => app.ambience.setEnabled(on),
-    onPrompt: () => app.promptAction()
+    onPrompt: () => app.promptAction(),
+    missions: { list: () => missions.list(), start: (id) => app.startMission(id), cancel: () => app.cancelMission() }
 })
 
 function webglAvailable()
@@ -137,6 +143,7 @@ class App
         ui.onMap = () => this.fullMap.toggle()
         ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen
         this.wasFlying = false
+        this.missions = missions
         this.timer = new THREE.Timer()
         this.timer.connect(document)
         this.time = 0
@@ -212,6 +219,7 @@ class App
         }
         this.pushErrands()
         this.rig = new CameraRig(this.camera, this.input)
+        this.missionView = createMissionView(this.scene)
         // the buildings you can walk into, and the rooms inside them
         this.doors = layout.sites.filter((site) => site.entrance)
         this.interior = new Interior({
@@ -285,7 +293,8 @@ class App
         const h = window.innerHeight
         // phones sideways: planet on the right half, beside the text
         if(w > h && h < 540) return { x: w * 0.24, y: h * 0.06 }
-        if(w > 900) return { x: w * 0.2, y: 0 }
+        // a bigger planet sits a little further right, so it clears the name
+        if(w > 900) return { x: w * 0.26, y: 0 }
         // portrait: the planet rises from the bottom, under the text
         if(h > w) return { x: 0, y: h * 0.3 }
         return { x: w * 0.12, y: h * 0.12 }
@@ -319,6 +328,57 @@ class App
             z: runway.mid.z,
             spot: { x: start.x + side.x * 4.5, z: start.z + side.z * 4.5, yaw: start.yaw }
         }
+    }
+
+    // a mission from the phone: it sets the target and shows the brief
+    startMission(id)
+    {
+        if(this.state !== 'play' || this.interior.active) return false
+        return missions.start(id)
+    }
+
+    cancelMission()
+    {
+        missions.cancel()
+    }
+
+    // what a mission tells the game as it goes: the banners, the sounds and the rewards
+    missionEvent(e)
+    {
+        if(!this.canvas) return
+        const m = e.mission
+        if(e.type === 'start')
+        {
+            this.ambience.ui('confirm')
+            ui.showArea(m.title, m.brief)
+        }
+        else if(e.type === 'ring')
+        {
+            this.ambience.ui('click')
+            ui.showArea(`Ring ${e.count} of ${e.total}`, e.count < e.total ? 'Keep going' : 'All rings flown')
+        }
+        else if(e.type === 'leg')
+        {
+            this.ambience.ui('click')
+            ui.showArea('Landed', `Next: ${missions.target ? missions.target.label : ''}`)
+        }
+        else if(e.type === 'complete')
+        {
+            this.ambience.ui('confirm')
+            ui.showArea('Mission complete', `${m.title}: +$${e.pay.toLocaleString('en-US')}`)
+        }
+        else if(e.type === 'fail')
+        {
+            this.ambience.ui('close')
+            ui.showArea('Mission failed', `${m.title}: ${e.reason}. Try again from the phone`)
+        }
+        else if(e.type === 'cancel')
+        {
+            ui.showArea('Mission dropped', m.title)
+        }
+        // the markers and the HUD card follow the mission, including the moment it ends
+        this.missionView.update(missions.active ? missions : null)
+        ui.setMission(missions.active ? missions : null)
     }
 
     // the map's fast travel: close the map and stand beside the plane at that airstrip
@@ -658,8 +718,16 @@ class App
             })
             ui.setFlight(flying ? this.player.vehicle.flight : null)
             if(this.player.mode === 'chute') ui.setChute(this.player.chute)
-            // the how-to card opens when you climb in, and closes when you climb out
-            if(flying && !this.wasFlying) ui.showFlightTips(true)
+            // a mission follows the plane you fly: its landings and rings are checked here
+            this.updateMissions(dt, flying ? this.player.vehicle.flight : null)
+            // in the air on a touch screen the HUD is a thin strip, so the view stays clear
+            ui.setFlying(!!flying && isTouch)
+            // the how-to card opens when you climb in (not on a touch screen, where it would cover the view)
+            if(flying && !this.wasFlying)
+            {
+                if(!isTouch) ui.showFlightTips(true)
+                ui.fadeHelp()
+            }
             if(!flying && this.wasFlying) ui.showFlightTips(false)
             this.wasFlying = !!flying
             this.updatePlaneTip()
@@ -667,6 +735,16 @@ class App
             this.updateErrands(dt)
             if(this.fullMap.isOpen) this.drawFullMap()
         }
+    }
+
+    // the mission on hand: the plane's place, in the sky and on the ground, is what it checks
+    updateMissions(dt, flight)
+    {
+        const plane = flight ? { x: flight.x, z: flight.z, alt: flight.ground + flight.h, v: flight.v, onGround: flight.onGround } : null
+        if(!missions.active && !plane) return
+        missions.update(dt, plane)
+        this.missionView.update(missions.active ? missions : null)
+        ui.setMission(missions.active ? missions : null)
     }
 
     // a tip above the plane while you stand next to it
@@ -721,12 +799,19 @@ class App
         const p = this.player
         this.fullMap.draw({
             player: { x: p.x, z: p.z, yaw: p.yaw },
-            stops: this.mapStops,
+            stops: missions.active ? this.mapStops.concat(this.missionStop()) : this.mapStops,
             vehicles: this.world.vehicles.map((v) => ({ kind: v.kind, x: v.x, z: v.z, yaw: v.yaw })),
             runways: this.world.airstrips.map((strip) => strip.runway.points),
             route: this.mapRoute || [],
             visited: this.visited
         })
+    }
+
+    // the active mission's target, drawn as a stop on the city map
+    missionStop()
+    {
+        const t = missions.target
+        return t ? [ { id: 'mission', x: t.x, z: t.z, label: t.label, color: '#7CFFB2', size: 9 } ] : []
     }
 
     updateMap()
@@ -735,6 +820,7 @@ class App
         this.mapFrame = (this.mapFrame || 0) + 1
         if(this.mapFrame % 2) return
         const next = this.nextStop()
+        const mission = missions.target
         const blips = this.world.interactables.map((i) => ({
             x: i.marker ? i.marker.x : i.x,
             z: i.marker ? i.marker.z : i.z,
@@ -744,11 +830,14 @@ class App
         }))
         for(const v of this.world.vehicles)
             if(this.player.vehicle !== v) blips.push({ x: v.x, z: v.z, color: '#FFF6EC', size: 4 })
-        const target = next ? (next.marker || next) : null
-        this.mapRoute = this.minimap.routePoints(this.player, target)
+        // a mission's target comes first: the minimap points straight at it, across the sea if need be
+        const target = mission || (next ? (next.marker || next) : null)
+        this.mapRoute = mission ? [] : this.minimap.routePoints(this.player, target)
         const distance = this.minimap.update(this.player, this.rig.yaw, blips, target)
-        ui.setProgress(this.visited.size, this.stops.length)
-        ui.setNext(next ? `Next: ${next.content.place}${distance ? `, ${Math.round(distance / 10) * 10 || 10} m` : ''}` : 'Chai at the beach is always open')
+        const metres = distance ? `${Math.round(distance / 10) * 10 || 10} m` : ''
+        ui.setProgress(this.visited.size, this.stops.length, missions.cash)
+        if(mission) ui.setNext(`Mission: ${mission.label}${metres ? `, ${metres}` : ''}`)
+        else ui.setNext(next ? `Next: ${next.content.place}${distance ? `, ${Math.round(distance / 10) * 10 || 10} m` : ''}` : 'Chai at the beach is always open')
     }
 }
 
