@@ -21,8 +21,10 @@ import { createDetails, updateDetails } from './details.js'
 import { buildAirstrip, animateAirstrip, airstripUniforms } from './airstrip.js'
 import { ISLANDS, mooringSpots } from './islands.js'
 import { buildPlane } from './plane.js'
+import { buildHeli } from './heli.js'
 import { buildIslandStructures } from './islandBuildings.js'
 import { Flight } from '../player/flight.js'
+import { HeliFlight } from '../player/heli.js'
 import { projects, achievements, career, contact, arcade } from '../content.js'
 import { registry, sized } from '../models/registry.js'
 import { clayMaterial } from '../models/kit.js'
@@ -155,7 +157,11 @@ export class World
             this.cullables.push({ object: group, x: runway.mid.x, z: runway.mid.z, radius: runway.length / 2 })
             return { id, name, runway, group }
         })
-        for(const strip of this.airstrips) this.addPlane(strip.id === 'city' ? 'plane' : `plane-${strip.id}`, strip.runway)
+        for(const strip of this.airstrips)
+        {
+            this.addPlane(strip.id === 'city' ? 'plane' : `plane-${strip.id}`, strip.runway)
+            this.addHeli(strip.id === 'city' ? 'heli' : `heli-${strip.id}`, strip.runway)
+        }
         for(const island of ISLANDS) this.moorBoats(island)
 
         // traffic on the loop road
@@ -206,6 +212,26 @@ export class World
             id, kind: 'plane', model, flight, x: start.x, z: start.z, yaw: start.yaw,
             collider, radius: 2, box: { hw: 4.2, hd: 4.2 }, seat: model.seat,
             label: 'Fly the plane', hideRider: true, maxSpeed: 36, reverse: 0, accel: 1, steer: 1
+        })
+        this.scene.add(model.root)
+        flight.apply(model.root)
+    }
+
+    // a helicopter parked beside an airstrip, a little way down it from the plane, ready to fly
+    addHeli(id, runway)
+    {
+        const model = buildHeli()
+        const flight = new HeliFlight(model)
+        const { start, t } = runway
+        const spot = { x: start.x + t.x * 10 - t.z * 9.5, z: start.z + t.z * 10 + t.x * 9.5, yaw: start.yaw }
+        flight.spawn = { ...spot }
+        flight.reset(spot.x, spot.z, spot.yaw)
+        const collider = { type: 'box', x: spot.x, z: spot.z, yaw: spot.yaw, hw: 1.1, hd: 2.4, vehicle: id }
+        this.colliders.push(collider)
+        this.vehicles.push({
+            id, kind: 'heli', model, flight, x: spot.x, z: spot.z, yaw: spot.yaw,
+            collider, radius: 2, box: { hw: 3.5, hd: 3.5 }, seat: model.seat,
+            label: 'Fly the helicopter', hideRider: true, maxSpeed: 24, reverse: 0, accel: 1, steer: 1
         })
         this.scene.add(model.root)
         flight.apply(model.root)

@@ -6,7 +6,7 @@ import { layout, coastRadius } from '../src/world/layout.js'
 import { scatter, siteRadius } from '../src/world/scatter.js'
 import { pathEdgeDistance, roadEdgeDistance, coastDistance, clearDistance, heightAt } from '../src/world/terrain.js'
 import { ISLANDS, MAP_EXTENT, structureSpots, signSpots, mooringSpots, buoySpots, islandSigned } from '../src/world/islands.js'
-import { MISSIONS, ringsAround } from '../src/missions/missions.js'
+import { MISSIONS, buildSteps } from '../src/missions/missions.js'
 
 const problems = []
 const fail = (msg) => problems.push(msg)
@@ -306,19 +306,36 @@ for(let i = 0; i < ISLANDS.length; i++)
         if(sea < MIN_SEA) fail(`${a.name} and ${b.name} are only ${sea.toFixed(0)} m of sea apart (needs ${MIN_SEA})`)
     }
 
-// every mission points at real islands, its rings hang above the water or the ground, and it pays something
+// The missions: each one builds (its steps, islands and routes all exist), pays something, names
+// real vehicles, and can be done. A road race has its checkpoints on the road, a boat race has
+// its gates on the sea, and a race against the clock leaves a sensible time for its length.
+const KINDS = [ 'plane', 'heli', 'car', 'scooter', 'boat' ]
+const ids = new Set()
 for(const m of MISSIONS)
 {
-    for(const id of m.legs)
-        if(!ISLANDS.some((i) => i.id === id)) fail(`mission "${m.title}" flies to an island that does not exist (${id})`)
-    if(m.pay <= 0) fail(`mission "${m.title}" pays nothing`)
-    if(m.kind === 'rings')
+    const name = `mission "${m.title}"`
+    if(ids.has(m.id)) fail(`${name}: the id ${m.id} is used twice`)
+    ids.add(m.id)
+    if(!(m.pay > 0)) fail(`${name} pays nothing`)
+    if(!Array.isArray(m.vehicles) || !m.vehicles.length || m.vehicles.some((k) => !KINDS.includes(k))) fail(`${name} has no valid vehicles`)
+    let steps = []
+    try { steps = buildSteps(m) }
+    catch(err) { fail(`${name}: ${err.message}`); continue }
+    let length = 0
+    for(const { state } of steps)
     {
-        const rings = ringsAround(ISLANDS.find((i) => i.id === m.legs[0]), m.rings)
-        if(rings.length !== m.rings) fail(`mission "${m.title}" has ${rings.length} rings, not ${m.rings}`)
-        for(const r of rings)
-            if(!(r.alt > 0)) fail(`mission "${m.title}" has a ring below the sea at (${r.x.toFixed(1)}, ${r.z.toFixed(1)})`)
+        if(!state.gates) continue
+        for(let i = 0; i < state.gates.length; i++)
+        {
+            const g = state.gates[i]
+            if(i) length += Math.hypot(g.x - state.gates[i - 1].x, g.z - state.gates[i - 1].z)
+            if(state.air) { if(!(g.alt > 0)) fail(`${name}: a ring is below the ground at (${g.x.toFixed(1)}, ${g.z.toFixed(1)})`) }
+            else if(m.vehicles.includes('boat')) { if(coastDistance(g.x, g.z) > -2) fail(`${name}: a gate is not on the sea at (${g.x.toFixed(1)}, ${g.z.toFixed(1)})`) }
+            else if(roadEdgeDistance(g.x, g.z) > 1.5) fail(`${name}: checkpoint ${i + 1} is ${roadEdgeDistance(g.x, g.z).toFixed(1)} m off the road`)
+        }
     }
+    // the slowest vehicle allowed has to be able to do it in the time: a rough speed of 6 m/s on the road
+    if(m.time && length && m.vehicles.every((k) => k === 'car' || k === 'scooter') && length / m.time > 8) fail(`${name}: ${length.toFixed(0)} m in ${m.time} s needs ${(length / m.time).toFixed(1)} m/s, too quick for a car`)
 }
 
 const spawnPath = pathEdgeDistance(layout.spawn.x, layout.spawn.z)

@@ -51,6 +51,13 @@ export class UI
         this.onClose = onClose
         this.missions = missions
         this.missionHud = this.$('.mission-hud')
+        // the car radio's dial: a tap tunes to the next station
+        this.radioPill = this.$('.radio-pill')
+        this.radioPill.addEventListener('click', () => this.onRadio?.())
+        // the stamina bar, and on a touch screen a jump button
+        this.staminaEl = this.$('.stamina')
+        this.jumpButton = this.$('.jump-button')
+        this.jumpButton.addEventListener('pointerdown', (e) => { e.preventDefault(); this.onJump?.() })
 
         if(isTouch)
         {
@@ -175,6 +182,7 @@ export class UI
     flightTip(f)
     {
         if(f.hintTime > 0) return f.hint
+        if(f.kind === 'heli') return f.onGround ? 'Hold R to spin up and rise. W flies forward, A and D turn' : 'R climbs, F descends, W and S fly, A and D turn. Let go and it hovers'
         if(!f.onGround)
         {
             if(f.h < 40 && f.vy < -1.5) return 'Landing: ease off with F, level the nose, and line up with the strip'
@@ -529,7 +537,7 @@ export class UI
             const limit = m.time ? ` · ${m.time} s` : ''
             return `<li class="mission-row ${m.status}">
                 <div><strong>${escape(m.title)}</strong><span class="note">${escape(m.brief)}</span>
-                <span class="when">Pays ${money(m.pay)}${limit}</span></div>${action}</li>`
+                <span class="when">Pays ${money(m.pay)}${limit} · by ${escape(m.by)}</span></div>${action}</li>`
         }).join('')
         const cancel = active ? '<p class="mission-cancel"><button type="button" class="text-button" data-mission-cancel>Drop this mission</button></p>' : ''
         return `<div class="phone-contact"><p class="note">Missions are on from the control tower. Land, fly or sail to finish them.</p><ul class="card-list mission-list">${rows}</ul>${cancel}</div>`
@@ -549,6 +557,29 @@ export class UI
         this.$('.mission-objective').textContent = mission.objective
         const time = mission.timeLeft
         this.$('.mission-time').textContent = time === null ? '' : `${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')} left`
+    }
+
+    // the stamina bar: shown while it is not full, red when winded
+    setStamina(level, winded)
+    {
+        if(!this.staminaEl) return
+        this.staminaEl.hidden = level > 0.985
+        this.staminaEl.classList.toggle('is-winded', !!winded)
+        this.staminaEl.firstElementChild.style.transform = `scaleX(${level.toFixed(3)})`
+    }
+
+    // the jump button, on a touch screen while walking
+    setJump(on)
+    {
+        if(this.jumpButton) this.jumpButton.hidden = !(on && this.isTouch)
+    }
+
+    // the radio dial while driving a car, or hidden (null)
+    setRadio(text)
+    {
+        if(!this.radioPill) return
+        this.radioPill.hidden = !text
+        if(text && this.radioPill.textContent !== text) this.radioPill.textContent = text
     }
 
     // flying with a touch screen: the HUD is kept to a thin strip so the view stays clear

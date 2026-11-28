@@ -68,6 +68,7 @@ export class CameraRig
         const kind = player.vehicle.kind
         if(kind === 'car') return Math.max(distance, 11)
         if(kind === 'plane') return Math.max(distance, 17)
+        if(kind === 'heli') return Math.max(distance, 15)
         if(kind === 'boat') return Math.max(distance, 12)
         return distance
     }
@@ -88,7 +89,7 @@ export class CameraRig
         out.up.copy(U)
 
         // pull in rather than end up inside a building (the clear distance is eased, so this never jumps)
-        const minimum = player.mode === 'chute' ? 9 : player.mode === 'ride' && player.vehicle && (player.vehicle.kind === 'car' || player.vehicle.kind === 'plane' || player.vehicle.kind === 'boat') ? (player.vehicle.kind === 'plane' ? 8 : 6.5) : 3
+        const minimum = player.mode === 'chute' ? 9 : player.mode === 'ride' && player.vehicle && (player.vehicle.kind === 'car' || player.vehicle.kind === 'plane' || player.vehicle.kind === 'heli' || player.vehicle.kind === 'boat') ? (player.vehicle.kind === 'plane' || player.vehicle.kind === 'heli' ? 8 : 6.5) : 3
         const clear = this.clearNow == null ? this.clearDistance(player, this.distance) : Math.min(this.clearNow, this.distance)
         const dist = Math.max(Math.min(minimum, this.distance), clear)
         if(dist < this.distance)
@@ -233,7 +234,7 @@ export class CameraRig
             const sinceDrag = time - this.lastDrag
             if(player.mode === 'ride')
             {
-                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * (player.vehicle && player.vehicle.kind === 'plane' ? 7 : player.vehicle && player.vehicle.kind === 'car' ? 4 : 2.6)))
+                if(sinceDrag > 0.8) this.yaw += angleDiff(player.yaw, this.yaw) * (1 - Math.exp(-dt * (player.vehicle && (player.vehicle.kind === 'plane' || player.vehicle.kind === 'heli') ? 7 : player.vehicle && player.vehicle.kind === 'car' ? 4 : 2.6)))
             }
             else if(player.mode === 'sit' && player.world.stool)
             {

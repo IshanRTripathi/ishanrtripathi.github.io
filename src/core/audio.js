@@ -1,4 +1,6 @@
 import { Music } from './music.js'
+import { Radio } from './radio.js'
+import { Sfx } from './sfx.js'
 
 // Ambient sound made on the fly: the sea (filtered noise that swells like
 // waves, louder near the shore), rain, wind, thunder, birdsong in the morning
@@ -75,6 +77,8 @@ export class Ambience
         // the short sounds load in the background; the music streams
         for(const file of Object.keys(CLIPS)) this.fetchClip(file)
         this.music = new Music(ctx, this.master)
+        this.radio = new Radio(ctx, this.master)
+        this.sounds = new Sfx(ctx, this.master)
         this.drone = this.makeDrone()
     }
 
@@ -100,6 +104,31 @@ export class Ambience
         if(on && this.context.state === 'suspended') this.context.resume()
         this.setLevels()
         this.music?.setOn(on)
+    }
+
+    // a short game sound by name (see sfx.js), only while the sound is on
+    sfx(name, options)
+    {
+        if(!this.enabled || !this.sounds) return
+        this.sounds.play(name, options)
+    }
+
+    // the car radio: heard while driving a car with the sound on, and the music steps back for it
+    radioDrive(driving)
+    {
+        if(!this.radio) return
+        const on = driving && this.enabled
+        this.radio.setActive(on)
+        this.music?.duck(on && this.radio.index >= 0)
+    }
+
+    // the next station, then off: what is now playing, or null for off
+    radioNext()
+    {
+        if(!this.radio) return null
+        const station = this.radio.next()
+        this.music?.duck(this.enabled && !!station && this.radio.active)
+        return station
     }
 
     // the city's sounds are quieter indoors; a room's own sounds are on a separate output

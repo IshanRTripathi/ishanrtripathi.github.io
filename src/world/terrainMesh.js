@@ -25,6 +25,7 @@ export const PALETTE = {
     planet: '#1B6F92'
 }
 
+const ROCK = new THREE.Color(PALETTE.rock)
 const jitterNoise = createNoise2D(31)
 const colorNoise = createNoise2D(41)
 
@@ -168,6 +169,8 @@ function faceColor(x, z, h, slope, random, out)
         case SURFACE.JUNGLE:
             out.set(pick(PALETTE.jungle, random))
             out.offsetHSL(n * 0.01, 0, n * 0.02)
+            // the tops of the hills thin out to bare rock
+            out.lerp(ROCK, Math.min(0.4, Math.max(0, (h - 5) * 0.07)))
             break
         case SURFACE.SNOW:
             // bare rock shows through on the steep faces, snow everywhere else
@@ -185,8 +188,9 @@ function faceColor(x, z, h, slope, random, out)
             if(slope > 1.1) out.set(PALETTE.rock)
             else if(h > 2.6 + n) out.set(pick(PALETTE.grassHigh, random))
             else out.set(pick(PALETTE.grass, random))
-            // soft large-scale variation
+            // soft large-scale variation, and the crests of the hills going to rock
             out.offsetHSL(n * 0.012, 0, n * 0.025)
+            out.lerp(ROCK, Math.min(0.45, Math.max(0, (h - 5.5) * 0.08)))
     }
     return out
 }

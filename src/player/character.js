@@ -125,6 +125,7 @@ export class Character
         this.weights = { idle: 1, move: 0, wave: 0, sit: 0, ride: 0 }
         this.state = { speed: 0, walkSpeed: 2.7, runSpeed: 6.2, turn: 0, mode: 'idle', wave: false }
         this.lean = 0
+        this.airW = 0 // how much of the pose is a jump
         this.waveTime = 0
     }
 
@@ -156,7 +157,23 @@ export class Character
         this.waveTime = s.wave ? this.waveTime + dt : 0
         this.lean += (THREE.MathUtils.clamp(-s.turn * speed * 0.045, -0.3, 0.3) - this.lean) * k
 
+        this.airW += ((s.air ? 1 : 0) - this.airW) * k
         this.pose(run)
+        this.applyAir()
+    }
+
+    // in the air the knees are tucked and the arms thrown up, laid over whatever the legs were doing
+    applyAir()
+    {
+        const a = this.airW
+        if(a < 0.01) return
+        const to = (joint, value) => { joint.rotation.x += (value - joint.rotation.x) * a }
+        to(this.legL.thigh, -0.9)
+        to(this.legR.thigh, -0.3)
+        to(this.legL.shin, 1.1)
+        to(this.legR.shin, 0.5)
+        to(this.armL.upper, -1.3)
+        to(this.armR.upper, -1.1)
     }
 
     pose(run)
