@@ -61,8 +61,8 @@ export class UI
 
         if(isTouch)
         {
-            this.minimapCanvas.width = 128
-            this.minimapCanvas.height = 128
+            this.minimapCanvas.width = 160
+            this.minimapCanvas.height = 160
         }
 
         this.soundButton = this.$('[data-action="sound"]')
@@ -81,7 +81,13 @@ export class UI
 
         // the map, the plane's tips and how-to-fly
         this.$('[data-action="map"]').addEventListener('click', () => this.onMap?.())
-        this.minimapEl.addEventListener('click', () => this.onMap?.())
+        this.minimapEl.addEventListener('click', (e) =>
+        {
+            const b = e.target.closest('[data-minimap]')
+            if(b) this.onMinimapZoom?.(b.dataset.minimap === 'in' ? 1.4 : 1 / 1.4)
+            else this.onMap?.()
+        })
+        this.minimapEl.addEventListener('wheel', (e) => { e.preventDefault(); this.onMinimapZoom?.(Math.exp(-e.deltaY * 0.002)) }, { passive: false })
         this.minimapEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') this.onMap?.() })
         document.querySelectorAll('[data-flight-tips]').forEach((b) => b.addEventListener('click', () => this.showFlightTips(b.dataset.flightTips === 'show')))
 

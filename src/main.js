@@ -141,6 +141,7 @@ class App
             onJump: (dest) => this.jump(dest)
         })
         ui.onMap = () => this.fullMap.toggle()
+        ui.onMinimapZoom = (f) => this.minimap?.zoomBy(f)
         ui.onRadio = () => this.nextStation()
         ui.onJump = () => this.input.pressed.add('Space')
         ui.externalModal = () => this.arcade.isOpen || this.fullMap.isOpen

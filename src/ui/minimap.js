@@ -166,7 +166,10 @@ export class Minimap
         this.route = null
         this.routeKey = ''
         this.scale = 2.1 // pixels per metre at 200px
+        this.zoom = 1 // the player's zoom: the + and - buttons and the wheel
     }
+
+    zoomBy(f) { this.zoom = Math.min(3, Math.max(0.4, this.zoom * f)) }
 
     // the walking route from the player to a target, as a list of map points
     routePoints(player, target)
@@ -183,7 +186,7 @@ export class Minimap
         const ctx = this.ctx
         const W = this.canvas.width
         const H = this.canvas.height
-        const scale = this.scale * (W / 200) * (player.mode === 'ride' ? 0.75 : 1)
+        const scale = this.scale * this.zoom * (W / 200) * (player.mode === 'ride' ? 0.75 : 1)
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.clearRect(0, 0, W, H)
         ctx.save()

@@ -28,12 +28,12 @@ export const AIRSTRIP = { length: 70, width: 12 }
 // how far from the middle of the city the full map reaches: far enough for the islands on their ring
 export const MAP_EXTENT = 340
 
-// The islands sit on one even ring round the city, 262 metres out, a little under the planet's
-// equator, so they read as a belt round the globe. Each one has its own angle on the ring. The
+// The islands sit in a loose belt round the city, 225 to 275 metres out at uneven angles, a
+// little under the planet's equator, so they read as scattered, not a neat circle. The
 // spacing is kept by scripts/check-world.mjs: at least 40 metres of sea to the city and between
 // neighbours. Every island's features are placed from its own middle, so moving an island moves
 // the whole of it.
-const RING = 262
+const RING = 262 // the harbour's own distance; the rest are placed by hand around it
 const HARBOUR_AT = 0.771
 // the harbour's cove faces the city, the geyser's bay faces the sea to the south
 const HARBOUR_FACE = 1 + PI
@@ -43,7 +43,7 @@ export const ISLANDS = [
     {
         id: 'jungle', name: 'Jungle Cove', theme: 'jungle', seed: 11,
         blurb: 'Palms, rainforest and a stilt hut on the beach',
-        at: polar(RING, 3.056), radius: 46,
+        at: polar(274, 3.2), radius: 46,
         waves: [ [ 2.2, 3, 0.4 ], [ 1.2, 6, 1.9 ] ],
         hills: 2.6, peak: 0,
         // a stilt hut on the beach side, and palms, ferns and tall rainforest trees
@@ -54,7 +54,7 @@ export const ISLANDS = [
     {
         id: 'frost', name: 'Frost Peak', theme: 'frost', seed: 23,
         blurb: 'Snowy pines, a log cabin and a warm window',
-        at: polar(RING, 2.485), radius: 48,
+        at: polar(224, 2.5), radius: 48,
         waves: [ [ 1.8, 2, 2.6 ], [ 1.0, 5, 0.9 ] ],
         hills: 2.2, peak: 9,
         // a log cabin with a warm window, and snowy pines
@@ -65,7 +65,7 @@ export const ISLANDS = [
     {
         id: 'dunes', name: 'Dune Oasis', theme: 'desert', seed: 37,
         blurb: 'Sand dunes, cacti and an oasis with a tent',
-        at: polar(RING, 1.914), radius: 46,
+        at: polar(270, 2.0), radius: 46,
         waves: [ [ 1.6, 4, 1.2 ], [ 0.9, 7, 0.3 ] ],
         hills: 1.4, peak: 0,
         // an oasis pool with a tent beside it, and a few cacti and palms in the dunes
@@ -95,7 +95,7 @@ export const ISLANDS = [
         // flat, and a bay bitten out of the south
         id: 'geyser', name: 'Geyser Isle', theme: 'geyser', seed: 67,
         blurb: 'Volcanic rock, a hot spring and a geothermal station humming on the flat',
-        at: polar(RING, 5.912), radius: 45,
+        at: polar(226, 6.08), radius: 45,
         waves: [ [ 2.0, 2, 0.9 ], [ 1.2, 5, 2.2 ] ],
         bumps: [ [ -0.9, 0.6, 5 ] ],
         coves: [ [ GEYSER_BAY, 0.7, 8 ] ],
@@ -113,7 +113,7 @@ export const ISLANDS = [
         // a four-armed cay: the arms reach out to the sea, with a solar farm, a wind turbine and a dive shop
         id: 'cay', name: 'Cross Cay', theme: 'cay', seed: 73,
         blurb: 'Four sandy arms: a solar farm, a wind turbine and dive trips at 9 am',
-        at: polar(RING, 3.627), radius: 34,
+        at: polar(236, 3.7), radius: 34,
         waves: [ [ 12, 4, 0.5 ], [ 2.0, 9, 1.3 ] ],
         hills: 1.2, peak: 0,
         // the runway runs along the arms at 0.27 and 3.41 radians, so the buildings sit on the other two arms
@@ -130,7 +130,7 @@ export const ISLANDS = [
         // a heart: two lobes at the top with a cleft between them, and the point at the bottom
         id: 'heart', name: 'Heart Isle', theme: 'meadow', seed: 79,
         blurb: 'Honeymoon bungalows, a beach bar and a ferris wheel that does the full loop',
-        at: polar(RING, 4.77), radius: 42,
+        at: polar(222, 4.95), radius: 42,
         waves: [ [ 1.2, 3, 0.5 ] ],
         bumps: [ [ -PI / 2 - 0.8, 0.5, 13 ], [ -PI / 2 + 0.8, 0.5, 13 ], [ PI / 2, 0.26, 17 ] ],
         coves: [ [ -PI / 2, 0.3, 8 ] ],
@@ -150,7 +150,7 @@ export const ISLANDS = [
         // an atoll: a ring of sand round a lagoon, with bungalows, a beach bar and a turbine on the ring
         id: 'atoll', name: 'Pearl Atoll', theme: 'atoll', seed: 89,
         blurb: 'A ring of white sand round a lagoon, with boats to hire and a turbine on the rim',
-        at: polar(RING, 0.2), radius: 64, hole: 22,
+        at: polar(248, 0.3), radius: 64, hole: 22,
         waves: [ [ 1.6, 3, 0.3 ], [ 0.8, 5, 1.1 ] ],
         hills: 0.5, peak: 0,
         structures: [
@@ -168,7 +168,7 @@ export const ISLANDS = [
         // a rocky cape out on the rim of the map: a lighthouse on its tip, and a keeper's cottage behind
         id: 'lantern', name: 'Lantern Bay', theme: 'meadow', seed: 97,
         blurb: 'A rocky cape with a working lighthouse and a keeper\'s cottage. The light comes on at dusk',
-        at: polar(RING, 1.342), radius: 42,
+        at: polar(225, 1.4), radius: 42,
         waves: [ [ 2.0, 3, 0.2 ], [ 1.0, 6, 1.4 ] ],
         bumps: [ [ -0.4, 0.32, 14 ] ],
         hills: 1.6, peak: 0,
@@ -185,7 +185,7 @@ export const ISLANDS = [
         // a windy ridge with a radio mast on the crest and an observatory dome
         id: 'ridge', name: 'Radio Ridge', theme: 'ridge', seed: 101,
         blurb: 'A windy ridge with a radio mast, and an observatory that opens on Fridays',
-        at: polar(RING, 4.198), radius: 44,
+        at: polar(270, 4.2), radius: 44,
         waves: [ [ 1.4, 2, 0.8 ], [ 0.8, 5, 2.0 ] ],
         hills: 2.4, peak: 0,
         structures: [
@@ -200,7 +200,7 @@ export const ISLANDS = [
         // a river delta: a narrow inlet cut in from the sea, mangroves, and houses on stilts
         id: 'mangrove', name: 'Mangrove Delta', theme: 'mangrove', seed: 103,
         blurb: 'A river delta with houses on stilts, crab traps and a boat shed among the mangroves',
-        at: polar(RING, 5.341), radius: 47,
+        at: polar(274, 5.5), radius: 47,
         waves: [ [ 1.8, 2, 2.0 ], [ 1.0, 5, 0.6 ] ],
         coves: [ [ 6.1, 0.22, 22 ] ],
         hills: 0.9, peak: 0,
